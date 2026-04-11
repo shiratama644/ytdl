@@ -4,9 +4,10 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-const inputClassName =
-  `h-10 min-w-0 w-full rounded-full border border-white/20
-   bg-black/60 px-4 text-sm outline-none focus:border-blue-400`;
+const inputClassName = [
+  "h-10 min-w-0 w-full rounded-full border border-white/20",
+  "bg-black/60 px-4 text-sm outline-none focus:border-blue-400",
+].join(" ");
 
 export function SiteHeader() {
   const router = useRouter();
