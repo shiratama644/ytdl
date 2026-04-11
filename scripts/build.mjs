@@ -5,7 +5,7 @@ const isTermux =
   process.env.PREFIX?.includes("com.termux") === true ||
   typeof process.env.TERMUX_APP_PID === "string";
 
-const args = ["dev", ...(isTermux ? ["--webpack"] : [])];
+const args = ["build", ...(isTermux ? ["--webpack"] : [])];
 const child = spawn("next", args, { stdio: "inherit", shell: false });
 
 child.on("exit", (code) => {
