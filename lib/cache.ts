@@ -16,6 +16,10 @@ async function getRedisClient() {
     redisClientPromise = (async () => {
       const client = createClient({ url: env.REDIS_URL });
       client.on("error", (error) => {
+        if (process.env.NODE_ENV === "production") {
+          console.warn("Redis cache error");
+          return;
+        }
         console.warn("Redis cache error:", error.message);
       });
       await client.connect();

@@ -106,7 +106,11 @@ export async function getTopVideos() {
         const cards = collectVideoCards(home, 24);
         if (cards.length > 0) return cards;
       } catch (error) {
-        console.warn("Failed to load home feed, falling back to search:", error);
+        if (process.env.NODE_ENV === "production") {
+          console.warn("Failed to load home feed, using fallback search.");
+        } else {
+          console.warn("Failed to load home feed, falling back to search:", error);
+        }
         // fallback below
       }
 
