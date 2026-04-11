@@ -59,9 +59,6 @@ function findChannelIdRecursively(value: unknown) {
     if (!record) continue;
     for (const value of Object.values(record)) {
       if (typeof value === "object" && value) stack.push(value);
-      if (typeof value === "string" && CHANNEL_ID_PATTERN.test(value)) {
-        return value;
-      }
     }
   }
 

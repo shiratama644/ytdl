@@ -17,7 +17,6 @@ export function PlyrPlayer({ videoId, title }: Props) {
     const playerElement = playerElementRef.current;
     if (!playerElement) return;
 
-    playerRef.current?.destroy();
     playerRef.current = new Plyr(playerElement, {
       controls: [
         "play-large",
