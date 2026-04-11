@@ -5,6 +5,7 @@ import { detectMode, getYoutubeClient, parseVideoId } from "@/lib/youtube";
 
 type UnknownRecord = Record<string, unknown>;
 const FALLBACK_TOP_SEARCH_QUERY = "おすすめ 人気動画";
+const CHANNEL_ID_PATTERN = /^UC[a-zA-Z0-9_-]{22}$/;
 
 function asRecord(value: unknown): UnknownRecord | null {
   return value && typeof value === "object" ? (value as UnknownRecord) : null;
@@ -36,6 +37,52 @@ function pickThumbnail(value: unknown) {
   return typeof lastRecord?.url === "string" ? lastRecord.url : "";
 }
 
+function findChannelId(value: unknown) {
+  const stack: unknown[] = [value];
+  const visited = new Set<unknown>();
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (!current || visited.has(current)) continue;
+    visited.add(current);
+
+    if (typeof current === "string" && CHANNEL_ID_PATTERN.test(current)) {
+      return current;
+    }
+
+    if (Array.isArray(current)) {
+      for (const item of current) stack.push(item);
+      continue;
+    }
+
+    const record = asRecord(current);
+    if (!record) continue;
+    for (const value of Object.values(record)) {
+      if (typeof value === "object" && value) stack.push(value);
+      if (typeof value === "string" && CHANNEL_ID_PATTERN.test(value)) {
+        return value;
+      }
+    }
+  }
+
+  return "";
+}
+
+function pickChannelIcon(record: UnknownRecord) {
+  const author = asRecord(record.author);
+  const owner = asRecord(record.owner);
+  const channel = asRecord(record.channel);
+  const candidates = [
+    pickThumbnail(author?.thumbnail),
+    pickThumbnail(author?.thumbnails),
+    pickThumbnail(owner?.thumbnail),
+    pickThumbnail(owner?.thumbnails),
+    pickThumbnail(channel?.thumbnail),
+    pickThumbnail(record.channel_thumbnail),
+  ];
+  return candidates.find(Boolean) ?? "";
+}
+
 function normalizeVideoCard(record: UnknownRecord): VideoCard | null {
   const idCandidate =
     (typeof record.id === "string" ? record.id : null) ??
@@ -47,26 +94,41 @@ function normalizeVideoCard(record: UnknownRecord): VideoCard | null {
   const title = toText(record.title, "");
   if (!title) return null;
 
+  const author = asRecord(record.author);
+  const owner = asRecord(record.owner);
   const channel =
+    toText(author?.name, "") ||
+    toText(author?.title, "") ||
     toText(record.author, "") ||
+    toText(owner?.name, "") ||
     toText(record.owner, "") ||
+    toText(record.owner_text, "") ||
     toText(record.short_byline_text, "") ||
-    toText(record.long_byline_text, "");
+    toText(record.long_byline_text, "") ||
+    toText(record.channel_name, "");
 
   const channelId =
-    (asRecord(record.author)?.id as string | undefined) ??
-    (asRecord(record.owner)?.id as string | undefined) ??
-    "";
+    (typeof author?.id === "string" ? author.id : "") ||
+    (typeof owner?.id === "string" ? owner.id : "") ||
+    findChannelId(record.short_byline_text) ||
+    findChannelId(record.long_byline_text) ||
+    findChannelId(author) ||
+    findChannelId(owner);
 
   return {
     id: idCandidate,
     title,
     channelName: channel || "unknown",
     channelId,
+    channelIcon: pickChannelIcon(record),
     viewCountText: toText(record.view_count_text, toText(record.short_view_count_text, "")),
     publishedText: toText(record.published, toText(record.published_time_text, "")),
     durationText: toText(record.length_text, toText(record.duration, "")),
-    thumbnail: pickThumbnail(record.thumbnail) || pickThumbnail(record.thumbnails),
+    thumbnail:
+      pickThumbnail(record.thumbnail) ||
+      pickThumbnail(record.thumbnails) ||
+      pickThumbnail(asRecord(record.rich_thumbnail)?.thumbnails) ||
+      pickThumbnail(asRecord(record.richThumbnail)?.thumbnails),
   };
 }
 
@@ -146,6 +208,7 @@ export async function getVideoByInput(input: string): Promise<VideoPayload> {
       const yt = await getYoutubeClient();
       const info = await yt.getInfo(videoId);
       const basic = info.basic_info;
+      const basicRecord = basic as unknown as UnknownRecord;
       const isLive = Boolean(basic.is_live || basic.is_live_content);
       const duration = basic.duration ?? 0;
 
@@ -172,6 +235,10 @@ export async function getVideoByInput(input: string): Promise<VideoPayload> {
         title: basic.title ?? "",
         channelName: basic.channel?.name ?? basic.author ?? "",
         channelId: basic.channel?.id ?? basic.channel_id ?? "",
+        channelIcon:
+          basic.channel?.thumbnails?.at(-1)?.url ??
+          pickThumbnail(asRecord(basicRecord.author)?.thumbnails) ??
+          pickThumbnail(asRecord(basicRecord.author)?.thumbnail),
         description: basic.short_description ?? "",
         viewCount: basic.view_count ?? 0,
         likeCount: basic.like_count ?? 0,
