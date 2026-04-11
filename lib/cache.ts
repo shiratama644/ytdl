@@ -16,6 +16,7 @@ async function getRedisClient() {
     redisClientPromise = (async () => {
       const client = createClient({ url: env.REDIS_URL });
       client.on("error", (error) => {
+        const safeMessage = error instanceof Error ? error.message : String(error);
         if (process.env.NODE_ENV === "production") {
           const errorCode =
             typeof error === "object" && error && "code" in error && typeof error.code === "string"
@@ -24,7 +25,7 @@ async function getRedisClient() {
           console.warn(`Redis cache error (code: ${errorCode})`);
           return;
         }
-        console.warn("Redis cache error:", error.message);
+        console.warn("Redis cache error:", safeMessage);
       });
       await client.connect();
       return client;

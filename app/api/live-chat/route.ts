@@ -5,7 +5,10 @@ import { cacheGetOrSet } from "@/lib/cache";
 import { env } from "@/lib/env";
 import { getYoutubeClient, parseVideoId } from "@/lib/youtube";
 
-const LIVE_CHAT_POLL_DURATION_MS = 2500;
+const LIVE_CHAT_POLL_DURATION_MS = Math.max(
+  1000,
+  Math.floor((env.CACHE_LIVE_CHAT_TTL_SECONDS * 1000) / 2),
+);
 
 function toText(value: unknown, fallback = "") {
   if (typeof value === "string") return value;
