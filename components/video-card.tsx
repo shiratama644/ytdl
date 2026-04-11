@@ -6,6 +6,8 @@ type Props = {
   video: VideoCardType;
 };
 
+const SHORT_FORM_MAX_SECONDS = 90;
+
 function isShortFormVideo(durationText: string) {
   const durationParts = durationText.split(":").map((part) => Number(part));
   if (durationParts.some((part) => Number.isNaN(part))) return false;
@@ -15,7 +17,7 @@ function isShortFormVideo(durationText: string) {
       : durationParts.length === 3
         ? durationParts[0] * 3600 + durationParts[1] * 60 + durationParts[2]
         : Infinity;
-  return totalSeconds <= 90;
+  return totalSeconds <= SHORT_FORM_MAX_SECONDS;
 }
 
 export function VideoCard({ video }: Props) {

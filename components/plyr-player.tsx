@@ -9,6 +9,8 @@ type Props = {
   title: string;
 };
 
+const YOUTUBE_EMBED_QUERY = "iv_load_policy=3&playsinline=1";
+
 export function PlyrPlayer({ videoId, title }: Props) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const playerRef = useRef<Plyr | null>(null);
@@ -46,7 +48,7 @@ export function PlyrPlayer({ videoId, title }: Props) {
       <iframe
         ref={iframeRef}
         title={title}
-        src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?iv_load_policy=3&playsinline=1`}
+        src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?${YOUTUBE_EMBED_QUERY}`}
         allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
         allowFullScreen
       />

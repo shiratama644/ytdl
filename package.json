@@ -11,7 +11,8 @@
     "build:turbopack": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "pnpm lint && pnpm build"
+    "verify": "pnpm lint && pnpm build",
+    "test": "pnpm verify"
   },
   "dependencies": {
     "next": "16.2.3",
