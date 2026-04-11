@@ -15,7 +15,9 @@ async function getRedisClient() {
   if (!redisClientPromise) {
     redisClientPromise = (async () => {
       const client = createClient({ url: env.REDIS_URL });
-      client.on("error", () => undefined);
+      client.on("error", (error) => {
+        console.warn("Redis cache error:", error.message);
+      });
       await client.connect();
       return client;
     })().catch(() => null);

@@ -105,7 +105,8 @@ export async function getTopVideos() {
         const home = await yt.getHomeFeed();
         const cards = collectVideoCards(home, 24);
         if (cards.length > 0) return cards;
-      } catch {
+      } catch (error) {
+        console.warn("Failed to load home feed, falling back to search:", error);
         // fallback below
       }
 

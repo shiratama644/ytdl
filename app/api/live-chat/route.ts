@@ -29,7 +29,9 @@ function normalizeMessage(raw: unknown): LiveChatMessage | null {
   if (!text) return null;
 
   return {
-    id: item.id ?? crypto.randomUUID(),
+    id:
+      item.id ??
+      `${toText(item.author?.name, "unknown")}#${item.timestamp_text ?? item.timestamp ?? Date.now()}#${text.slice(0, 40)}`,
     author: toText(item.author?.name, "unknown"),
     text,
     timestamp:
