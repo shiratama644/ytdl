@@ -10,14 +10,14 @@ type Props = {
 };
 
 export function PlyrPlayer({ videoId, title }: Props) {
-  const playerElementRef = useRef<HTMLDivElement | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const playerRef = useRef<Plyr | null>(null);
 
   useEffect(() => {
-    const playerElement = playerElementRef.current;
-    if (!playerElement) return;
+    const iframeElement = iframeRef.current;
+    if (!iframeElement) return;
 
-    playerRef.current = new Plyr(playerElement, {
+    playerRef.current = new Plyr(iframeElement, {
       controls: [
         "play-large",
         "play",
@@ -42,12 +42,14 @@ export function PlyrPlayer({ videoId, title }: Props) {
   }, [videoId]);
 
   return (
-    <div
-      ref={playerElementRef}
-      className="aspect-video w-full"
-      data-plyr-provider="youtube"
-      data-plyr-embed-id={videoId}
-      aria-label={title}
-    />
+    <div className="plyr__video-embed aspect-video w-full">
+      <iframe
+        ref={iframeRef}
+        title={title}
+        src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?iv_load_policy=3&playsinline=1`}
+        allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+        allowFullScreen
+      />
+    </div>
   );
 }

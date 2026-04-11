@@ -39,24 +39,27 @@ function pickThumbnail(value: unknown) {
 
 function findChannelIdRecursively(value: unknown) {
   const stack: unknown[] = [value];
-  const visited = new Set<unknown>();
+  const visitedObjects = new Set<object>();
 
   while (stack.length > 0) {
     const current = stack.pop();
-    if (!current || visited.has(current)) continue;
-    visited.add(current);
+    if (!current) continue;
 
     if (typeof current === "string" && CHANNEL_ID_PATTERN.test(current)) {
       return current;
     }
 
     if (Array.isArray(current)) {
+      if (visitedObjects.has(current)) continue;
+      visitedObjects.add(current);
       for (const item of current) stack.push(item);
       continue;
     }
 
     const record = asRecord(current);
     if (!record) continue;
+    if (visitedObjects.has(record)) continue;
+    visitedObjects.add(record);
     for (const value of Object.values(record)) {
       if (typeof value === "object" && value) stack.push(value);
     }
