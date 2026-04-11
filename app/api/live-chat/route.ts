@@ -5,6 +5,8 @@ import { cacheGetOrSet } from "@/lib/cache";
 import { env } from "@/lib/env";
 import { getYoutubeClient, parseVideoId } from "@/lib/youtube";
 
+const LIVE_CHAT_POLL_DURATION_MS = 2500;
+
 function toText(value: unknown, fallback = "") {
   if (typeof value === "string") return value;
   if (typeof value === "number") return String(value);
@@ -98,7 +100,7 @@ export async function GET(request: Request) {
         liveChatEvents.on("start", onStart);
         liveChatEvents.on("chat-update", onAction);
         liveChatEvents.start();
-        await new Promise((resolve) => setTimeout(resolve, 2500));
+        await new Promise((resolve) => setTimeout(resolve, LIVE_CHAT_POLL_DURATION_MS));
         liveChatEvents.stop();
 
         return collected.slice(-40);

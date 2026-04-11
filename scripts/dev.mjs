@@ -6,7 +6,7 @@ const useWebpack =
   process.env.GITHUB_ACTIONS === "true";
 
 const args = ["dev", ...(useWebpack ? ["--webpack"] : [])];
-const child = spawn("next", args, { stdio: "inherit", shell: true });
+const child = spawn("next", args, { stdio: "inherit", shell: false });
 
 child.on("exit", (code) => {
   process.exit(code ?? 1);

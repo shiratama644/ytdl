@@ -4,6 +4,7 @@ import type { ChannelPayload, VideoCard, VideoPayload } from "@/lib/types";
 import { detectMode, getYoutubeClient, parseVideoId } from "@/lib/youtube";
 
 type UnknownRecord = Record<string, unknown>;
+const FALLBACK_TOP_SEARCH_QUERY = "おすすめ 人気動画";
 
 function asRecord(value: unknown): UnknownRecord | null {
   return value && typeof value === "object" ? (value as UnknownRecord) : null;
@@ -114,7 +115,7 @@ export async function getTopVideos() {
         // fallback below
       }
 
-      const fallback = await yt.search("おすすめ 人気動画");
+      const fallback = await yt.search(FALLBACK_TOP_SEARCH_QUERY);
       return collectVideoCards(fallback, 24);
     },
     env.CACHE_HOME_TTL_SECONDS,

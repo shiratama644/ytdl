@@ -17,7 +17,11 @@ async function getRedisClient() {
       const client = createClient({ url: env.REDIS_URL });
       client.on("error", (error) => {
         if (process.env.NODE_ENV === "production") {
-          console.warn("Redis cache error");
+          const errorCode =
+            typeof error === "object" && error && "code" in error && typeof error.code === "string"
+              ? error.code
+              : "unknown";
+          console.warn(`Redis cache error (code: ${errorCode})`);
           return;
         }
         console.warn("Redis cache error:", error.message);
