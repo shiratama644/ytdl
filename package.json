@@ -10,7 +10,8 @@
     "build:webpack": "next build --webpack",
     "build:turbopack": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "pnpm lint && pnpm build"
   },
   "dependencies": {
     "next": "16.2.3",
