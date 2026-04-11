@@ -6,17 +6,21 @@ type Props = {
   video: VideoCardType;
 };
 
-export function VideoCard({ video }: Props) {
-  const channelHref = video.channelId ? `/channel/${encodeURIComponent(video.channelId)}` : undefined;
-  const durationParts = video.durationText.split(":").map((part) => Number(part));
+function isShortFormVideo(durationText: string) {
+  const durationParts = durationText.split(":").map((part) => Number(part));
+  if (durationParts.some((part) => Number.isNaN(part))) return false;
   const totalSeconds =
     durationParts.length === 2
       ? durationParts[0] * 60 + durationParts[1]
       : durationParts.length === 3
         ? durationParts[0] * 3600 + durationParts[1] * 60 + durationParts[2]
         : Infinity;
-  const thumbnailClass =
-    Number.isFinite(totalSeconds) && totalSeconds <= 90 ? "aspect-[9/16] sm:aspect-video" : "aspect-video";
+  return totalSeconds <= 90;
+}
+
+export function VideoCard({ video }: Props) {
+  const channelHref = video.channelId ? `/channel/${encodeURIComponent(video.channelId)}` : undefined;
+  const thumbnailClass = isShortFormVideo(video.durationText) ? "aspect-[9/16] sm:aspect-video" : "aspect-video";
 
   return (
     <article className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg backdrop-blur-sm">

@@ -37,7 +37,7 @@ function pickThumbnail(value: unknown) {
   return typeof lastRecord?.url === "string" ? lastRecord.url : "";
 }
 
-function findChannelId(value: unknown) {
+function findChannelIdRecursively(value: unknown) {
   const stack: unknown[] = [value];
   const visited = new Set<unknown>();
 
@@ -110,10 +110,10 @@ function normalizeVideoCard(record: UnknownRecord): VideoCard | null {
   const channelId =
     (typeof author?.id === "string" ? author.id : "") ||
     (typeof owner?.id === "string" ? owner.id : "") ||
-    findChannelId(record.short_byline_text) ||
-    findChannelId(record.long_byline_text) ||
-    findChannelId(author) ||
-    findChannelId(owner);
+    findChannelIdRecursively(record.short_byline_text) ||
+    findChannelIdRecursively(record.long_byline_text) ||
+    findChannelIdRecursively(author) ||
+    findChannelIdRecursively(owner);
 
   return {
     id: idCandidate,
@@ -209,6 +209,7 @@ export async function getVideoByInput(input: string): Promise<VideoPayload> {
       const info = await yt.getInfo(videoId);
       const basic = info.basic_info;
       const basicRecord = basic as unknown as UnknownRecord;
+      const channelRecord = asRecord(basicRecord.channel);
       const isLive = Boolean(basic.is_live || basic.is_live_content);
       const duration = basic.duration ?? 0;
 
@@ -236,7 +237,8 @@ export async function getVideoByInput(input: string): Promise<VideoPayload> {
         channelName: basic.channel?.name ?? basic.author ?? "",
         channelId: basic.channel?.id ?? basic.channel_id ?? "",
         channelIcon:
-          basic.channel?.thumbnails?.at(-1)?.url ??
+          pickThumbnail(channelRecord?.thumbnails) ??
+          pickThumbnail(channelRecord?.thumbnail) ??
           pickThumbnail(asRecord(basicRecord.author)?.thumbnails) ??
           pickThumbnail(asRecord(basicRecord.author)?.thumbnail),
         description: basic.short_description ?? "",

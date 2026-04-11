@@ -4,6 +4,9 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+const inputClassName =
+  "h-10 min-w-0 w-full rounded-full border border-white/20 bg-black/60 px-4 text-sm outline-none focus:border-blue-400";
+
 export function SiteHeader() {
   const router = useRouter();
   const [videoInput, setVideoInput] = useState("");
@@ -34,7 +37,7 @@ export function SiteHeader() {
             value={videoInput}
             onChange={(event) => setVideoInput(event.target.value)}
             placeholder="YouTube URL / video id"
-            className="h-10 min-w-0 w-full rounded-full border border-white/20 bg-black/60 px-4 text-sm outline-none focus:border-blue-400"
+            className={inputClassName}
           />
           <button className="h-10 rounded-full bg-white px-4 text-sm font-semibold text-black">Watch</button>
         </form>
@@ -43,7 +46,7 @@ export function SiteHeader() {
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
             placeholder="Search"
-            className="h-10 min-w-0 w-full rounded-full border border-white/20 bg-black/60 px-4 text-sm outline-none focus:border-blue-400"
+            className={inputClassName}
           />
           <button className="h-10 rounded-full border border-white/20 px-4 text-sm font-semibold">
             Find

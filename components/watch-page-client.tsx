@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { PlyrPlayer } from "@/components/plyr-player";
 import { VideoCard } from "@/components/video-card";
 import type { LiveChatMessage, VideoPayload } from "@/lib/types";
@@ -15,6 +16,7 @@ type Props = {
 export function WatchPageClient({ initialVideo }: Props) {
   const [messages, setMessages] = useState<LiveChatMessage[]>([]);
   const video = initialVideo;
+  const channelHref = video.channelId ? `/channel/${encodeURIComponent(video.channelId)}` : undefined;
 
   useEffect(() => {
     if (!video.hasLiveChat) return;
@@ -36,7 +38,7 @@ export function WatchPageClient({ initialVideo }: Props) {
   }, [video.hasLiveChat, video.id]);
 
   return (
-    <main className="mx-auto grid max-w-7xl gap-4 px-3 py-4 sm:px-4 sm:py-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+    <main className="mx-auto grid max-w-7xl gap-4 px-3 py-4 sm:px-4 sm:py-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
       <section className="space-y-4">
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/70 shadow-2xl backdrop-blur">
           <PlyrPlayer videoId={video.id} title={video.title} />
@@ -45,13 +47,32 @@ export function WatchPageClient({ initialVideo }: Props) {
           <h1 className="text-lg font-bold sm:text-xl">{video.title}</h1>
           <div className="flex items-center gap-2 text-sm text-zinc-300">
             {video.channelIcon ? (
-              <span className="relative h-7 w-7 overflow-hidden rounded-full border border-white/20">
-                <Image src={video.channelIcon} alt={video.channelName} fill className="object-cover" sizes="28px" />
-              </span>
+              channelHref ? (
+                <Link
+                  href={channelHref}
+                  aria-label={`${video.channelName} channel`}
+                  className="relative h-7 w-7 overflow-hidden rounded-full border border-white/20"
+                >
+                  <Image src={video.channelIcon} alt={video.channelName} fill className="object-cover" sizes="28px" />
+                </Link>
+              ) : (
+                <span
+                  className="relative h-7 w-7 overflow-hidden rounded-full border border-white/20"
+                  aria-label={video.channelName}
+                >
+                  <Image src={video.channelIcon} alt={video.channelName} fill className="object-cover" sizes="28px" />
+                </span>
+              )
             ) : (
               <span className="h-7 w-7 rounded-full border border-white/20 bg-white/10" />
             )}
-            <p className="truncate">{video.channelName}</p>
+            {channelHref ? (
+              <Link href={channelHref} className="truncate hover:text-zinc-100">
+                {video.channelName}
+              </Link>
+            ) : (
+              <p className="truncate">{video.channelName}</p>
+            )}
           </div>
           <p className="text-sm text-zinc-400">
             {numberFormatter.format(video.viewCount)} views • 👍 {numberFormatter.format(video.likeCount)}
