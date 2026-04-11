@@ -43,6 +43,7 @@ export type VideoPayload = {
   thumbnail: string;
   embedUrl: string;
   streamUrl: string;
+  hlsManifestUrl: string;
   comments: VideoComment[];
   hasLiveChat: boolean;
   related: VideoCard[];

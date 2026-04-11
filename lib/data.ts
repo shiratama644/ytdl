@@ -251,6 +251,7 @@ export async function getVideoByInput(input: string): Promise<VideoPayload> {
         thumbnail: basic.thumbnail?.at(-1)?.url ?? "",
         embedUrl: basic.embed?.iframe_url ?? `https://www.youtube.com/embed/${videoId}`,
         streamUrl: `/api/stream?id=${videoId}`,
+        hlsManifestUrl: `/api/hls/master?id=${videoId}`,
         comments,
         hasLiveChat: isLive && Boolean(info.livechat),
         related,
