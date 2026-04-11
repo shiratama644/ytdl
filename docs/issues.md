@@ -23,12 +23,16 @@
 - Code Scanning / Secret Scanning は、連携権限不足（403）で確認不可。
 - そのため、GitHub セキュリティアラート起点の問題は、この調査では判定不能。
 
-## 5. 再帰検索で追加確認した問題点
+## 5. CodeQL 解析状況（本タスクで追加確認）
+
+- `parallel_validation` における CodeQL Security Scan は、`actions` / `javascript` ともに `Analysis failed` が継続（再実行でも改善せず）。
+- 改善策として `.github/workflows/codeql.yml` を追加済み（PRマージ後にGitHub Actions側で実行確認が必要）。
+
+## 6. 再帰検索で追加確認した問題点
 
 - `pnpm audit --audit-level=moderate` は npm registry 側の `400 Bad Request` 応答により実行不能（脆弱性スキャン結果を取得できない）。
-- `scripts/dev.mjs` / `scripts/build.mjs` は `node:child_process` を使用しているため、実行環境差分（OS 判定や PATH 差）に影響を受ける可能性がある。
 
-## 6. 追加調査メモ
+## 7. 追加調査メモ
 
 - リポジトリ全体を `TODO / FIXME / BUG / HACK / XXX` で検索し、実装内に明示的な未対応メモは確認されませんでした（lockfile内の一致は除外）。
 - ローカル実行では `pnpm lint` と `pnpm build` は成功。
