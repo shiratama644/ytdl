@@ -1,5 +1,16 @@
 export type ViewerMode = "watch" | "short" | "live";
 
+export type VideoCard = {
+  id: string;
+  title: string;
+  channelName: string;
+  channelId: string;
+  viewCountText: string;
+  publishedText: string;
+  durationText: string;
+  thumbnail: string;
+};
+
 export type VideoComment = {
   id: string;
   author: string;
@@ -32,4 +43,14 @@ export type VideoPayload = {
   streamUrl: string;
   comments: VideoComment[];
   hasLiveChat: boolean;
+  related: VideoCard[];
+};
+
+export type ChannelPayload = {
+  id: string;
+  name: string;
+  description: string;
+  avatar: string;
+  subscriberText: string;
+  videos: VideoCard[];
 };

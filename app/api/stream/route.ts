@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getYoutubeClient, parseVideoId } from "@/lib/youtube";
+import { getStreamUrl } from "@/lib/data";
+import { parseVideoId } from "@/lib/youtube";
 
 const streamQuerySchema = z.object({
   id: z.string().trim().min(1, "id is required"),
@@ -32,13 +33,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const yt = await getYoutubeClient();
-    const format = await yt.getStreamingData(videoId, {
-      type: "video+audio",
-      quality: query.data.quality ?? "best",
-      format: "mp4",
-    });
-    const sourceUrl = format.url ?? (await format.decipher());
+    const sourceUrl = await getStreamUrl(videoId, query.data.quality ?? "best");
 
     if (!sourceUrl) {
       return NextResponse.json({ error: "stream URL not found" }, { status: 404 });

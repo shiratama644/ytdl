@@ -1,0 +1,35 @@
+import { SiteHeader } from "@/components/site-header";
+import { WatchPageClient } from "@/components/watch-page-client";
+import { getVideoByInput } from "@/lib/data";
+
+export const dynamic = "force-dynamic";
+
+export default async function WatchPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const target = decodeURIComponent(id);
+  let message: string | null = null;
+  let video = null;
+
+  try {
+    video = await getVideoByInput(target);
+  } catch (error) {
+    message = error instanceof Error ? error.message : "Failed to load video";
+  }
+
+  return (
+    <div className="min-h-screen bg-[#0f0f0f] text-white">
+      <SiteHeader />
+      {video ? (
+        <WatchPageClient initialVideo={video} />
+      ) : (
+        <main className="mx-auto max-w-3xl px-4 py-12">
+          <p className="rounded-xl bg-red-500/20 p-4 text-sm text-red-200">{message}</p>
+        </main>
+      )}
+    </div>
+  );
+}

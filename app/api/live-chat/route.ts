@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { liveChatQuerySchema } from "@/lib/schemas";
 import type { LiveChatMessage } from "@/lib/types";
-import { getYoutubeClient } from "@/lib/youtube";
+import { cacheGetOrSet } from "@/lib/cache";
+import { env } from "@/lib/env";
+import { getYoutubeClient, parseVideoId } from "@/lib/youtube";
 
 function toText(value: unknown, fallback = "") {
   if (typeof value === "string") return value;
@@ -50,47 +52,58 @@ export async function GET(request: Request) {
   }
 
   try {
-    const yt = await getYoutubeClient();
-    const info = await yt.getInfo(query.data.id);
-    const basic = info.basic_info;
-
-    if (!(basic.is_live || basic.is_live_content)) {
-      return NextResponse.json({ messages: [] as LiveChatMessage[] });
+    const videoId = parseVideoId(query.data.id);
+    if (!videoId) {
+      return NextResponse.json({ error: "invalid video id" }, { status: 400 });
     }
 
-    const liveChat = info.getLiveChat();
-    const liveChatEvents = liveChat as {
-      on: {
-        (event: "start", handler: (initial: { actions?: Array<{ item?: unknown }> }) => void): void;
-        (event: "chat-update", handler: (action: { item?: unknown }) => void): void;
-      };
-      start: () => void;
-      stop: () => void;
-    };
-    const messages: LiveChatMessage[] = [];
-    const ids = new Set<string>();
+    const messages = await cacheGetOrSet(
+      `live-chat:${videoId}`,
+      async () => {
+        const yt = await getYoutubeClient();
+        const info = await yt.getInfo(videoId);
+        const basic = info.basic_info;
 
-    const append = (entry: LiveChatMessage | null) => {
-      if (!entry || ids.has(entry.id)) return;
-      ids.add(entry.id);
-      messages.push(entry);
-    };
+        if (!(basic.is_live || basic.is_live_content)) {
+          return [] as LiveChatMessage[];
+        }
 
-    const onAction = (action: { item?: unknown }) => append(normalizeMessage(action.item));
-    const onStart = (initial: { actions?: Array<{ item?: unknown }> }) => {
-      for (const action of initial.actions ?? []) {
-        onAction(action);
-      }
-    };
+        const liveChat = info.getLiveChat();
+        const liveChatEvents = liveChat as {
+          on: {
+            (event: "start", handler: (initial: { actions?: Array<{ item?: unknown }> }) => void): void;
+            (event: "chat-update", handler: (action: { item?: unknown }) => void): void;
+          };
+          start: () => void;
+          stop: () => void;
+        };
 
-    liveChatEvents.on("start", onStart);
-    liveChatEvents.on("chat-update", onAction);
-    liveChatEvents.start();
+        const collected: LiveChatMessage[] = [];
+        const ids = new Set<string>();
 
-    await new Promise((resolve) => setTimeout(resolve, 2500));
-    liveChatEvents.stop();
+        const append = (entry: LiveChatMessage | null) => {
+          if (!entry || ids.has(entry.id)) return;
+          ids.add(entry.id);
+          collected.push(entry);
+        };
 
-    return NextResponse.json({ messages: messages.slice(-40) });
+        const onAction = (action: { item?: unknown }) => append(normalizeMessage(action.item));
+        const onStart = (initial: { actions?: Array<{ item?: unknown }> }) => {
+          for (const action of initial.actions ?? []) onAction(action);
+        };
+
+        liveChatEvents.on("start", onStart);
+        liveChatEvents.on("chat-update", onAction);
+        liveChatEvents.start();
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        liveChatEvents.stop();
+
+        return collected.slice(-40);
+      },
+      env.CACHE_LIVE_CHAT_TTL_SECONDS,
+    );
+
+    return NextResponse.json({ messages });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
