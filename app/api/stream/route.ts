@@ -49,7 +49,7 @@ export async function GET(request: Request) {
       const value = upstream.headers.get(key);
       if (value) responseHeaders.set(key, value);
     }
-    responseHeaders.set("x-proxied-by", "ytdl-nextjs-proxy");
+    responseHeaders.set("X-Proxied-By", "ytdl-nextjs-proxy");
 
     return new Response(upstream.body, {
       status: upstream.status,

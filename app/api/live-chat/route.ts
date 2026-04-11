@@ -28,11 +28,12 @@ function normalizeMessage(raw: unknown): LiveChatMessage | null {
   const text = toText(item.message, "").trim();
   if (!text) return null;
 
+  const author = toText(item.author?.name, "unknown");
+  const stableTimestamp = item.timestamp_text ?? (item.timestamp ? String(item.timestamp) : "na");
+
   return {
-    id:
-      item.id ??
-      `${toText(item.author?.name, "unknown")}#${item.timestamp_text ?? item.timestamp ?? Date.now()}#${text.slice(0, 40)}`,
-    author: toText(item.author?.name, "unknown"),
+    id: item.id ?? `${author}#${stableTimestamp}#${text}`,
+    author,
     text,
     timestamp:
       item.timestamp_text ??
