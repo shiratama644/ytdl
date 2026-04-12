@@ -28,7 +28,7 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0f0f0f]/75 px-3 py-3 backdrop-blur-xl sm:px-4">
-      <div className="mx-auto flex w-full max-w-7xl items-center gap-2">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-2 md:flex-row md:items-center">
         <Link href="/" className="w-fit rounded bg-red-600 px-2 py-1 text-xs font-bold">
           YTDL
         </Link>
@@ -39,7 +39,7 @@ export function SiteHeader() {
             aria-label={mode === "watch" ? "Switch to search mode" : "Switch to URL mode"}
             className="inline-flex h-10 shrink-0 items-center gap-1 rounded-full border border-white/20 bg-white/5 px-3 text-sm font-semibold"
           >
-            <span aria-hidden className="material-symbols-outlined text-[18px] leading-none">
+            <span aria-hidden="true" className="material-symbols-outlined text-[18px] leading-none">
               {mode === "watch" ? "link" : "search"}
             </span>
             <span>{mode === "watch" ? "URL" : "Search"}</span>
@@ -55,7 +55,7 @@ export function SiteHeader() {
           <button
             className="inline-flex h-10 shrink-0 items-center gap-1 rounded-full border border-white/20 px-4 text-sm font-semibold"
           >
-            <span aria-hidden className="material-symbols-outlined text-[18px] leading-none">
+            <span aria-hidden="true" className="material-symbols-outlined text-[18px] leading-none">
               {mode === "watch" ? "play_arrow" : "travel_explore"}
             </span>
             <span>{mode === "watch" ? "Watch" : "Find"}</span>
