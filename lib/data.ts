@@ -5,6 +5,7 @@ import { detectMode, getYoutubeClient, parseVideoId } from "@/lib/youtube";
 
 type UnknownRecord = Record<string, unknown>;
 const FALLBACK_TOP_SEARCH_QUERY = "おすすめ 人気動画";
+// YouTube channel IDs are fixed as "UC" + 22 URL-safe base64-like characters.
 const CHANNEL_ID_SUFFIX_CHARS = 22;
 const CHANNEL_ID_PATTERN = new RegExp(`^UC[a-zA-Z0-9_-]{${CHANNEL_ID_SUFFIX_CHARS}}$`);
 

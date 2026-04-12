@@ -27,8 +27,10 @@ let ffmpegChecked = false;
 let ffmpegAvailable = false;
 let lastCleanupAt = 0;
 const generationLocks = new Map<string, Promise<string>>();
-const HLS_RETENTION_MS = 1000 * 60 * 60 * 6;
-const CLEANUP_INTERVAL_MS = 1000 * 60 * 10;
+const ONE_MINUTE_MS = 60 * 1000;
+const ONE_HOUR_MS = 60 * ONE_MINUTE_MS;
+const HLS_RETENTION_MS = 6 * ONE_HOUR_MS;
+const CLEANUP_INTERVAL_MS = 10 * ONE_MINUTE_MS;
 
 function qualityToHeight(quality: string) {
   const match = quality.match(/^(\d+)p$/);
