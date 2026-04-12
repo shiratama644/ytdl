@@ -15,8 +15,8 @@
 
 ## 3. 品質管理面の課題
 
-- `package.json` にテストスクリプト（`test`）が定義されていないため、自動テストが未整備。
-- CodeQL 専用ワークフローは追加済みだが、lint/build/test を一括実行する汎用 CI は未構成。
+- ✅ `package.json` に `test` スクリプト（`pnpm lint && pnpm build`）を追加済み。
+- ✅ `lint/build/test` を一括実行する汎用 CI（`.github/workflows/ci.yml`）を追加済み。
 
 ## 4. セキュリティアラート確認状況
 

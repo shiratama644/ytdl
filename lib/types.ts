@@ -5,6 +5,7 @@ export type VideoCard = {
   title: string;
   channelName: string;
   channelId: string;
+  channelIcon: string;
   viewCountText: string;
   publishedText: string;
   durationText: string;
@@ -32,6 +33,7 @@ export type VideoPayload = {
   title: string;
   channelName: string;
   channelId: string;
+  channelIcon: string;
   description: string;
   viewCount: number;
   likeCount: number;
@@ -41,6 +43,7 @@ export type VideoPayload = {
   thumbnail: string;
   embedUrl: string;
   streamUrl: string;
+  hlsManifestUrl: string;
   comments: VideoComment[];
   hasLiveChat: boolean;
   related: VideoCard[];
