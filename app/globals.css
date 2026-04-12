@@ -25,3 +25,7 @@ body {
   --plyr-color-main: #38bdf8;
   --plyr-video-control-background-hover: rgba(56, 189, 248, 0.9);
 }
+
+.material-symbols-outlined {
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
