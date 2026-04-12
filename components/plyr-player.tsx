@@ -39,13 +39,14 @@ export function PlyrPlayer({ videoId, title, hlsManifestUrl }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playerRef = useRef<Plyr | null>(null);
   const hlsRef = useRef<Hls | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [retryToken, setRetryToken] = useState(0);
-  const sourceUrl = useMemo(
-    () => `${hlsManifestUrl}&r=${videoId}-${retryToken}`,
-    [hlsManifestUrl, retryToken, videoId],
-  );
+  const sourceUrl = useMemo(() => {
+    const url = new URL(hlsManifestUrl, "http://localhost");
+    url.searchParams.set("r", `${videoId}-${retryToken}`);
+    return `${url.pathname}${url.search}`;
+  }, [hlsManifestUrl, retryToken, videoId]);
 
   useEffect(() => {
     const video = videoRef.current;

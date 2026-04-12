@@ -1,6 +1,8 @@
-import { readFile } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { stat } from "node:fs/promises";
+import { Readable } from "node:stream";
 import { NextResponse } from "next/server";
-import { getSegmentPath } from "@/lib/hls";
+import { getSegmentPath, isSupportedHlsQuality } from "@/lib/hls";
 import { hlsSegmentQuerySchema } from "@/lib/schemas";
 import { parseVideoId } from "@/lib/youtube";
 
@@ -25,13 +27,18 @@ export async function GET(request: Request) {
   if (!videoId) {
     return NextResponse.json({ error: "invalid video id" }, { status: 400 });
   }
+  if (!isSupportedHlsQuality(query.data.quality)) {
+    return NextResponse.json({ error: "unsupported quality" }, { status: 400 });
+  }
 
   try {
     const segmentPath = getSegmentPath(videoId, query.data.quality, query.data.file);
-    const content = await readFile(segmentPath);
-    return new Response(content, {
+    const fileInfo = await stat(segmentPath);
+    const stream = Readable.toWeb(createReadStream(segmentPath));
+    return new Response(stream as BodyInit, {
       headers: {
         "content-type": detectContentType(query.data.file),
+        "content-length": String(fileInfo.size),
         "cache-control": "public, max-age=300",
       },
     });

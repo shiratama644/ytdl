@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { access, mkdir, readFile, stat } from "node:fs/promises";
+import { access, mkdir, readdir, readFile, rm, stat } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
 import path from "node:path";
 import { cacheGetOrSet } from "@/lib/cache";
@@ -13,7 +13,7 @@ type HlsVariant = {
 };
 
 const HLS_WORK_ROOT = "/tmp/ytdl-hls";
-const QUALITY_CANDIDATES = ["2160p", "1440p", "1080p", "720p", "480p", "360p"] as const;
+export const SUPPORTED_HLS_QUALITIES = ["2160p", "1440p", "1080p", "720p", "480p", "360p"] as const;
 const BANDWIDTH_BY_HEIGHT: Record<number, number> = {
   2160: 22000000,
   1440: 12000000,
@@ -25,6 +25,10 @@ const BANDWIDTH_BY_HEIGHT: Record<number, number> = {
 
 let ffmpegChecked = false;
 let ffmpegAvailable = false;
+let lastCleanupAt = 0;
+const generationLocks = new Map<string, Promise<string>>();
+const HLS_RETENTION_MS = 1000 * 60 * 60 * 6;
+const CLEANUP_INTERVAL_MS = 1000 * 60 * 10;
 
 function qualityToHeight(quality: string) {
   const match = quality.match(/^(\d+)p$/);
@@ -37,6 +41,10 @@ function getVariantDirectory(videoId: string, quality: string) {
 
 function getPlaylistPath(videoId: string, quality: string) {
   return path.join(getVariantDirectory(videoId, quality), "index.m3u8");
+}
+
+export function isSupportedHlsQuality(quality: string): quality is (typeof SUPPORTED_HLS_QUALITIES)[number] {
+  return SUPPORTED_HLS_QUALITIES.includes(quality as (typeof SUPPORTED_HLS_QUALITIES)[number]);
 }
 
 export function getSegmentPath(videoId: string, quality: string, file: string) {
@@ -87,7 +95,7 @@ export async function getAvailableHlsVariants(videoId: string): Promise<HlsVaria
     `hls:variants:${videoId}`,
     async () => {
       const discovered = await Promise.all(
-        QUALITY_CANDIDATES.map(async (quality) => {
+        SUPPORTED_HLS_QUALITIES.map(async (quality) => {
           try {
             const url = await resolveVariantVideoUrl(videoId, quality);
             if (!url) return null;
@@ -108,6 +116,39 @@ export async function getAvailableHlsVariants(videoId: string): Promise<HlsVaria
     },
     env.CACHE_STREAM_URL_TTL_SECONDS,
   );
+}
+
+async function cleanupOldHlsArtifacts() {
+  const now = Date.now();
+  if (now - lastCleanupAt < CLEANUP_INTERVAL_MS) return;
+  lastCleanupAt = now;
+
+  try {
+    const videoDirs = await readdir(HLS_WORK_ROOT, { withFileTypes: true });
+    await Promise.all(
+      videoDirs
+        .filter((entry) => entry.isDirectory())
+        .map(async (entry) => {
+          const videoDirPath = path.join(HLS_WORK_ROOT, entry.name);
+          const qualityDirs = await readdir(videoDirPath, { withFileTypes: true }).catch(() => []);
+          await Promise.all(
+            qualityDirs
+              .filter((qualityEntry) => qualityEntry.isDirectory())
+              .map(async (qualityEntry) => {
+                const qualityDirPath = path.join(videoDirPath, qualityEntry.name);
+                const playlistPath = path.join(qualityDirPath, "index.m3u8");
+                const info = await stat(playlistPath).catch(() => null);
+                const stale = !info || now - info.mtimeMs > HLS_RETENTION_MS;
+                if (stale) {
+                  await rm(qualityDirPath, { recursive: true, force: true });
+                }
+              }),
+          );
+        }),
+    );
+  } catch {
+    // ignore cleanup failures
+  }
 }
 
 async function runFfmpeg(videoUrl: string, audioUrl: string, outputDir: string, playlistPath: string) {
@@ -155,26 +196,42 @@ async function runFfmpeg(videoUrl: string, audioUrl: string, outputDir: string, 
 }
 
 export async function ensureHlsVariantPrepared(videoId: string, quality: string) {
-  await ensureFfmpeg();
-  const outputDir = getVariantDirectory(videoId, quality);
-  const playlistPath = getPlaylistPath(videoId, quality);
-
-  try {
-    await access(playlistPath, fsConstants.R_OK);
-    const playlistStat = await stat(playlistPath);
-    if (playlistStat.size > 0) return playlistPath;
-  } catch {
-    // continue
+  if (!isSupportedHlsQuality(quality)) {
+    throw new Error("unsupported quality");
   }
 
-  await mkdir(outputDir, { recursive: true });
-  const [videoUrl, audioUrl] = await Promise.all([
-    resolveVariantVideoUrl(videoId, quality),
-    resolveAudioUrl(videoId),
-  ]);
+  const lockKey = `${videoId}:${quality}`;
+  const active = generationLocks.get(lockKey);
+  if (active) return active;
 
-  await runFfmpeg(videoUrl, audioUrl, outputDir, playlistPath);
-  return playlistPath;
+  const task = (async () => {
+    await cleanupOldHlsArtifacts();
+    await ensureFfmpeg();
+    const outputDir = getVariantDirectory(videoId, quality);
+    const playlistPath = getPlaylistPath(videoId, quality);
+
+    try {
+      await access(playlistPath, fsConstants.R_OK);
+      const playlistStat = await stat(playlistPath);
+      if (playlistStat.size > 0) return playlistPath;
+    } catch {
+      // continue
+    }
+
+    await mkdir(outputDir, { recursive: true });
+    const [videoUrl, audioUrl] = await Promise.all([
+      resolveVariantVideoUrl(videoId, quality),
+      resolveAudioUrl(videoId),
+    ]);
+
+    await runFfmpeg(videoUrl, audioUrl, outputDir, playlistPath);
+    return playlistPath;
+  })().finally(() => {
+    generationLocks.delete(lockKey);
+  });
+
+  generationLocks.set(lockKey, task);
+  return task;
 }
 
 export async function getRewrittenMediaPlaylist(

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getRewrittenMediaPlaylist } from "@/lib/hls";
+import { getAvailableHlsVariants, getRewrittenMediaPlaylist, isSupportedHlsQuality } from "@/lib/hls";
 import { hlsMediaQuerySchema } from "@/lib/schemas";
 import { parseVideoId } from "@/lib/youtube";
 
@@ -18,8 +18,16 @@ export async function GET(request: Request) {
   if (!videoId) {
     return NextResponse.json({ error: "invalid video id" }, { status: 400 });
   }
+  if (!isSupportedHlsQuality(query.data.quality)) {
+    return NextResponse.json({ error: "unsupported quality" }, { status: 400 });
+  }
 
   try {
+    const variants = await getAvailableHlsVariants(videoId);
+    if (!variants.some((variant) => variant.quality === query.data.quality)) {
+      return NextResponse.json({ error: "quality not available for this video" }, { status: 404 });
+    }
+
     const origin = new URL(request.url).origin;
     const body = await getRewrittenMediaPlaylist(videoId, query.data.quality, origin);
     return new Response(body, {
