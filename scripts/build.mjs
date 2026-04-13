@@ -23,7 +23,7 @@ const OS = (() => {
 
 const useWebpack = OS === "termux" || OS === "alpine";
 const args = ["build", ...(useWebpack ? ["--webpack"] : [])];
-const child = spawn("next", args, { stdio: "inherit", shell: false });
+const child = spawn("next", args, { stdio: "inherit", shell: OS === "windows" });
 
 child.on("exit", (code) => {
   process.exit(code ?? 1);
