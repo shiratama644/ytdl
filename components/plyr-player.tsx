@@ -9,6 +9,7 @@ type Props = {
   videoId: string;
   title: string;
   hlsManifestUrl: string;
+  streamUrl: string;
 };
 
 const controls: Plyr.Options["controls"] = [
@@ -35,22 +36,28 @@ function normalizeQualityOptions(levels: Level[]) {
   return [0, ...uniqueHeights];
 }
 
-export function PlyrPlayer({ videoId, title, hlsManifestUrl }: Props) {
+export function PlyrPlayer({ videoId, title, hlsManifestUrl, streamUrl }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playerRef = useRef<Plyr | null>(null);
   const hlsRef = useRef<Hls | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [retryToken, setRetryToken] = useState(0);
-  const sourceUrl = useMemo(() => {
+  const hlsSourceUrl = useMemo(() => {
     const url = new URL(hlsManifestUrl, "http://localhost");
     url.searchParams.set("r", `${videoId}-${retryToken}`);
     return `${url.pathname}${url.search}`;
   }, [hlsManifestUrl, retryToken, videoId]);
+  const streamSourceUrl = useMemo(() => {
+    const url = new URL(streamUrl, "http://localhost");
+    url.searchParams.set("r", `${videoId}-${retryToken}`);
+    return `${url.pathname}${url.search}`;
+  }, [retryToken, streamUrl, videoId]);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+    let removeNativeHlsErrorHandler = () => {};
 
     const onLoadStart = () => setIsLoading(true);
     const onCanPlay = () => setIsLoading(false);
@@ -67,7 +74,19 @@ export function PlyrPlayer({ videoId, title, hlsManifestUrl }: Props) {
     video.addEventListener("playing", onPlaying);
     video.addEventListener("error", onError);
 
+    const setupProgressivePlayer = () => {
+      hlsRef.current?.destroy();
+      hlsRef.current = null;
+      playerRef.current?.destroy();
+      playerRef.current = null;
+      setErrorMessage(null);
+      setIsLoading(true);
+      video.src = streamSourceUrl;
+      playerRef.current = new Plyr(video, { controls, settings: ["speed", "loop"] });
+    };
+
     const teardown = () => {
+      removeNativeHlsErrorHandler();
       hlsRef.current?.destroy();
       hlsRef.current = null;
       playerRef.current?.destroy();
@@ -90,7 +109,7 @@ export function PlyrPlayer({ videoId, title, hlsManifestUrl }: Props) {
       hls.on(Hls.Events.MEDIA_ATTACHED, () => {
         setIsLoading(true);
         setErrorMessage(null);
-        hls.loadSource(sourceUrl);
+        hls.loadSource(hlsSourceUrl);
       });
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         const qualityOptions = normalizeQualityOptions(hls.levels);
@@ -126,6 +145,10 @@ export function PlyrPlayer({ videoId, title, hlsManifestUrl }: Props) {
         if (!data.fatal) return;
 
         if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+          if (data.details?.includes("manifest")) {
+            setupProgressivePlayer();
+            return;
+          }
           hls.startLoad();
           return;
         }
@@ -136,20 +159,20 @@ export function PlyrPlayer({ videoId, title, hlsManifestUrl }: Props) {
         }
 
         setIsLoading(false);
-        setErrorMessage("HLSストリームの取得に失敗しました。");
+        setupProgressivePlayer();
       });
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      video.src = sourceUrl;
+      const nativeErrorHandler = () => setupProgressivePlayer();
+      video.addEventListener("error", nativeErrorHandler, { once: true });
+      removeNativeHlsErrorHandler = () => video.removeEventListener("error", nativeErrorHandler);
+      video.src = hlsSourceUrl;
       playerRef.current = new Plyr(video, { controls, settings: ["speed", "loop"] });
     } else {
-      queueMicrotask(() => {
-        setIsLoading(false);
-        setErrorMessage("このブラウザはHLS再生に対応していません。");
-      });
+      setupProgressivePlayer();
     }
 
     return teardown;
-  }, [sourceUrl]);
+  }, [hlsSourceUrl, streamSourceUrl]);
 
   return (
     <div className="relative aspect-video w-full bg-black">

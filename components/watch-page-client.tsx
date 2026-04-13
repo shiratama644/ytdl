@@ -41,7 +41,12 @@ export function WatchPageClient({ initialVideo }: Props) {
     <main className="mx-auto grid max-w-7xl gap-4 px-3 py-4 sm:px-4 sm:py-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
       <section className="space-y-4">
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/70 shadow-2xl backdrop-blur">
-          <PlyrPlayer videoId={video.id} title={video.title} hlsManifestUrl={video.hlsManifestUrl} />
+          <PlyrPlayer
+            videoId={video.id}
+            title={video.title}
+            hlsManifestUrl={video.hlsManifestUrl}
+            streamUrl={video.streamUrl}
+          />
         </div>
         <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4 shadow-lg backdrop-blur-sm">
           <h1 className="text-lg font-bold sm:text-xl">{video.title}</h1>
