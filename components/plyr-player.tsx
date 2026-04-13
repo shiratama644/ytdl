@@ -58,6 +58,7 @@ export function PlyrPlayer({ videoId, title, hlsManifestUrl, streamUrl }: Props)
     const video = videoRef.current;
     if (!video) return;
     let cleanupNativeErrorHandler = () => {};
+    let progressiveFallbackAttempted = false;
 
     const onLoadStart = () => setIsLoading(true);
     const onCanPlay = () => setIsLoading(false);
@@ -75,6 +76,7 @@ export function PlyrPlayer({ videoId, title, hlsManifestUrl, streamUrl }: Props)
     video.addEventListener("error", onError);
 
     const setupProgressivePlayer = () => {
+      cleanupNativeErrorHandler();
       hlsRef.current?.destroy();
       hlsRef.current = null;
       playerRef.current?.destroy();
@@ -83,6 +85,11 @@ export function PlyrPlayer({ videoId, title, hlsManifestUrl, streamUrl }: Props)
       setIsLoading(true);
       video.src = streamSourceUrl;
       playerRef.current = new Plyr(video, { controls, settings: ["speed", "loop"] });
+    };
+    const fallbackToProgressive = () => {
+      if (progressiveFallbackAttempted) return;
+      progressiveFallbackAttempted = true;
+      setupProgressivePlayer();
     };
 
     const teardown = () => {
@@ -149,7 +156,7 @@ export function PlyrPlayer({ videoId, title, hlsManifestUrl, streamUrl }: Props)
             data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR ||
             data.details === Hls.ErrorDetails.MANIFEST_PARSING_ERROR
           ) {
-            setupProgressivePlayer();
+            fallbackToProgressive();
             return;
           }
           hls.startLoad();
@@ -162,16 +169,16 @@ export function PlyrPlayer({ videoId, title, hlsManifestUrl, streamUrl }: Props)
         }
 
         setIsLoading(false);
-        setupProgressivePlayer();
+        fallbackToProgressive();
       });
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      const nativeErrorHandler = () => setupProgressivePlayer();
+      const nativeErrorHandler = () => fallbackToProgressive();
       video.addEventListener("error", nativeErrorHandler);
       cleanupNativeErrorHandler = () => video.removeEventListener("error", nativeErrorHandler);
       video.src = hlsSourceUrl;
       playerRef.current = new Plyr(video, { controls, settings: ["speed", "loop"] });
     } else {
-      setupProgressivePlayer();
+      fallbackToProgressive();
     }
 
     return teardown;
