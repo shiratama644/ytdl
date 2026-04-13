@@ -57,7 +57,7 @@ export function PlyrPlayer({ videoId, title, hlsManifestUrl, streamUrl }: Props)
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    let removeNativeHlsErrorHandler = () => {};
+    let cleanupNativeErrorHandler = () => {};
 
     const onLoadStart = () => setIsLoading(true);
     const onCanPlay = () => setIsLoading(false);
@@ -86,7 +86,7 @@ export function PlyrPlayer({ videoId, title, hlsManifestUrl, streamUrl }: Props)
     };
 
     const teardown = () => {
-      removeNativeHlsErrorHandler();
+      cleanupNativeErrorHandler();
       hlsRef.current?.destroy();
       hlsRef.current = null;
       playerRef.current?.destroy();
@@ -145,7 +145,10 @@ export function PlyrPlayer({ videoId, title, hlsManifestUrl, streamUrl }: Props)
         if (!data.fatal) return;
 
         if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-          if (data.details?.includes("manifest")) {
+          if (
+            data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR ||
+            data.details === Hls.ErrorDetails.MANIFEST_PARSING_ERROR
+          ) {
             setupProgressivePlayer();
             return;
           }
@@ -163,8 +166,8 @@ export function PlyrPlayer({ videoId, title, hlsManifestUrl, streamUrl }: Props)
       });
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
       const nativeErrorHandler = () => setupProgressivePlayer();
-      video.addEventListener("error", nativeErrorHandler, { once: true });
-      removeNativeHlsErrorHandler = () => video.removeEventListener("error", nativeErrorHandler);
+      video.addEventListener("error", nativeErrorHandler);
+      cleanupNativeErrorHandler = () => video.removeEventListener("error", nativeErrorHandler);
       video.src = hlsSourceUrl;
       playerRef.current = new Plyr(video, { controls, settings: ["speed", "loop"] });
     } else {
