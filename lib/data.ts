@@ -298,18 +298,19 @@ export async function getStreamUrl(videoId: string, quality = "best") {
         { type: "video+audio", quality: "best", format: "any" },
       ] as const;
 
-      let lastError: unknown;
+      let streamError: unknown;
       for (const options of candidates) {
         try {
           const format = await yt.getStreamingData(videoId, options);
           const url = format.url ?? (await format.decipher());
           if (url) return url;
         } catch (error) {
-          lastError = error;
+          streamError = error;
         }
       }
 
-      throw lastError instanceof Error ? lastError : new Error("stream URL not found");
+      if (streamError instanceof Error) throw streamError;
+      throw new Error(`stream URL not found for video id: ${videoId}`);
     },
     env.CACHE_STREAM_URL_TTL_SECONDS,
   );
