@@ -313,10 +313,7 @@ export async function getStreamUrl(videoId: string, quality = "best") {
         }
       }
 
-      if (streamErrors.length > 0) {
-        throw new AggregateError(streamErrors, `stream URL not found for video id: ${videoId}`);
-      }
-      throw new Error(`stream URL not found for video id: ${videoId}`);
+      throw new AggregateError(streamErrors, `stream URL not found for video id: ${videoId}`);
     },
     env.CACHE_STREAM_URL_TTL_SECONDS,
   );
