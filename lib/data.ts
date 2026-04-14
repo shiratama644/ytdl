@@ -298,18 +298,24 @@ export async function getStreamUrl(videoId: string, quality = "best") {
         { type: "video+audio", quality: "best", format: "any" },
       ] as const;
 
-      let streamError: unknown;
+      const streamErrors: Error[] = [];
       for (const options of candidates) {
         try {
           const format = await yt.getStreamingData(videoId, options);
           const url = format.url ?? (await format.decipher());
           if (url) return url;
         } catch (error) {
-          streamError = error;
+          streamErrors.push(
+            error instanceof Error
+              ? error
+              : new Error(`Unknown stream selection error: ${String(error)}`),
+          );
         }
       }
 
-      if (streamError instanceof Error) throw streamError;
+      if (streamErrors.length > 0) {
+        throw new AggregateError(streamErrors, `stream URL not found for video id: ${videoId}`);
+      }
       throw new Error(`stream URL not found for video id: ${videoId}`);
     },
     env.CACHE_STREAM_URL_TTL_SECONDS,
