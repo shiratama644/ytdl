@@ -20,7 +20,7 @@ const passthroughHeaders = [
   "last-modified",
 ];
 
-async function proxyStream(request: Request, includeBody: boolean) {
+async function proxyStream(request: Request, returnBody: boolean) {
   const query = streamQuerySchema.safeParse(
     Object.fromEntries(new URL(request.url).searchParams.entries()),
   );
@@ -65,7 +65,7 @@ async function proxyStream(request: Request, includeBody: boolean) {
     responseHeaders.set("X-Proxied-By", "ytdl-nextjs-proxy");
     responseHeaders.set("cache-control", "no-store");
 
-    return new Response(includeBody ? upstream.body : null, {
+    return new Response(returnBody ? upstream.body : null, {
       status: upstream.status,
       statusText: upstream.statusText,
       headers: responseHeaders,
