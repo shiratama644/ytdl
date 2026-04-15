@@ -18,7 +18,7 @@ export function parseVideoId(input: string): string | null {
       return /^[a-zA-Z0-9_-]{11}$/.test(candidate) ? candidate : null;
     }
 
-    if (url.pathname.startsWith("/shorts/")) {
+    if (url.pathname.startsWith("/shorts/") || url.pathname.startsWith("/live/")) {
       const candidate = url.pathname.split("/")[2] ?? "";
       return /^[a-zA-Z0-9_-]{11}$/.test(candidate) ? candidate : null;
     }

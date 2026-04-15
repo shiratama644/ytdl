@@ -30,10 +30,16 @@ function toText(value: unknown, fallback = "") {
 }
 
 function pickThumbnail(value: unknown) {
-  const record = asRecord(value);
-  if (!record) return "";
-  const thumbs = Array.isArray(record.thumbnails) ? record.thumbnails : [];
-  if (!Array.isArray(thumbs)) return "";
+  let thumbs: unknown[] = [];
+  if (Array.isArray(value)) {
+    thumbs = value;
+  } else {
+    const record = asRecord(value);
+    if (record && Array.isArray(record.thumbnails)) {
+      thumbs = record.thumbnails;
+    }
+  }
+  if (!thumbs.length) return "";
   const last = thumbs.at(-1);
   const lastRecord = asRecord(last);
   return typeof lastRecord?.url === "string" ? lastRecord.url : "";
@@ -249,7 +255,7 @@ export async function getVideoByInput(input: string): Promise<VideoPayload> {
         duration,
         isLive,
         mode: detectMode(input, isLive, duration),
-        thumbnail: basic.thumbnail?.at(-1)?.url ?? "",
+        thumbnail: pickThumbnail(basic.thumbnail) ?? "",
         embedUrl: basic.embed?.iframe_url ?? `https://www.youtube.com/embed/${videoId}`,
         streamUrl: `/api/stream?id=${videoId}`,
         hlsManifestUrl: `/api/hls/master?id=${videoId}`,

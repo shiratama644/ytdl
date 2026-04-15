@@ -55,9 +55,14 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
     return redisValue ? (JSON.parse(redisValue) as T) : null;
   }
 
-  pruneMemory();
   const memory = memoryCache.get(namespaced);
   if (!memory) return null;
+  
+  if (memory.expiresAt <= Date.now()) {
+    memoryCache.delete(namespaced);
+    return null;
+  }
+  
   return JSON.parse(memory.value) as T;
 }
 
@@ -71,6 +76,8 @@ export async function cacheSet<T>(key: string, value: T, ttlSeconds = env.CACHE_
     await client.set(namespaced, payload, { EX: ttlSeconds });
     return;
   }
+
+  if (Math.random() < 0.05) pruneMemory();
 
   memoryCache.set(namespaced, {
     value: payload,
