@@ -16,9 +16,11 @@ const passthroughHeaders = [
   "content-type",
   "date",
   "expires",
+  "etag",
+  "last-modified",
 ];
 
-export async function GET(request: Request) {
+async function proxyStream(request: Request, includeBody: boolean) {
   const query = streamQuerySchema.safeParse(
     Object.fromEntries(new URL(request.url).searchParams.entries()),
   );
@@ -42,16 +44,28 @@ export async function GET(request: Request) {
     const headers = new Headers();
     const range = request.headers.get("range");
     if (range) headers.set("range", range);
+    const ifNoneMatch = request.headers.get("if-none-match");
+    if (ifNoneMatch) headers.set("if-none-match", ifNoneMatch);
+    const ifModifiedSince = request.headers.get("if-modified-since");
+    if (ifModifiedSince) headers.set("if-modified-since", ifModifiedSince);
 
-    const upstream = await fetch(sourceUrl, { headers });
+    const upstream = await fetch(sourceUrl, {
+      method: request.method,
+      headers,
+      cache: "no-store",
+    });
     const responseHeaders = new Headers();
     for (const key of passthroughHeaders) {
       const value = upstream.headers.get(key);
       if (value) responseHeaders.set(key, value);
     }
+    if (!responseHeaders.has("accept-ranges")) {
+      responseHeaders.set("accept-ranges", "bytes");
+    }
     responseHeaders.set("X-Proxied-By", "ytdl-nextjs-proxy");
+    responseHeaders.set("cache-control", "no-store");
 
-    return new Response(upstream.body, {
+    return new Response(includeBody ? upstream.body : null, {
       status: upstream.status,
       statusText: upstream.statusText,
       headers: responseHeaders,
@@ -60,4 +74,12 @@ export async function GET(request: Request) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+export async function GET(request: Request) {
+  return proxyStream(request, true);
+}
+
+export async function HEAD(request: Request) {
+  return proxyStream(request, false);
 }
