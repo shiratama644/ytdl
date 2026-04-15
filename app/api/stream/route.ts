@@ -52,6 +52,7 @@ async function proxyStream(request: Request, method: "GET" | "HEAD", returnBody:
     const upstream = await fetch(sourceUrl, {
       method,
       headers,
+      // Avoid serving stale signed media URLs via framework-level fetch caching.
       cache: "no-store",
     });
     const responseHeaders = new Headers();
@@ -60,7 +61,9 @@ async function proxyStream(request: Request, method: "GET" | "HEAD", returnBody:
       if (value) responseHeaders.set(key, value);
     }
     responseHeaders.set("X-Proxied-By", "ytdl-nextjs-proxy");
-    responseHeaders.set("cache-control", "no-store");
+    if (!responseHeaders.has("cache-control")) {
+      responseHeaders.set("cache-control", "no-store");
+    }
 
     return new Response(returnBody ? upstream.body : null, {
       status: upstream.status,
