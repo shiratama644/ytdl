@@ -61,6 +61,7 @@ async function proxyStream(request: Request, method: "GET" | "HEAD", returnBody:
       if (value) responseHeaders.set(key, value);
     }
     responseHeaders.set("X-Proxied-By", "ytdl-nextjs-proxy");
+    // Respect explicit upstream caching policy when provided.
     if (!responseHeaders.has("cache-control")) {
       responseHeaders.set("cache-control", "no-store");
     }
