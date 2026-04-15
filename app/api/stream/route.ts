@@ -20,7 +20,7 @@ const passthroughHeaders = [
   "last-modified",
 ];
 
-async function proxyStream(request: Request, returnBody: boolean) {
+async function proxyStream(request: Request, method: "GET" | "HEAD", returnBody: boolean) {
   const query = streamQuerySchema.safeParse(
     Object.fromEntries(new URL(request.url).searchParams.entries()),
   );
@@ -50,7 +50,7 @@ async function proxyStream(request: Request, returnBody: boolean) {
     if (ifModifiedSince) headers.set("if-modified-since", ifModifiedSince);
 
     const upstream = await fetch(sourceUrl, {
-      method: request.method,
+      method,
       headers,
       cache: "no-store",
     });
@@ -58,9 +58,6 @@ async function proxyStream(request: Request, returnBody: boolean) {
     for (const key of passthroughHeaders) {
       const value = upstream.headers.get(key);
       if (value) responseHeaders.set(key, value);
-    }
-    if (!responseHeaders.has("accept-ranges")) {
-      responseHeaders.set("accept-ranges", "bytes");
     }
     responseHeaders.set("X-Proxied-By", "ytdl-nextjs-proxy");
     responseHeaders.set("cache-control", "no-store");
@@ -77,9 +74,9 @@ async function proxyStream(request: Request, returnBody: boolean) {
 }
 
 export async function GET(request: Request) {
-  return proxyStream(request, true);
+  return proxyStream(request, "GET", true);
 }
 
 export async function HEAD(request: Request) {
-  return proxyStream(request, false);
+  return proxyStream(request, "HEAD", false);
 }
