@@ -1,3 +1,4 @@
+import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
@@ -34,9 +35,16 @@ app.route("/api", streamRouter);
 
 const PORT = Number(process.env.PORT) || 3000;
 
-console.log(`[Server] YouTube Proxy API ready on port ${PORT}`);
+console.log(`[Server] Starting YouTube Proxy API on port ${PORT}...`);
 
-export default {
-  port: PORT,
-  fetch: app.fetch,
-};
+serve(
+  {
+    fetch: app.fetch,
+    port: PORT,
+  },
+  (info) => {
+    console.log(`[Server] Running on http://0.0.0.0:${info.port}`);
+  },
+);
+
+export default app;

@@ -1,13 +1,17 @@
+import { type ChildProcess, spawn } from "node:child_process";
+import readline from "node:readline";
+
 /**
- * 一括起動スクリプト（Production/Preview 構成）。
+ * 一括起動スクリプト (pnpm + Node.js / tsx 構成)。
  *
- *   bun scripts/execute.ts   （または `bun run start`）
+ *   pnpm start   （または `tsx scripts/execute.ts`）
  *
  * 実行順序:
- *   1. `bun install` で依存関係の最新化・確認
- *   2. `bun run build` でクライアント SPA をビルド（Vite JS API on Bun）
- *   3. ビルド成功後、バックエンド API サーバーと Web クライアント (Vite preview on Bun) を並列起動
- *   4. 各プロセスの標準出力・標準エラー出力を色分け（ANSI エスケープ）して表示
+ *   1. `pnpm install` で依存関係を確認
+ *   2. `pnpm run build` でクライアント SPA をビルド
+ *   3. ビルド成功後、バックエンド API サーバー (tsx server/index.ts) と
+ *      Web クライアント (vite preview) を並列起動
+ *   4. 各プロセスの出力を色分けタグ付きでコンソール表示
  */
 
 // ── ANSI 色（ログの色分け） ──────────────────────────────────────────────
@@ -21,13 +25,13 @@ const colors = {
   build: { tag: "BUILD  ", fg: "\x1b[36m" },
   // バックエンドサーバー: 緑
   server: { tag: "SERVER ", fg: "\x1b[32m" },
-  // Web クライアント（vite preview）: マゼンタ
+  // Web クライアント (vite preview): マゼンタ
   client: { tag: "CLIENT ", fg: "\x1b[35m" },
 } as const;
 
 type Kind = keyof typeof colors;
 
-/** 1 行に色付きタグを付けて出力する。 */
+/** 1 行に色付きタグを付けて出力する */
 function logLine(kind: Kind, line: string): void {
   const { tag, fg } = colors[kind];
   const text = line.replace(/\s+$/, "");
@@ -35,104 +39,81 @@ function logLine(kind: Kind, line: string): void {
   process.stdout.write(`${fg}${BOLD}[${tag}]${RESET} ${fg}${text}${RESET}\n`);
 }
 
-/** 子プロセスの stdout/stderr を行単位で色付けして転送する。 */
-function pipeOutput(
-  kind: Kind,
-  proc: {
-    stdout?: ReadableStream<Uint8Array> | null;
-    stderr?: ReadableStream<Uint8Array> | null;
-  },
-): void {
-  const decoder = new TextDecoder();
-  let buffer = "";
-
-  const pump = (stream: ReadableStream<Uint8Array> | null | undefined) => {
-    if (!stream) return;
-    (async () => {
-      try {
-        const reader = stream.getReader();
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          let nl = buffer.indexOf("\n");
-          while (nl >= 0) {
-            logLine(kind, buffer.slice(0, nl));
-            buffer = buffer.slice(nl + 1);
-            nl = buffer.indexOf("\n");
-          }
-        }
-      } catch {
-        /* ストリーム終了 */
-      }
-    })();
-  };
-
-  pump(proc.stdout);
-  pump(proc.stderr);
+/** 子プロセスの stdout/stderr を行単位でパイプして色付け出力 */
+function pipeProcessOutput(kind: Kind, proc: ChildProcess): void {
+  if (proc.stdout) {
+    const rlOut = readline.createInterface({ input: proc.stdout });
+    rlOut.on("line", (line) => logLine(kind, line));
+  }
+  if (proc.stderr) {
+    const rlErr = readline.createInterface({ input: proc.stderr });
+    rlErr.on("line", (line) => logLine(kind, line));
+  }
 }
 
-/** bun のサブコマンドを spawn して出力をパイプ */
-function spawnProcess(kind: Kind, cmd: string[], cwd = process.cwd()) {
-  const proc = Bun.spawn(cmd, {
-    cwd,
-    stdout: "pipe",
-    stderr: "pipe",
-    stdin: "inherit",
+/** コマンドを非同期実行して終了コードを待つ */
+function runCommand(kind: Kind, command: string, args: string[]): Promise<number> {
+  return new Promise((resolve) => {
+    const proc = spawn(command, args, {
+      cwd: process.cwd(),
+      stdio: ["inherit", "pipe", "pipe"],
+      shell: true,
+    });
+    pipeProcessOutput(kind, proc);
+    proc.on("close", (code) => resolve(code ?? 0));
+    proc.on("error", (err) => {
+      logLine(kind, `Failed to start process: ${err.message}`);
+      resolve(1);
+    });
   });
-  pipeOutput(kind, proc);
+}
+
+/** 常駐プロセスを起動 */
+function startLongRunningProcess(kind: Kind, command: string, args: string[]): ChildProcess {
+  const proc = spawn(command, args, {
+    cwd: process.cwd(),
+    stdio: ["inherit", "pipe", "pipe"],
+    shell: true,
+  });
+  pipeProcessOutput(kind, proc);
   return proc;
 }
 
 async function main(): Promise<number> {
-  console.log(`${BOLD}=== ytdl All-in-One Runner ===${RESET}`);
+  console.log(`${BOLD}=== ytdl All-in-One Runner (pnpm) ===${RESET}`);
 
-  // ── 1. bun install ──────────────────────────────────────────────────
-  logLine("install", "Running bun install...");
-  const install = Bun.spawn(["bun", "install"], {
-    cwd: process.cwd(),
-    stdout: "pipe",
-    stderr: "pipe",
-    stdin: "inherit",
-  });
-  pipeOutput("install", install);
-  const installExit = await install.exited;
-  if (installExit !== 0) {
-    logLine("install", `Installation failed (exit code ${installExit}).`);
-    return installExit ?? 1;
+  // ── 1. pnpm install ──────────────────────────────────────────────────
+  logLine("install", "Running pnpm install...");
+  const installCode = await runCommand("install", "pnpm", ["install"]);
+  if (installCode !== 0) {
+    logLine("install", `Installation failed (exit code ${installCode}).`);
+    return installCode;
   }
   logLine("install", "Dependencies up to date.");
 
-  // ── 2. bun run build (tsc + Vite JS API on Bun) ─────────────────────
-  logLine("build", "Building client SPA (bun run build)...");
-  const build = Bun.spawn(["bun", "run", "build"], {
-    cwd: process.cwd(),
-    stdout: "pipe",
-    stderr: "pipe",
-    stdin: "inherit",
-  });
-  pipeOutput("build", build);
-  const buildExit = await build.exited;
-  if (buildExit !== 0) {
-    logLine("build", `Build failed (exit code ${buildExit}). Servers will not be started.`);
-    return buildExit ?? 1;
+  // ── 2. pnpm run build ────────────────────────────────────────────────
+  logLine("build", "Building client SPA (pnpm run build)...");
+  const buildCode = await runCommand("build", "pnpm", ["run", "build"]);
+  if (buildCode !== 0) {
+    logLine("build", `Build failed (exit code ${buildCode}). Servers will not be started.`);
+    return buildCode;
   }
   logLine("build", "Build completed successfully.");
 
   // ── 3. バックエンドサーバー & Web クライアントを並列起動 ────────────
   logLine("server", "Starting backend API server (port 3000)...");
-  const serverProc = spawnProcess("server", ["bun", "server/index.ts"]);
+  const serverProc = startLongRunningProcess("server", "npx", ["tsx", "server/index.ts"]);
 
   logLine("client", "Starting client preview server (port 4173)...");
-  const clientProc = spawnProcess("client", ["bun", "scripts/preview.ts"]);
+  const clientProc = startLongRunningProcess("client", "pnpm", ["run", "preview"]);
 
-  const children = [
-    { name: "SERVER" as const, proc: serverProc },
-    { name: "CLIENT" as const, proc: clientProc },
+  const children: { name: string; proc: ChildProcess }[] = [
+    { name: "SERVER", proc: serverProc },
+    { name: "CLIENT", proc: clientProc },
   ];
 
   const shutdown = (signal: string) => {
-    logLine("build", `Received ${signal}. Shutting down all processes...`);
+    logLine("build", `Received ${signal}. Shutting down child processes...`);
     for (const c of children) {
       try {
         c.proc.kill("SIGTERM");
@@ -147,10 +128,12 @@ async function main(): Promise<number> {
 
   // いずれかの子プロセスの終了を待機
   const exits = await Promise.all(
-    children.map(async (c) => {
-      const code = await c.proc.exited;
-      return { name: c.name, code };
-    }),
+    children.map(
+      (c) =>
+        new Promise<{ name: string; code: number }>((resolve) => {
+          c.proc.on("close", (code) => resolve({ name: c.name, code: code ?? 0 }));
+        }),
+    ),
   );
 
   for (const e of exits) {
@@ -160,7 +143,7 @@ async function main(): Promise<number> {
   const failed = exits.find((e) => e.code !== 0);
   if (failed) {
     shutdown("CHILD-EXIT");
-    return failed.code ?? 1;
+    return failed.code;
   }
 
   return 0;

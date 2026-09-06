@@ -11,20 +11,21 @@ description: プロダクトの全体像（目標・方針・フェーズ進捗�
 
 ## 製品
 
-**ytdl** は、低スペックサーバーでも軽快に動作する **YouTube Proxy Web クライアント & ストリーミング API** です。
+**ytdl** は、低スペックサーバーでも軽快に動作する **完全プロキシ型 YouTube Web クライアント & ストリーミング API** です。
 
-- フロントエンド: **Vite + React + TypeScript + Tailwind CSS**（SPA）
-- バックエンド: **Hono + youtubei.js (Innertube)**
-- パッケージ管理 & ランタイム: **bun**
-- 機能: 動画検索、サジェスト、ホーム/トレンド動画一覧、プロキシストリーミング再生（Range 対応）、関連動画、画質切り替え
+- フロントエンド: **Vite + React + TypeScript + Tailwind CSS + Dexie.js (IndexedDB)**（SPA）
+- バックエンド: **Hono (`@hono/node-server`) + youtubei.js (Innertube)**
+- パッケージ管理 & スクリプト: **pnpm (`pnpm-lock.yaml`) + tsx**
+- 機能: 動画検索、サジェスト、ホーム/トレンド動画一覧、完全プロキシストリーミング再生（Range 対応）、サムネイルプロキシ、視聴履歴・お気に入り (IndexedDB)、関連動画
 
 ## 技術スタック
 
 | レイヤー | 採用技術 |
 | :--- | :--- |
-| パッケージ管理 / ランタイム | Bun (`bun.lock`) |
-| フロントエンド | React 18/19, Vite, Tailwind CSS, Lucide React |
-| バックエンド | Hono, youtubei.js (Innertube) |
+| パッケージ管理 | pnpm (`pnpm-lock.yaml`) |
+| ランタイム | Node.js + tsx |
+| フロントエンド | React 18, Vite, Tailwind CSS, Lucide React, Dexie.js |
+| バックエンド | Hono, @hono/node-server, youtubei.js (Innertube) |
 | Lint / Test | Biome, Vitest |
 
 ## フェーズ進捗
@@ -34,8 +35,8 @@ description: プロダクトの全体像（目標・方針・フェーズ進捗�
 | Phase | 内容 | 状態 |
 | :--- | :--- | :--- |
 | **0** | Agentシステム / Docsシステム基盤の導入 | 完了 |
-| **1** | コア基盤＆プロキシサーバー + Web クライアント実装 | 実装中 |
-| **2** | 拡張機能（ダウンロード、音声専用、プレイリスト等） | 未着手 |
+| **1** | コア基盤＆プロキシサーバー + Web クライアント実装 | 完了 |
+| **2** | 完全プロキシ化・IndexedDB・一括起動スクリプト・pnpm 移行 | 完了 |
 
 ## 関連ドキュメント
 

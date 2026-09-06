@@ -53,13 +53,14 @@
 
 ### 3.1 検証コマンドの実行
 - `package.json` に定義されたスクリプトを使用する（存在しないコマンドを捏造・実行しない）。
-- **パッケージ管理・スクリプトランナーは bun**（`bun install` / `bun run` / `bunx`）。ロックファイルは `bun.lock`。
+- **パッケージ管理・スクリプトランナーは pnpm**（`pnpm install` / `pnpm run` / `pnpm dlx`）。ロックファイルは `pnpm-lock.yaml`。
 - 原則として commit 前に以下 4 種を全て pass させる：
   ```bash
-  bun run typecheck             # tsc --noEmit
-  bunx biome check .            # Biome による Lint & Format 検証
-  bun run test:unit             # vitest run（ワンショット実行）
-  bun run build                 # vite build（production）
+  pnpm run typecheck            # tsc -p tsconfig.json --noEmit
+  pnpm run typecheck:test       # tsc -p tsconfig.test.json --noEmit
+  pnpm run lint                 # Biome による Lint & Format 検証
+  pnpm run test:unit            # vitest run（ワンショット実行）
+  pnpm run build                # vite build（production）
   ```
 - ドキュメントのみの変更（コード無変更）では 4 検証はスキップ可。代わりに「リンク切れ・他ファイルとの参照整合・旧名称の残存がないこと」を grep 等で確認する。
 
@@ -164,12 +165,11 @@ bash .agent/hooks/restore-sandbox-env.sh
 本プロジェクトで踏みやすい地雷と運用ルール。方針確定後に順次追記する。**計画書（`docs/planning/*PLAN.md`）に矛盾する指定があった場合は計画書を優先**する。計画書に無い事項は本節と [`docs/arch/`](docs/arch/README.md) を厳守する。**ADR（[`docs/arch/adr.md`](docs/arch/adr.md)）に反する実装はせず、人間に確認する。**
 
 ### 6.1 環境・ツールチェーン
-- **ランタイム / パッケージ管理**: **bun**（`bun install` / `bun run` / `bunx`、ロックファイル `bun.lock`）。
-  - bun はサンドボックス再構築時に npm 経由で導入（`npm install -g bun@latest`、`restore-sandbox-env.sh`）。
-- **バックエンド API / プロキシ**: **Hono** + `youtubei.js`
-- **フロントエンド**: **Vite** + React + TypeScript（strict）+ Tailwind CSS + Lucide Icons
+- **ランタイム / パッケージ管理**: **pnpm**（`pnpm install` / `pnpm run`、ロックファイル `pnpm-lock.yaml`）+ **Node.js**（v22/v24）+ **tsx**
+- **バックエンド API / プロキシ**: **Hono** (`@hono/node-server`) + `youtubei.js`
+- **フロントエンド**: **Vite** + React + TypeScript（strict）+ Tailwind CSS + Lucide Icons + Dexie.js (IndexedDB)
 - **Lint / Format**: Biome
-- **テストランナー**: Vitest（`bun run test:unit`）
+- **テストランナー**: Vitest（`pnpm run test:unit`）
 
 ### 6.2 サンドボックス制約（乗り越えず、迂回する）
 

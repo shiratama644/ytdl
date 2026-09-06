@@ -12,25 +12,21 @@ description: 技術スタックの使いどころ・ハマりどころ・ベス�
 
 | 用途 | 技術 | 備考 |
 | :--- | :--- | :--- |
-| 言語 / ランタイム | TypeScript (strict) / Bun / Node.js | バックエンドは Bun ネイティブ実行 |
-| フロントエンド | React 18/19 + Vite + Tailwind CSS + Lucide React | SPA 構成 |
+| パッケージ管理 | pnpm (`pnpm-lock.yaml`) | `pnpm install`, `pnpm run` |
+| ランタイム | Node.js (v22/v24) + `tsx` | サーバーサイド TypeScript 実行 |
+| フロントエンド | React 18/19 + Vite + Tailwind CSS + Lucide React + Dexie.js | SPA 構成 |
 | バックエンド | Hono (`hono`) + `@hono/node-server` | 軽量 Web 標準準拠 API |
 | YouTube クライアント | `youtubei.js` (Innertube) | 検索、メタデータ、ストリーム中継 |
-| Lint / フォーマッタ | Biome | `bunx biome check .` |
-| テストランナー | Vitest | `bun run test:unit` |
-| パッケージ管理 | bun (`bun.lock`) | `bun install` |
+| Lint / フォーマッタ | Biome | `pnpm run lint` |
+| テストランナー | Vitest | `pnpm run test:unit` |
 
 ## 開発のポイント & ハマりどころ
 
-### 1. `youtubei.js` (Innertube) の扱い
-- `Innertube.create()` は非同期初期化。サーバー起動時にシングルトンインスタンスを生成・保持する。
-- ストリーミングは `yt.download(videoId, { type, quality, range })` または `info.decipher(format)` から URL を取得して Range ヘッダー付きで fetch & pipe 中継する。
-- サーバー側で ReadableStream をチャンク単位でパイプし、メモリ枯渇を防ぐ。
+### 1. `pnpm` のビルドスクリプト設定
+- pnpm 12 では `onlyBuiltDependencies`（`pnpm-workspace.yaml` または `pnpm approve-builds`）により、esbuild などのネイティブバイナリのビルドを許可する。
 
-### 2. Vite 開発サーバーと Hono バックエンドの連携
-- 開発時: Vite の `vite.config.ts` で `/api` プレフィックスを Hono サーバー（例: `http://localhost:3000`）へ proxy 設定。
-- 本番時: Hono サーバーが `dist/` 配下の静的ファイルを配信、またはリバースプロキシで連携。
+### 2. `scripts/execute.ts`（一括起動）
+- Node.js 標準の `child_process.spawn` を使用して、`pnpm install` → `pnpm run build` → サーバー (`tsx server/index.ts`) & クライアント (`vite preview`) を色分けタグ付きで並列起動する。
 
-### 3. Biome の設定
-- `biome.json` で recommended ルールを適用。
-- Vite / React の JSX 構文に対応。
+### 3. 完全プロキシ (Full Proxy)
+- サムネイルやアバター画像も `/api/proxy/image` / `/api/thumbnail/:id` を介して配信し、ブラウザから Google/YouTube ドメインへの直接通信を完全に遮断。

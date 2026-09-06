@@ -4,7 +4,7 @@
 
 ## 1. ツールチェーン・ランタイム
 
-- **ランタイム / パッケージマネージャ**: **bun**（`bun.lock`、`bun install`、`bun run`）
+- **ランタイム / パッケージマネージャ**: **pnpm**（`pnpm-lock.yaml`、`pnpm install`、`pnpm run`）+ **Node.js** + **tsx**
 - **ビルド / 開発**: Vite + React + TypeScript
 - **Lint / Format**: Biome
 - **テストランナー**: Vitest
