@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { proxyRouter } from "./routes/proxy";
 import { searchRouter } from "./routes/search";
 import { streamRouter } from "./routes/stream";
 import { trendingRouter } from "./routes/trending";
@@ -25,6 +26,7 @@ app.get("/api/health", (c) => {
 });
 
 // ルーターマウント
+app.route("/api", proxyRouter);
 app.route("/api", searchRouter);
 app.route("/api", trendingRouter);
 app.route("/api", videoRouter);

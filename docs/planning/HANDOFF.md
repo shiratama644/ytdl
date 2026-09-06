@@ -16,24 +16,25 @@
 ## 1. プロジェクトの現状（事実）
 
 - **パッケージマネージャ**: **bun**（`bun.lock`）
-- **バックエンド**: Hono + `youtubei.js`（`server/index.ts`, `server/routes/*.ts`）
-- **フロントエンド**: Vite + React + TypeScript + Tailwind CSS（`src/`）
-- **テスト・品質保証**: Biome + Vitest（`bun run test:unit`, `bunx biome check .`, `bun run typecheck`, `bun run build` 全 PASS）
-- **Phase 1**: 実装・検証完了。ホーム/トレンド表示、検索、サジェスト、Range 対応ストリーミング再生、関連動画表示が動作可能。
+- **バックエンド**: Hono + `youtubei.js`（`server/index.ts`, `server/routes/*.ts`, 完全画像/サムネイルプロキシ）
+- **フロントエンド**: Vite + React + TypeScript + Tailwind CSS + Dexie.js (IndexedDB)
+- **起動スクリプト**: `scripts/execute.ts`（`bun run start` で色分けログ付き並列起動）
+- **テスト・品質保証**: Biome + Vitest（11 tests passed, `bun run typecheck` 0 error, build 成功）
 
 ## 2. 起動コマンド
 
 ```bash
-# 開発時（サーバー + クライアント並列起動）
+# 本番一括起動（install -> build -> server & client 並列色分け起動）
+bun run start       # または bun scripts/execute.ts
+
+# 開発時（ホットリロード）
 bun run dev
 
-# サーバー単体起動
-bun run dev:server    # または bun server/index.ts
+# 個別起動
+bun run dev:server  # API サーバー :3000
+bun run dev:client  # Vite 開発サーバー :5173
 
-# クライアント単体起動
-bun run dev:client
-
-# 検証
+# 検証コマンド
 bun run typecheck
 bunx biome check .
 bun run test:unit
@@ -42,5 +43,5 @@ bun run build
 
 ## 3. 次のアクション
 
-1. ユーザーからのフィードバック確認。
-2. Phase 2 拡張機能（チャンネル表示、プレイリスト、コメント表示、ローカル保存など）の実装計画策定。
+1. ユーザーからの追加要望や UI 調整。
+2. プレイリスト再生やチャンネル詳細画面等のさらなる拡張。

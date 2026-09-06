@@ -5,6 +5,7 @@ import type {
   VideoItem,
   VideoThumbnail,
 } from "../../shared/types";
+import { toProxyImageUrl } from "../utils/proxyUrl";
 import { getInnertube } from "../yt";
 
 export const searchRouter = new Hono();
@@ -87,7 +88,7 @@ searchRouter.get("/search", async (c) => {
       const thumbnails: VideoThumbnail[] = rawThumbs.map((t: unknown) => {
         const thumb = t as Record<string, unknown>;
         return {
-          url: String(thumb.url || ""),
+          url: toProxyImageUrl(String(thumb.url || "")),
           width: typeof thumb.width === "number" ? thumb.width : undefined,
           height: typeof thumb.height === "number" ? thumb.height : undefined,
         };
@@ -95,7 +96,7 @@ searchRouter.get("/search", async (c) => {
 
       if (thumbnails.length === 0) {
         thumbnails.push({
-          url: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+          url: `/api/thumbnail/${id}`,
           width: undefined,
           height: undefined,
         });

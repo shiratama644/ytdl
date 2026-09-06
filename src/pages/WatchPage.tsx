@@ -1,9 +1,20 @@
-import { ChevronDown, ChevronUp, Eye, Heart, Loader2, Share2, User } from "lucide-react";
+import {
+  Bookmark,
+  BookmarkCheck,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  Heart,
+  Loader2,
+  Share2,
+  User,
+} from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import type { VideoDetail } from "../../shared/types";
 import { RelatedVideos } from "../components/RelatedVideos";
 import { VideoPlayer } from "../components/VideoPlayer";
+import { dbService } from "../db";
 import { api } from "../services/api";
 
 interface WatchPageProps {
@@ -17,6 +28,7 @@ export const WatchPage: React.FC<WatchPageProps> = ({ videoId, onVideoClick }) =
   const [error, setError] = useState<string | null>(null);
   const [expandDesc, setExpandDesc] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
+  const [isFav, setIsFav] = useState<boolean>(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -24,12 +36,31 @@ export const WatchPage: React.FC<WatchPageProps> = ({ videoId, onVideoClick }) =
     setError(null);
     setExpandDesc(false);
 
+    // お気に入り状態の確認
+    dbService.isFavorite(videoId).then((fav) => {
+      if (isMounted) setIsFav(fav);
+    });
+
     api
       .getVideoDetail(videoId)
       .then((data) => {
         if (isMounted) {
           setDetail(data);
           setLoading(false);
+
+          // IndexedDB に視聴履歴を記録
+          const thumbUrl =
+            data.thumbnails && data.thumbnails.length > 0
+              ? data.thumbnails[data.thumbnails.length - 1].url
+              : `/api/thumbnail/${videoId}`;
+
+          dbService.recordHistory({
+            videoId,
+            title: data.title,
+            authorName: data.author.name,
+            thumbnailUrl: thumbUrl,
+            duration: data.durationText,
+          });
         }
       })
       .catch((err) => {
@@ -44,6 +75,28 @@ export const WatchPage: React.FC<WatchPageProps> = ({ videoId, onVideoClick }) =
       isMounted = false;
     };
   }, [videoId]);
+
+  const toggleFavorite = async () => {
+    if (!detail) return;
+    const thumbUrl =
+      detail.thumbnails && detail.thumbnails.length > 0
+        ? detail.thumbnails[detail.thumbnails.length - 1].url
+        : `/api/thumbnail/${videoId}`;
+
+    if (isFav) {
+      await dbService.removeFavorite(videoId);
+      setIsFav(false);
+    } else {
+      await dbService.addFavorite({
+        videoId,
+        title: detail.title,
+        authorName: detail.author.name,
+        thumbnailUrl: thumbUrl,
+        duration: detail.durationText,
+      });
+      setIsFav(true);
+    }
+  };
 
   const handleShare = () => {
     const url = window.location.href;
@@ -110,6 +163,24 @@ export const WatchPage: React.FC<WatchPageProps> = ({ videoId, onVideoClick }) =
 
             {/* アクションボタン */}
             <div className="flex items-center gap-2">
+              {/* お気に入りボタン */}
+              <button
+                type="button"
+                onClick={toggleFavorite}
+                className={`flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-full transition-colors border ${
+                  isFav
+                    ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                    : "bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border-zinc-700/60"
+                }`}
+              >
+                {isFav ? (
+                  <BookmarkCheck className="w-3.5 h-3.5 text-amber-400" />
+                ) : (
+                  <Bookmark className="w-3.5 h-3.5" />
+                )}
+                <span>{isFav ? "お気に入り済" : "お気に入り"}</span>
+              </button>
+
               {detail.likes && (
                 <div className="flex items-center gap-1.5 bg-zinc-800 text-zinc-200 text-xs px-3 py-1.5 rounded-full border border-zinc-700/60">
                   <Heart className="w-3.5 h-3.5 text-red-400 fill-red-400/20" />

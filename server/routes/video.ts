@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { StreamFormat, VideoDetail, VideoItem, VideoThumbnail } from "../../shared/types";
+import { toProxyImageUrl } from "../utils/proxyUrl";
 import { getInnertube } from "../yt";
 
 export const videoRouter = new Hono();
@@ -111,7 +112,7 @@ videoRouter.get("/video/:id", async (c) => {
       const thumbnails: VideoThumbnail[] = rawThumbs.map((t: unknown) => {
         const thumb = t as Record<string, unknown>;
         return {
-          url: String(thumb.url || ""),
+          url: toProxyImageUrl(String(thumb.url || "")),
           width: typeof thumb.width === "number" ? thumb.width : undefined,
           height: typeof thumb.height === "number" ? thumb.height : undefined,
         };
@@ -119,7 +120,7 @@ videoRouter.get("/video/:id", async (c) => {
 
       if (thumbnails.length === 0) {
         thumbnails.push({
-          url: `https://i.ytimg.com/vi/${relId}/hqdefault.jpg`,
+          url: `/api/thumbnail/${relId}`,
           width: undefined,
           height: undefined,
         });
@@ -142,14 +143,14 @@ videoRouter.get("/video/:id", async (c) => {
     const durationSeconds = Number(basic.duration || 0);
 
     const thumbnails: VideoThumbnail[] = (basic.thumbnail || []).map((t) => ({
-      url: t.url,
+      url: toProxyImageUrl(t.url),
       width: t.width,
       height: t.height,
     }));
 
     if (thumbnails.length === 0) {
       thumbnails.push({
-        url: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
+        url: `/api/thumbnail/${videoId}`,
         width: undefined,
         height: undefined,
       });

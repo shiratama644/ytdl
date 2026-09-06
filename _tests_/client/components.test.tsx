@@ -8,8 +8,18 @@ describe("UI Components", () => {
   it("renders Header with logo and search input", () => {
     const onSearch = vi.fn();
     const onHomeClick = vi.fn();
+    const onHistoryClick = vi.fn();
+    const onFavoritesClick = vi.fn();
 
-    render(<Header onSearch={onSearch} onHomeClick={onHomeClick} currentQuery="" />);
+    render(
+      <Header
+        onSearch={onSearch}
+        onHomeClick={onHomeClick}
+        onHistoryClick={onHistoryClick}
+        onFavoritesClick={onFavoritesClick}
+        currentQuery=""
+      />,
+    );
 
     expect(screen.getByText("ytdl")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("動画を検索...")).toBeInTheDocument();
@@ -24,7 +34,7 @@ describe("UI Components", () => {
       },
       duration: "10:00",
       views: "1M views",
-      thumbnails: [{ url: "https://example.com/thumb.jpg" }],
+      thumbnails: [{ url: "/api/thumbnail/abc123" }],
     };
 
     const onClick = vi.fn();
