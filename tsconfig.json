@@ -15,12 +15,13 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "types": ["bun", "vite/client", "@testing-library/jest-dom"],
+    "types": ["bun", "vite/client"],
     "paths": {
       "@/*": ["./src/*"],
       "@server/*": ["./server/*"],
       "@shared/*": ["./shared/*"]
     }
   },
-  "include": ["src", "server", "shared", "_tests_", "scripts"]
+  "include": ["src", "server", "shared", "scripts"],
+  "exclude": ["_tests_", "dist", "node_modules"]
 }

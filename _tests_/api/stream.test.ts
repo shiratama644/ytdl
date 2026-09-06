@@ -4,7 +4,7 @@ describe("Range header parser and stream logic", () => {
   it("should parse standard range headers correctly", () => {
     const rangeHeader = "bytes=0-1024";
     const matches = rangeHeader.match(/bytes=(\d+)-(\d+)?/);
-    expect(matches).not.toBeNull();
+    expect(matches).toBeTruthy();
     if (matches) {
       const start = Number.parseInt(matches[1], 10);
       const end = Number.parseInt(matches[2], 10);
@@ -19,7 +19,7 @@ describe("Range header parser and stream logic", () => {
     const rangeHeader = "bytes=1000-";
     const totalSize = 5000;
     const matches = rangeHeader.match(/bytes=(\d+)-(\d+)?/);
-    expect(matches).not.toBeNull();
+    expect(matches).toBeTruthy();
     if (matches) {
       const start = Number.parseInt(matches[1], 10);
       const end = matches[2] ? Number.parseInt(matches[2], 10) : totalSize - 1;
