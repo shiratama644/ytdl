@@ -1,0 +1,97 @@
+@import '../styles/m3-tokens.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+  [data-theme='dark'] {
+    color-scheme: dark;
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-surface text-on-surface font-body antialiased;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--md-sys-color-outline-variant) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--md-sys-color-outline-variant);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+@layer utilities {
+  /* クリップ可能な長いタイトル用の行クランプ */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* ============================================================================
+ * video.js の M3 スキニング（最小限）
+ * ========================================================================== */
+.video-js .vjs-control-bar {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent);
+  height: 4.5em;
+}
+.video-js .vjs-slider {
+  background: var(--md-sys-color-outline-variant);
+}
+.video-js .vjs-play-progress,
+.video-js .vjs-volume-level {
+  background-color: var(--md-sys-color-primary);
+}
+.video-js .vjs-load-progress {
+  background-color: var(--md-sys-color-secondary-container);
+}
+.video-js .vjs-big-play-button {
+  width: 1.6em;
+  height: 1.6em;
+  border-radius: 9999px;
+  border: none;
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  margin-top: -0.8em;
+  margin-left: -0.8em;
+}
+.video-js .vjs-big-play-button .vjs-icon-placeholder:before {
+  font-size: 1.5em;
+  line-height: 1.6em;
+}
+.video-js.video-js-root {
+  background-color: var(--md-sys-color-surface-dim);
+  border-radius: var(--md-sys-shape-lg, 16px);
+  overflow: hidden;
+}
