@@ -32,31 +32,20 @@ searchRouter.get("/search", async (c) => {
   let videos: unknown[] = [];
   let lastError: unknown = null;
 
-  // 1. デフォルト (WEB) で検索
+  // 1. WEB クライアントで検索
   try {
-    const yt = await getInnertube();
+    const yt = await getInnertube("WEB");
     const search = await yt.search(query, { type: "video" });
     videos = search.videos || search.results || [];
   } catch (err) {
     lastError = err;
   }
 
-  // 2. ANDROID クライアントでフォールバック
+  // 2. MWEB クライアントでフォールバック
   if (videos.length === 0) {
     try {
-      const ytAndroid = await getInnertube("ANDROID");
-      const search = await ytAndroid.search(query, { type: "video" });
-      videos = search.videos || search.results || [];
-    } catch (err) {
-      lastError = err;
-    }
-  }
-
-  // 3. TV クライアントでフォールバック
-  if (videos.length === 0) {
-    try {
-      const ytTv = await getInnertube("TV");
-      const search = await ytTv.search(query, { type: "video" });
+      const ytMweb = await getInnertube("MWEB");
+      const search = await ytMweb.search(query, { type: "video" });
       videos = search.videos || search.results || [];
     } catch (err) {
       lastError = err;
@@ -64,7 +53,7 @@ searchRouter.get("/search", async (c) => {
   }
 
   if (videos.length === 0 && lastError) {
-    console.error("[Search] All clients failed for query:", query, lastError);
+    console.error("[Search] Search failed for query:", query, lastError);
     return c.json<SearchResponse>(
       {
         query,
@@ -197,7 +186,7 @@ searchRouter.get("/suggest", async (c) => {
   }
 
   try {
-    const yt = await getInnertube();
+    const yt = await getInnertube("WEB");
     const suggestions = await yt.getSearchSuggestions(query);
     const list = suggestions || [];
     suggestCache.set(cacheKey, list);

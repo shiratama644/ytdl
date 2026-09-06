@@ -24,27 +24,27 @@ videoRouter.get("/video/:id", async (c) => {
   let lastError: unknown = null;
 
   try {
-    const yt = await getInnertube();
+    const yt = await getInnertube("WEB");
     info = (await yt.getInfo(videoId)) as unknown as Record<string, unknown>;
   } catch (err) {
     lastError = err;
   }
 
-  // 2. ANDROID クライアントでのフォールバック
+  // 2. MWEB クライアントでのフォールバック
   if (!info) {
     try {
-      const ytAndroid = await getInnertube("ANDROID");
-      info = (await ytAndroid.getBasicInfo(videoId)) as unknown as Record<string, unknown>;
+      const ytMweb = await getInnertube("MWEB");
+      info = (await ytMweb.getInfo(videoId)) as unknown as Record<string, unknown>;
     } catch (err) {
       lastError = err;
     }
   }
 
-  // 3. TV クライアントでのフォールバック
+  // 3. getBasicInfo でのフォールバック
   if (!info) {
     try {
-      const ytTv = await getInnertube("TV");
-      info = (await ytTv.getBasicInfo(videoId)) as unknown as Record<string, unknown>;
+      const yt = await getInnertube("WEB");
+      info = (await yt.getBasicInfo(videoId)) as unknown as Record<string, unknown>;
     } catch (err) {
       lastError = err;
     }
@@ -188,8 +188,8 @@ videoRouter.get("/video/:id", async (c) => {
     const rawThumb = t as Record<string, unknown>;
     return {
       url: toProxyImageUrl(String(rawThumb.url || "")),
-      width: typeof rawThumb.width === "number" ? rawThumb.width : undefined,
-      height: typeof rawThumb.height === "number" ? rawThumb.height : undefined,
+      width: typeof rawThumb.width === "number" ? thumbNumber(rawThumb.width) : undefined,
+      height: typeof rawThumb.height === "number" ? thumbNumber(rawThumb.height) : undefined,
     };
   });
 
@@ -225,6 +225,12 @@ videoRouter.get("/video/:id", async (c) => {
 
   return c.json<VideoDetail>(detail);
 });
+
+function thumbNumber(val: unknown): number | undefined {
+  if (typeof val === "number") return val;
+  if (typeof val === "string" && !Number.isNaN(Number(val))) return Number(val);
+  return undefined;
+}
 
 function formatSeconds(seconds: number): string {
   if (Number.isNaN(seconds) || seconds <= 0) return "0:00";

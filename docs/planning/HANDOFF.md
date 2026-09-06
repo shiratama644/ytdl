@@ -2,20 +2,23 @@
 
 - **セッション日時**: 2026-09-07
 - **ブランチ**: `arena/01a07701-ytdl`
-- **状態**: Phase 2 完了（完全プロキシ化、IndexedDB (Dexie.js)、一括起動スクリプト、TS2688 解決、pnpm 移行、YouTube API ボットブロック耐性・フォールバック強化、DEP0190 解消）
+- **状態**: Phase 2 完了（完全プロキシ化、IndexedDB (Dexie.js)、一括起動スクリプト、TS2688 解決、pnpm 移行、youtubei.js v18 更新、UniversalCache 永続化、Browse ネイティブエンドポイント移行）
 
 ---
 
 ## 1. 直近の改善内容
 
-1. **DEP0190 非推奨警告の解消 (`scripts/execute.ts`)**:
-   - `spawn` 呼び出し時の `shell: true` と引数配列の併用を廃止し、OS に適した実行可能ファイルの解決と `shell: false` によるセキュアなプロセス起動に変更。
-2. **YouTube 400 エラー / ボット判定 / signature decipher 抽出失敗への対策**:
-   - `retrieve_player: false` を設定し、Innertube 初期化時の decipher パース失敗を抑制。
-   - `server/yt.ts` でマルチクライアント対応（WEB / ANDROID / TV / IOS / MWEB）を導入。
-   - `server/routes/trending.ts`, `search.ts`, `video.ts`, `stream.ts` において、リクエスト失敗時に別クライアント（ANDROID / TV）へ自動フォールバックするチェーンを構築。
-   - 短時間 TTL インメモリキャッシュ（`SimpleCache`）を導入し、過剰な YouTube リクエストによる IP レートリミットを抑制。
-   - API エラー発生時に 500 でクラッシュせず、グレースフルなレスポンスとフロントエンドでの再試行 UI（リトライボタン・親切なメッセージ）を提供。
+1. **`youtubei.js` を最新 v18.0.0 に更新**:
+   - YouTube の最新 InnerTube API 仕様・署名解読に対応。
+2. **セッションキャッシュの永続化 (`UniversalCache(true, './.cache/innertube')`)**:
+   - visitor_data、PoToken、セッション情報をローカルキャッシュに保持し、データセンター IP や再起動時における YouTube 側の 400/404 制限を抑制。
+3. **ネイティブ Browse エンドポイントへの移行 (`server/routes/trending.ts`)**:
+   - 不正な 404 NOT_FOUND を引き起こす `search("trending")` を全廃。
+   - `yt.getHomeFeed()`、`yt.actions.execute('/browse', { browseId: 'FEtrending' })`、`yt.actions.execute('/browse', { browseId: 'FEwhat_to_watch' })` などの YouTube 公式ネイティブ Browse エンドポイントを使用。
+4. **クライアントプロファイルの最適化**:
+   - `ClientType.WEB` / `ClientType.MWEB` に統一。
+5. **DEP0190 警告の完全解消 (`scripts/execute.ts`)**:
+   - `spawn` での `shell: true` と引数配列併用を解消。
 
 ---
 

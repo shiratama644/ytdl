@@ -17,45 +17,64 @@ trendingRouter.get("/trending", async (c) => {
   let feedItems: unknown[] = [];
   let lastError: unknown = null;
 
-  // 1. デフォルト (WEB) での試行
+  // 1. WEB クライアントで getHomeFeed() を試行
   try {
-    const yt = await getInnertube();
-    try {
-      const feed = await yt.getHomeFeed();
-      feedItems = feed.videos || [];
-    } catch {
-      const trending = await yt.getTrending();
-      feedItems = trending.videos || [];
-    }
+    const yt = await getInnertube("WEB");
+    const home = await yt.getHomeFeed();
+    feedItems = home.videos || [];
   } catch (err) {
     lastError = err;
   }
 
-  // 2. ANDROID クライアントでのフォールバック試行
+  // 2. フォールバック: browseId: 'FEtrending' (ネイティブ Trending Browse エンドポイント)
   if (feedItems.length === 0) {
     try {
-      const ytAndroid = await getInnertube("ANDROID");
-      const search = await ytAndroid.search("trending", { type: "video" });
-      feedItems = search.videos || [];
+      const yt = await getInnertube("WEB");
+      const browseRes = await yt.actions.execute("/browse", { browseId: "FEtrending" });
+      const rawData = browseRes.data as Record<string, unknown>;
+      if (
+        rawData &&
+        typeof rawData === "object" &&
+        Array.isArray((rawData as { contents?: unknown }).contents)
+      ) {
+        feedItems = (rawData as { contents?: unknown[] }).contents || [];
+      }
     } catch (err) {
       lastError = err;
     }
   }
 
-  // 3. TV クライアントでのフォールバック試行
+  // 3. フォールバック: MWEB クライアントで getHomeFeed() を試行
   if (feedItems.length === 0) {
     try {
-      const ytTv = await getInnertube("TV");
-      const search = await ytTv.search("trending", { type: "video" });
-      feedItems = search.videos || [];
+      const ytMweb = await getInnertube("MWEB");
+      const home = await ytMweb.getHomeFeed();
+      feedItems = home.videos || [];
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  // 4. フォールバック: browseId: 'FEwhat_to_watch'
+  if (feedItems.length === 0) {
+    try {
+      const yt = await getInnertube("WEB");
+      const browseRes = await yt.actions.execute("/browse", { browseId: "FEwhat_to_watch" });
+      const rawData = browseRes.data as Record<string, unknown>;
+      if (
+        rawData &&
+        typeof rawData === "object" &&
+        Array.isArray((rawData as { contents?: unknown }).contents)
+      ) {
+        feedItems = (rawData as { contents?: unknown[] }).contents || [];
+      }
     } catch (err) {
       lastError = err;
     }
   }
 
   if (feedItems.length === 0 && lastError) {
-    console.error("[Trending] All Innertube clients failed:", lastError);
-    // キャッシュに古いデータがあればそれを返す
+    console.error("[Trending] Error fetching trending/home feed:", lastError);
     if (cached) {
       return c.json(cached);
     }

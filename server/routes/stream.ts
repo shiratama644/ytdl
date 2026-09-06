@@ -22,19 +22,23 @@ streamRouter.get("/stream/:id", async (c) => {
 
   const rangeHeader = c.req.header("range");
 
-  // 1. メタデータとフォーマット情報の取得（フォールバック付き）
-  let yt = await getInnertube();
+  // 1. メタデータとフォーマット情報の取得（WEB / MWEB）
+  let yt = await getInnertube("WEB");
   let info: Record<string, unknown> | null = null;
 
   try {
     info = (await yt.getInfo(videoId)) as unknown as Record<string, unknown>;
   } catch {
     try {
-      yt = await getInnertube("ANDROID");
-      info = (await yt.getBasicInfo(videoId)) as unknown as Record<string, unknown>;
+      yt = await getInnertube("MWEB");
+      info = (await yt.getInfo(videoId)) as unknown as Record<string, unknown>;
     } catch {
-      yt = await getInnertube("TV");
-      info = (await yt.getBasicInfo(videoId)) as unknown as Record<string, unknown>;
+      try {
+        yt = await getInnertube("WEB");
+        info = (await yt.getBasicInfo(videoId)) as unknown as Record<string, unknown>;
+      } catch (err) {
+        console.error(`[Stream] Failed to get info for ${videoId}:`, err);
+      }
     }
   }
 
@@ -116,22 +120,17 @@ streamRouter.get("/stream/:id", async (c) => {
     range: rangeHeader && end !== undefined ? { start, end } : undefined,
   };
 
-  // 2. ストリームの取得（フォールバック試行）
+  // 2. ストリームの取得
   let stream: ReadableStream<Uint8Array> | null = null;
 
   try {
     stream = await yt.download(videoId, downloadOptions);
   } catch {
     try {
-      const ytAndroid = await getInnertube("ANDROID");
-      stream = await ytAndroid.download(videoId, downloadOptions);
-    } catch {
-      try {
-        const ytTv = await getInnertube("TV");
-        stream = await ytTv.download(videoId, downloadOptions);
-      } catch (err) {
-        console.error(`[Stream] All download attempts failed for ${videoId}:`, err);
-      }
+      const ytMweb = await getInnertube("MWEB");
+      stream = await ytMweb.download(videoId, downloadOptions);
+    } catch (err) {
+      console.error(`[Stream] Download attempt failed for ${videoId}:`, err);
     }
   }
 

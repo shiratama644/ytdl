@@ -1,6 +1,6 @@
 import { ClientType, Innertube, UniversalCache } from "youtubei.js";
 
-export type SupportedClientType = "WEB" | "ANDROID" | "TV" | "IOS" | "MWEB";
+export type SupportedClientType = "WEB" | "MWEB" | "ANDROID" | "TV" | "IOS";
 
 // クライアント種別ごとのインスタンスキャッシュ
 const instances = new Map<string, Innertube>();
@@ -11,10 +11,10 @@ const DEFAULT_USER_AGENT =
 
 /**
  * Innertube インスタンスを取得
- * @param clientType 'WEB' | 'ANDROID' | 'TV' | 'IOS' | 'MWEB' (デフォルト: WEB)
+ * @param clientType 'WEB' | 'MWEB' | 'ANDROID' | 'TV' | 'IOS' (デフォルト: WEB)
  */
 export async function getInnertube(clientType?: SupportedClientType): Promise<Innertube> {
-  const key = clientType || "DEFAULT";
+  const key = clientType || "WEB";
 
   const cached = instances.get(key);
   if (cached) {
@@ -29,20 +29,21 @@ export async function getInnertube(clientType?: SupportedClientType): Promise<In
   const promise = (async () => {
     try {
       const selectedClient =
-        clientType === "ANDROID"
-          ? ClientType.ANDROID
-          : clientType === "TV"
-            ? ClientType.TV
-            : clientType === "IOS"
-              ? ClientType.IOS
-              : clientType === "MWEB"
-                ? ClientType.MWEB
+        key === "MWEB"
+          ? ClientType.MWEB
+          : key === "ANDROID"
+            ? ClientType.ANDROID
+            : key === "TV"
+              ? ClientType.TV
+              : key === "IOS"
+                ? ClientType.IOS
                 : ClientType.WEB;
 
       const yt = await Innertube.create({
-        cache: new UniversalCache(false),
+        // ディスクキャッシュにセッションおよび visitor データを永続化してデータセンター IP 等でのブロックを抑制
+        cache: new UniversalCache(true, "./.cache/innertube"),
         generate_session_locally: true,
-        retrieve_player: false, // decipher 抽出エラー (Failed to extract signature decipher algorithm) を回避
+        retrieve_player: false, // player decipher 抽出エラーを回避
         client_type: selectedClient,
         user_agent: DEFAULT_USER_AGENT,
         lang: "ja",
