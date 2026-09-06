@@ -14,8 +14,9 @@
 
 ## プロジェクト概要
 
-- **プロジェクト名**: ytdl
-- **現在のステータス**: 方針策定中 / 初期セットアップ段階
+- **プロジェクト名**: ytdl (YouTube Proxy Web & API)
+- **現在のステータス**: フェーズ 1 実装完了
+- **スタック**: Bun, Vite, React, TypeScript, Tailwind CSS, Hono, youtubei.js
 - **ライセンス**: MIT（[`LICENSE`](../LICENSE) 参照）
 
 ---
@@ -31,10 +32,22 @@
 
 ---
 
-### Phase 1: プロジェクト方針策定・初期設計（未着手）
+### Phase 1: コア基盤＆プロキシサーバー + Web クライアント実装（完了）
 
 | ID | タスク内容 | 状態 | 完了条件 / 証拠 |
 |---|---|---|---|
-| **P1-A** | プロジェクト目的・要件の確定（ユーザーヒアリング/検討） | 未着手 | `docs/arch/product.md` を作成・更新 |
-| **P1-B** | 技術スタック・アーキテクチャ選定 | 未着手 | `docs/arch/adr.md` / `architecture.md` を作成 |
-| **P1-C** | 初期開発環境・ツールチェーンのセットアップ | 未着手 | パッケージ設定・ビルド・テスト環境構築 |
+| **P1-A** | プロジェクト初期化 & ツールチェーン構築（Bun / Vite / React / TS / Biome / Vitest） | 完了 | `package.json`, `bun.lock`, 設定ファイル群整備 |
+| **P1-B** | バックエンド YouTube プロキシ API 実装（Hono + `youtubei.js` + Range ストリーミング） | 完了 | `/api/search`, `/api/trending`, `/api/video/:id`, `/api/stream/:id` |
+| **P1-C** | フロントエンド Web クライアント実装（Home, Search, Watch, Player, 関連動画） | 完了 | SPA UI コンポーネントおよび画面 |
+| **P1-D** | テストスイート構築 & 4検証（typecheck / biome / test / build） | 完了 | 6 tests passed, build 成功 (177 kB) |
+| **P1-E** | 結合確認・ドキュメント更新・コミット・プッシュ | 完了 | サーバー起動確認 & git push |
+
+---
+
+### Phase 2: 拡張機能（未着手）
+
+| ID | タスク内容 | 状態 | 完了条件 / 証拠 |
+|---|---|---|---|
+| **P2-A** | プレイリスト・チャンネル画面の実装 | 未着手 | チャンネル詳細・動画一覧 API & UI |
+| **P2-B** | コメント一覧・チャプター表示の実装 | 未着手 | コメント取得 API & チャプターUI |
+| **P2-C** | お気に入り・履歴のローカル保存（LocalStorage） | 未着手 | 履歴・ブックマーク機能 |

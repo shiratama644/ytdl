@@ -52,10 +52,16 @@
 ## 3. テスト・品質保証ルール
 
 ### 3.1 検証コマンドの実行
-- プロジェクト設定（`package.json` 等）に定義されたスクリプトのみを使用する（存在しないコマンドを捏造・実行しない）。
-- 検証コマンドがプロジェクトに定義されている場合は、原則として commit 前にすべて pass させる。
-- テストランナーを watch モードで起動しないこと（CI/ワンショット実行モードを使用する）。
-- ドキュメントのみの変更（コード無変更）ではテスト等の重い検証はスキップ可。代わりに「リンク切れ・他ファイルとの参照整合・旧名称の残存がないこと」を grep 等で確認する。
+- `package.json` に定義されたスクリプトを使用する（存在しないコマンドを捏造・実行しない）。
+- **パッケージ管理・スクリプトランナーは bun**（`bun install` / `bun run` / `bunx`）。ロックファイルは `bun.lock`。
+- 原則として commit 前に以下 4 種を全て pass させる：
+  ```bash
+  bun run typecheck             # tsc --noEmit
+  bunx biome check .            # Biome による Lint & Format 検証
+  bun run test:unit             # vitest run（ワンショット実行）
+  bun run build                 # vite build（production）
+  ```
+- ドキュメントのみの変更（コード無変更）では 4 検証はスキップ可。代わりに「リンク切れ・他ファイルとの参照整合・旧名称の残存がないこと」を grep 等で確認する。
 
 ### 3.2 エラー対応と品質維持
 - エラー発生時はエラーメッセージやスタックトレースから根本原因を特定し、最小限の範囲で修正する。
@@ -157,9 +163,13 @@ bash .agent/hooks/restore-sandbox-env.sh
 
 本プロジェクトで踏みやすい地雷と運用ルール。方針確定後に順次追記する。**計画書（`docs/planning/*PLAN.md`）に矛盾する指定があった場合は計画書を優先**する。計画書に無い事項は本節と [`docs/arch/`](docs/arch/README.md) を厳守する。**ADR（[`docs/arch/adr.md`](docs/arch/adr.md)）に反する実装はせず、人間に確認する。**
 
-### 6.1 環境・ツールチェーン（方針決定時に追記）
-- プロジェクトの言語・ランタイム・パッケージマネージャ・テストランナーが確定した際に本項を更新する。
-- ツールチェーンの選定理由や導入コマンドを記録する。
+### 6.1 環境・ツールチェーン
+- **ランタイム / パッケージ管理**: **bun**（`bun install` / `bun run` / `bunx`、ロックファイル `bun.lock`）。
+  - bun はサンドボックス再構築時に npm 経由で導入（`npm install -g bun@latest`、`restore-sandbox-env.sh`）。
+- **バックエンド API / プロキシ**: **Hono** + `youtubei.js`
+- **フロントエンド**: **Vite** + React + TypeScript（strict）+ Tailwind CSS + Lucide Icons
+- **Lint / Format**: Biome
+- **テストランナー**: Vitest（`bun run test:unit`）
 
 ### 6.2 サンドボックス制約（乗り越えず、迂回する）
 

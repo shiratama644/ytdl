@@ -15,19 +15,32 @@
 
 ## 1. プロジェクトの現状（事実）
 
-- **AgentシステムおよびDocsシステム基盤（Phase 0）**: 導入完了。
-- **プロジェクト方針（Phase 1）**: 現在方針策定中。目的や技術スタックの決定待ち。
+- **パッケージマネージャ**: **bun**（`bun.lock`）
+- **バックエンド**: Hono + `youtubei.js`（`server/index.ts`, `server/routes/*.ts`）
+- **フロントエンド**: Vite + React + TypeScript + Tailwind CSS（`src/`）
+- **テスト・品質保証**: Biome + Vitest（`bun run test:unit`, `bunx biome check .`, `bun run typecheck`, `bun run build` 全 PASS）
+- **Phase 1**: 実装・検証完了。ホーム/トレンド表示、検索、サジェスト、Range 対応ストリーミング再生、関連動画表示が動作可能。
 
-## 2. 次のアクション
+## 2. 起動コマンド
 
-1. ユーザーからの指示に基づき、プロジェクト方針（何を作るか・言語・ツールチェーン等）を確定する。
-2. 確定した方針を `docs/arch/`（`product.md`, `architecture.md`, `adr.md` 等）に反映する。
-3. `docs/task-list.md` に具体的な実装タスクを追加し、開発を進める。
+```bash
+# 開発時（サーバー + クライアント並列起動）
+bun run dev
 
-## 3. ドキュメント読み順（次セッション）
+# サーバー単体起動
+bun run dev:server    # または bun server/index.ts
 
-1. 本ファイル (`docs/planning/HANDOFF.md`)
-2. `AGENTS.md`
-3. `docs/task-list.md`
-4. `docs/arch/` 配下の仕様書
-5. `.agent/hooks/pre-task.md` → 必要なスキルのみ（`.agent/skills/index.md`）
+# クライアント単体起動
+bun run dev:client
+
+# 検証
+bun run typecheck
+bunx biome check .
+bun run test:unit
+bun run build
+```
+
+## 3. 次のアクション
+
+1. ユーザーからのフィードバック確認。
+2. Phase 2 拡張機能（チャンネル表示、プレイリスト、コメント表示、ローカル保存など）の実装計画策定。
