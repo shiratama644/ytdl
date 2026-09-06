@@ -5,8 +5,8 @@
  *
  * 実行順序:
  *   1. `bun install` で依存関係の最新化・確認
- *   2. `bun run build` (tsc + vite build) でクライアント SPA をビルド
- *   3. ビルド成功後、バックエンド API サーバーと Web クライアント (Vite preview) を並列起動
+ *   2. `bun run build` でクライアント SPA をビルド（Vite JS API on Bun）
+ *   3. ビルド成功後、バックエンド API サーバーと Web クライアント (Vite preview on Bun) を並列起動
  *   4. 各プロセスの標準出力・標準エラー出力を色分け（ANSI エスケープ）して表示
  */
 
@@ -103,7 +103,7 @@ async function main(): Promise<number> {
   }
   logLine("install", "Dependencies up to date.");
 
-  // ── 2. bun run build (tsc + vite build) ──────────────────────────────
+  // ── 2. bun run build (tsc + Vite JS API on Bun) ─────────────────────
   logLine("build", "Building client SPA (bun run build)...");
   const build = Bun.spawn(["bun", "run", "build"], {
     cwd: process.cwd(),
@@ -124,7 +124,7 @@ async function main(): Promise<number> {
   const serverProc = spawnProcess("server", ["bun", "server/index.ts"]);
 
   logLine("client", "Starting client preview server (port 4173)...");
-  const clientProc = spawnProcess("client", ["bun", "run", "preview"]);
+  const clientProc = spawnProcess("client", ["bun", "scripts/preview.ts"]);
 
   const children = [
     { name: "SERVER" as const, proc: serverProc },
