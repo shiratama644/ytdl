@@ -1,4 +1,5 @@
 import { type ChildProcess, spawn } from "node:child_process";
+import http from "node:http";
 import readline from "node:readline";
 
 /**
@@ -9,9 +10,9 @@ import readline from "node:readline";
  * 実行順序:
  *   1. `pnpm install` で依存関係を確認
  *   2. `pnpm run build` でクライアント SPA をビルド
- *   3. ビルド成功後、バックエンド API サーバー (tsx server/index.ts) と
- *      Web クライアント (vite preview) を並列起動
- *   4. 各プロセスの出力を色分けタグ付きでコンソール表示
+ *   3. バックエンド API サーバー (tsx server/index.ts) を起動
+ *   4. API サーバーのヘルスチェック成功後、Web クライアント (vite preview) を起動
+ *   5. 各プロセスの出力を色分けタグ付きでコンソール表示
  */
 
 // ── ANSI 色（ログの色分け） ──────────────────────────────────────────────
@@ -91,6 +92,45 @@ function startLongRunningProcess(kind: Kind, command: string, args: string[]): C
   return proc;
 }
 
+/** バックエンドのヘルスチェックを待機 */
+function waitForHealthCheck(url: string, maxAttempts = 30, intervalMs = 200): Promise<boolean> {
+  return new Promise((resolve) => {
+    let attempts = 0;
+
+    const check = () => {
+      attempts++;
+      const req = http.get(url, (res) => {
+        if (res.statusCode === 200) {
+          resolve(true);
+        } else if (attempts < maxAttempts) {
+          setTimeout(check, intervalMs);
+        } else {
+          resolve(false);
+        }
+      });
+
+      req.on("error", () => {
+        if (attempts < maxAttempts) {
+          setTimeout(check, intervalMs);
+        } else {
+          resolve(false);
+        }
+      });
+
+      req.setTimeout(1000, () => {
+        req.destroy();
+        if (attempts < maxAttempts) {
+          setTimeout(check, intervalMs);
+        } else {
+          resolve(false);
+        }
+      });
+    };
+
+    check();
+  });
+}
+
 async function main(): Promise<number> {
   console.log(`${BOLD}=== ytdl All-in-One Runner (pnpm) ===${RESET}`);
 
@@ -112,10 +152,14 @@ async function main(): Promise<number> {
   }
   logLine("build", "Build completed successfully.");
 
-  // ── 3. バックエンドサーバー & Web クライアントを並列起動 ────────────
+  // ── 3. バックエンドサーバー起動 ──────────────────────────────────────
   logLine("server", "Starting backend API server (port 3000)...");
   const serverProc = startLongRunningProcess("server", "npx", ["tsx", "server/index.ts"]);
 
+  // サーバーがリッスン開始するのを待機
+  await waitForHealthCheck("http://localhost:3000/api/health", 25, 200);
+
+  // ── 4. Web クライアント起動 ──────────────────────────────────────────
   logLine("client", "Starting client preview server (port 4173)...");
   const clientProc = startLongRunningProcess("client", "pnpm", ["run", "preview"]);
 

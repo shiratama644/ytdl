@@ -26,25 +26,7 @@ trendingRouter.get("/trending", async (c) => {
     lastError = err;
   }
 
-  // 2. フォールバック: browseId: 'FEtrending' (ネイティブ Trending Browse エンドポイント)
-  if (feedItems.length === 0) {
-    try {
-      const yt = await getInnertube("WEB");
-      const browseRes = await yt.actions.execute("/browse", { browseId: "FEtrending" });
-      const rawData = browseRes.data as Record<string, unknown>;
-      if (
-        rawData &&
-        typeof rawData === "object" &&
-        Array.isArray((rawData as { contents?: unknown }).contents)
-      ) {
-        feedItems = (rawData as { contents?: unknown[] }).contents || [];
-      }
-    } catch (err) {
-      lastError = err;
-    }
-  }
-
-  // 3. フォールバック: MWEB クライアントで getHomeFeed() を試行
+  // 2. フォールバック: MWEB クライアントで getHomeFeed() を試行
   if (feedItems.length === 0) {
     try {
       const ytMweb = await getInnertube("MWEB");
@@ -55,7 +37,7 @@ trendingRouter.get("/trending", async (c) => {
     }
   }
 
-  // 4. フォールバック: browseId: 'FEwhat_to_watch'
+  // 3. フォールバック: actions.execute('/browse', { browseId: 'FEwhat_to_watch' })
   if (feedItems.length === 0) {
     try {
       const yt = await getInnertube("WEB");
@@ -74,7 +56,7 @@ trendingRouter.get("/trending", async (c) => {
   }
 
   if (feedItems.length === 0 && lastError) {
-    console.error("[Trending] Error fetching trending/home feed:", lastError);
+    console.error("[Trending] Error fetching feed:", lastError);
     if (cached) {
       return c.json(cached);
     }

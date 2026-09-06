@@ -1,4 +1,7 @@
-import { ClientType, Innertube, UniversalCache } from "youtubei.js";
+import { ClientType, Innertube, Log, UniversalCache } from "youtubei.js";
+
+// 未知ノードの JIT 生成警告等の過剰ログを抑制
+Log.setLevel(Log.Level.ERROR);
 
 export type SupportedClientType = "WEB" | "MWEB" | "ANDROID" | "TV" | "IOS";
 
@@ -40,9 +43,8 @@ export async function getInnertube(clientType?: SupportedClientType): Promise<In
                 : ClientType.WEB;
 
       const yt = await Innertube.create({
-        // ディスクキャッシュにセッションおよび visitor データを永続化してデータセンター IP 等でのブロックを抑制
+        // ディスクキャッシュにセッションおよび visitor データを永続化
         cache: new UniversalCache(true, "./.cache/innertube"),
-        generate_session_locally: true,
         retrieve_player: false, // player decipher 抽出エラーを回避
         client_type: selectedClient,
         user_agent: DEFAULT_USER_AGENT,
