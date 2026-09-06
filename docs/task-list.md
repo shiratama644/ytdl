@@ -52,4 +52,4 @@
 | **P2-B** | 完全プロキシ（サムネイル・画像・ストリームの全量自サーバー中継） | 完了 | `d1e5af3` (`/api/proxy/image`, `/api/thumbnail/:id` 実装 & テスト) |
 | **P2-C** | IndexedDB (Dexie.js) による視聴履歴・お気に入り機能の実装 | 完了 | `d1e5af3` (`src/db/index.ts`, `HistoryPage.tsx`, `FavoritesPage.tsx`) |
 | **P2-D** | `scripts/execute.ts`（色分けログ、bun install → build → 並列起動）の実装 | 完了 | `d1e5af3` (`bun run start` 正常起動確認 :3000 & :4173) |
-| **P2-E** | `picomatch@^4.0.7` 最新版採用 & `bunx --bun vite` スクリプト修正 | 完了 | `5c51d9c` (`bun start` 全フロー正常完了) |
+| **P2-E** | `picomatch@2.3.1` (v2系) overrides 固定 & 本番ビルド安定化 | 完了 | `bun start` 全フロー正常完了 |
