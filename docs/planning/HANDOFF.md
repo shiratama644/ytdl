@@ -2,24 +2,20 @@
 
 - **セッション日時**: 2026-09-07
 - **ブランチ**: `arena/01a07701-ytdl`
-- **状態**: Phase 2 完了（完全プロキシ化、IndexedDB (Dexie.js)、一括起動スクリプト、TS2688 解決、pnpm 移行）
+- **状態**: Phase 2 完了（完全プロキシ化、IndexedDB (Dexie.js)、一括起動スクリプト、TS2688 解決、pnpm 移行、YouTube API ボットブロック耐性・フォールバック強化、DEP0190 解消）
 
 ---
 
-## 1. 実施内容サマリ
+## 1. 直近の改善内容
 
-1. **パッケージマネージャーの `pnpm` 移行**:
-   - `package.json` のスクリプト定義を `pnpm` / `tsx` に更新。
-   - `pnpm-workspace.yaml` を作成し `onlyBuiltDependencies` を適切に構成。
-   - `bun.lock` を削除し `pnpm-lock.yaml` を生成。
-2. **型定義エラー（TS2688）の恒久解決**:
-   - `tsconfig.json` と `tsconfig.test.json` を明確に分離し、production ビルド時の不要な型探索を抑止。
-3. **完全プロキシ (Full Proxy) 実装**:
-   - サムネイル (`/api/thumbnail/:id`)、画像 (`/api/proxy/image`)、メディアストリーム (`/api/stream/:id`) の全リクエストをバックエンド経由に中継。
-4. **IndexedDB 永続化 (Dexie.js)**:
-   - 視聴履歴 (`HistoryPage`)、お気に入り (`FavoritesPage`)、設定をブラウザの IndexedDB に永続化。
-5. **一括起動スクリプト (`scripts/execute.ts`)**:
-   - `pnpm start` 一発で `pnpm install` → `pnpm run build` → サーバー & クライアントを色分けタグ付きで並列起動。
+1. **DEP0190 非推奨警告の解消 (`scripts/execute.ts`)**:
+   - `spawn` 呼び出し時の `shell: true` と引数配列の併用を廃止し、OS に適した実行可能ファイルの解決と `shell: false` によるセキュアなプロセス起動に変更。
+2. **YouTube 400 エラー / ボット判定 / signature decipher 抽出失敗への対策**:
+   - `retrieve_player: false` を設定し、Innertube 初期化時の decipher パース失敗を抑制。
+   - `server/yt.ts` でマルチクライアント対応（WEB / ANDROID / TV / IOS / MWEB）を導入。
+   - `server/routes/trending.ts`, `search.ts`, `video.ts`, `stream.ts` において、リクエスト失敗時に別クライアント（ANDROID / TV）へ自動フォールバックするチェーンを構築。
+   - 短時間 TTL インメモリキャッシュ（`SimpleCache`）を導入し、過剰な YouTube リクエストによる IP レートリミットを抑制。
+   - API エラー発生時に 500 でクラッシュせず、グレースフルなレスポンスとフロントエンドでの再試行 UI（リトライボタン・親切なメッセージ）を提供。
 
 ---
 

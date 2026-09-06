@@ -1,6 +1,6 @@
-import { Grid, LayoutList, Loader2, Search } from "lucide-react";
+import { AlertCircle, Grid, LayoutList, Loader2, RefreshCw, Search } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { VideoItem } from "../../shared/types";
 import { VideoCard } from "../components/VideoCard";
 import { api } from "../services/api";
@@ -16,7 +16,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({ query, onVideoClick }) =
   const [error, setError] = useState<string | null>(null);
   const [layout, setLayout] = useState<"list" | "grid">("list");
 
-  useEffect(() => {
+  const executeSearch = useCallback(() => {
     if (!query) return;
 
     let isMounted = true;
@@ -29,12 +29,17 @@ export const SearchPage: React.FC<SearchPageProps> = ({ query, onVideoClick }) =
         if (isMounted) {
           setResults(items);
           setLoading(false);
+          if (items.length === 0) {
+            setError(
+              `「${query}」に一致する動画が見つかりませんでした。別のキーワードでお試しください。`,
+            );
+          }
         }
       })
       .catch((err) => {
         if (isMounted) {
           console.error("Search error:", err);
-          setError("検索中にエラーが発生しました。");
+          setError("検索中にエラーが発生しました。YouTube側のアクセス制限の可能性があります。");
           setLoading(false);
         }
       });
@@ -43,6 +48,11 @@ export const SearchPage: React.FC<SearchPageProps> = ({ query, onVideoClick }) =
       isMounted = false;
     };
   }, [query]);
+
+  useEffect(() => {
+    const cleanup = executeSearch();
+    return cleanup;
+  }, [executeSearch]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
@@ -54,7 +64,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({ query, onVideoClick }) =
             <span>「{query}」の検索結果</span>
           </h1>
           <p className="text-xs text-zinc-400 mt-0.5">
-            {loading ? "検索中..." : `${results.length} 件の動画が見つかりました`}
+            {loading ? "検索中..." : `${results.length} 件の動画`}
           </p>
         </div>
 
@@ -91,10 +101,19 @@ export const SearchPage: React.FC<SearchPageProps> = ({ query, onVideoClick }) =
         </div>
       )}
 
-      {/* エラー */}
+      {/* エラー / 結果なし */}
       {error && !loading && (
-        <div className="bg-red-950/30 border border-red-800/50 rounded-2xl p-6 text-center max-w-lg mx-auto">
-          <p className="text-red-400 font-medium text-sm mb-3">{error}</p>
+        <div className="bg-zinc-900/90 border border-zinc-700/60 rounded-2xl p-6 text-center max-w-lg mx-auto my-8">
+          <AlertCircle className="w-8 h-8 text-amber-400 mx-auto mb-2" />
+          <p className="text-zinc-300 font-medium text-sm mb-4 leading-relaxed">{error}</p>
+          <button
+            type="button"
+            onClick={executeSearch}
+            className="inline-flex items-center gap-1.5 text-xs bg-red-600 hover:bg-red-500 text-white font-medium px-4 py-2 rounded-lg transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>再試行</span>
+          </button>
         </div>
       )}
 
@@ -110,12 +129,6 @@ export const SearchPage: React.FC<SearchPageProps> = ({ query, onVideoClick }) =
           {results.map((video) => (
             <VideoCard key={video.id} video={video} onClick={onVideoClick} layout={layout} />
           ))}
-        </div>
-      )}
-
-      {!loading && !error && results.length === 0 && (
-        <div className="text-center py-20 text-zinc-500 text-sm">
-          該当する動画が見つかりませんでした。別のキーワードをお試しください。
         </div>
       )}
     </div>

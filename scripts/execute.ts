@@ -4,7 +4,7 @@ import readline from "node:readline";
 /**
  * 一括起動スクリプト (pnpm + Node.js / tsx 構成)。
  *
- *   pnpm start   （または `tsx scripts/execute.ts`）
+ *   pnpm start   （または `npx tsx scripts/execute.ts`）
  *
  * 実行順序:
  *   1. `pnpm install` で依存関係を確認
@@ -51,13 +51,24 @@ function pipeProcessOutput(kind: Kind, proc: ChildProcess): void {
   }
 }
 
-/** コマンドを非同期実行して終了コードを待つ */
+/** OS に合わせたコマンド名を解決 (Windows では .cmd を考慮) */
+function resolveCommand(cmd: string): string {
+  if (process.platform === "win32") {
+    if (cmd === "pnpm" || cmd === "npx" || cmd === "npm") {
+      return `${cmd}.cmd`;
+    }
+  }
+  return cmd;
+}
+
+/** コマンドを非同期実行して終了コードを待つ (shell: false で安全に実行) */
 function runCommand(kind: Kind, command: string, args: string[]): Promise<number> {
   return new Promise((resolve) => {
-    const proc = spawn(command, args, {
+    const resolvedCmd = resolveCommand(command);
+    const proc = spawn(resolvedCmd, args, {
       cwd: process.cwd(),
       stdio: ["inherit", "pipe", "pipe"],
-      shell: true,
+      shell: false,
     });
     pipeProcessOutput(kind, proc);
     proc.on("close", (code) => resolve(code ?? 0));
@@ -68,12 +79,13 @@ function runCommand(kind: Kind, command: string, args: string[]): Promise<number
   });
 }
 
-/** 常駐プロセスを起動 */
+/** 常駐プロセスを起動 (shell: false で安全に実行) */
 function startLongRunningProcess(kind: Kind, command: string, args: string[]): ChildProcess {
-  const proc = spawn(command, args, {
+  const resolvedCmd = resolveCommand(command);
+  const proc = spawn(resolvedCmd, args, {
     cwd: process.cwd(),
     stdio: ["inherit", "pipe", "pipe"],
-    shell: true,
+    shell: false,
   });
   pipeProcessOutput(kind, proc);
   return proc;

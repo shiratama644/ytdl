@@ -1,6 +1,6 @@
-import { Flame, Loader2, Sparkles } from "lucide-react";
+import { AlertCircle, Flame, Loader2, RefreshCw, Sparkles } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { VideoItem } from "../../shared/types";
 import { VideoCard } from "../components/VideoCard";
 import { api } from "../services/api";
@@ -14,7 +14,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onVideoClick }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchVideos = useCallback(() => {
     let isMounted = true;
     setLoading(true);
     setError(null);
@@ -25,12 +25,19 @@ export const HomePage: React.FC<HomePageProps> = ({ onVideoClick }) => {
         if (isMounted) {
           setVideos(items);
           setLoading(false);
+          if (items.length === 0) {
+            setError(
+              "YouTube からの動画取得が一時的に制限されているか、動画が見つかりませんでした。上の検索バーからキーワード検索をお試しください。",
+            );
+          }
         }
       })
       .catch((err) => {
         if (isMounted) {
           console.error("Error loading home videos:", err);
-          setError("動画一覧の読み込みに失敗しました。");
+          setError(
+            "動画一覧の取得に失敗しました。YouTube側のアクセス制限またはネットワークエラーの可能性があります。",
+          );
           setLoading(false);
         }
       });
@@ -39,6 +46,11 @@ export const HomePage: React.FC<HomePageProps> = ({ onVideoClick }) => {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    const cleanup = fetchVideos();
+    return cleanup;
+  }, [fetchVideos]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
@@ -62,17 +74,21 @@ export const HomePage: React.FC<HomePageProps> = ({ onVideoClick }) => {
         </div>
       )}
 
-      {/* エラー */}
+      {/* エラー / 制限通知 */}
       {error && !loading && (
-        <div className="bg-red-950/30 border border-red-800/50 rounded-2xl p-6 text-center max-w-lg mx-auto">
-          <p className="text-red-400 font-medium text-sm mb-3">{error}</p>
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="text-xs bg-red-600 hover:bg-red-500 text-white font-medium px-4 py-2 rounded-lg transition-colors"
-          >
-            再読み込み
-          </button>
+        <div className="bg-zinc-900/90 border border-zinc-700/60 rounded-2xl p-6 text-center max-w-lg mx-auto my-8 shadow-xl">
+          <AlertCircle className="w-8 h-8 text-amber-400 mx-auto mb-2" />
+          <p className="text-zinc-300 font-medium text-sm mb-4 leading-relaxed">{error}</p>
+          <div className="flex justify-center gap-3">
+            <button
+              type="button"
+              onClick={fetchVideos}
+              className="inline-flex items-center gap-1.5 text-xs bg-red-600 hover:bg-red-500 text-white font-medium px-4 py-2 rounded-lg transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>再試行</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -82,12 +98,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onVideoClick }) => {
           {videos.map((video) => (
             <VideoCard key={video.id} video={video} onClick={onVideoClick} layout="grid" />
           ))}
-        </div>
-      )}
-
-      {!loading && !error && videos.length === 0 && (
-        <div className="text-center py-20 text-zinc-500 text-sm">
-          表示できる動画がありません。上の検索バーから検索してください。
         </div>
       )}
     </div>
