@@ -26,8 +26,8 @@
 
 | ID | タスク内容 | 状態 | 完了条件 / 証拠 |
 |---|---|---|---|
-| **P0-A** | `AGENTS.md` および `.agent/` 記憶システムの構築 | 完了 | hooks/skills/logs 構造を配置 |
-| **P0-B** | `docs/` ドキュメント体系（arch/planning/task-list）の構築 | 完了 | テンプレートおよび索引を配置 |
+| **P0-A** | `AGENTS.md` および `.agent/` 記憶システムの構築 | 完了 | `deeb79b` (hooks/skills/logs 構造を配置) |
+| **P0-B** | `docs/` ドキュメント体系（arch/planning/task-list）の構築 | 完了 | `deeb79b` (テンプレートおよび索引を配置) |
 
 ---
 
