@@ -48,8 +48,8 @@
 
 | ID | タスク内容 | 状態 | 完了条件 / 証拠 |
 |---|---|---|---|
-| **P2-A** | TS2688 型エラーの根本解消（`tsconfig.json` の `compilerOptions.types` 設定） | 完了 | `tsc --noEmit` 0 error |
-| **P2-B** | 完全プロキシ（サムネイル・画像・ストリームの全量自サーバー中継） | 完了 | `/api/proxy/image`, `/api/thumbnail/:id` 実装 & ユニットテスト |
-| **P2-C** | IndexedDB (Dexie.js) による視聴履歴・お気に入り機能の実装 | 完了 | `src/db/index.ts`, `HistoryPage.tsx`, `FavoritesPage.tsx` |
-| **P2-D** | `scripts/execute.ts`（色分けログ、bun install → build → 並列起動）の実装 | 完了 | `bun run start` 正常起動確認 (:3000 & :4173) |
-| **P2-E** | 全検証（typecheck / biome / 11 tests / build） & コミット & プッシュ | 完了 | 11 tests passed, build pass, git push |
+| **P2-A** | TS2688 型エラーの根本解消（`tsconfig.json` の `compilerOptions.types` 設定） | 完了 | `d1e5af3` (`tsc --noEmit` 0 error) |
+| **P2-B** | 完全プロキシ（サムネイル・画像・ストリームの全量自サーバー中継） | 完了 | `d1e5af3` (`/api/proxy/image`, `/api/thumbnail/:id` 実装 & テスト) |
+| **P2-C** | IndexedDB (Dexie.js) による視聴履歴・お気に入り機能の実装 | 完了 | `d1e5af3` (`src/db/index.ts`, `HistoryPage.tsx`, `FavoritesPage.tsx`) |
+| **P2-D** | `scripts/execute.ts`（色分けログ、bun install → build → 並列起動）の実装 | 完了 | `d1e5af3` (`bun run start` 正常起動確認 :3000 & :4173) |
+| **P2-E** | 全検証（typecheck / biome / 11 tests / build） & コミット & プッシュ | 完了 | `d1e5af3` (11 tests passed, build pass, git push) |
