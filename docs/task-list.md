@@ -36,11 +36,11 @@
 
 | ID | タスク内容 | 状態 | 完了条件 / 証拠 |
 |---|---|---|---|
-| **P1-A** | プロジェクト初期化 & ツールチェーン構築（Bun / Vite / React / TS / Biome / Vitest） | 完了 | `package.json`, `bun.lock`, 設定ファイル群整備 |
-| **P1-B** | バックエンド YouTube プロキシ API 実装（Hono + `youtubei.js` + Range ストリーミング） | 完了 | `/api/search`, `/api/trending`, `/api/video/:id`, `/api/stream/:id` |
-| **P1-C** | フロントエンド Web クライアント実装（Home, Search, Watch, Player, 関連動画） | 完了 | SPA UI コンポーネントおよび画面 |
-| **P1-D** | テストスイート構築 & 4検証（typecheck / biome / test / build） | 完了 | 6 tests passed, build 成功 (177 kB) |
-| **P1-E** | 結合確認・ドキュメント更新・コミット・プッシュ | 完了 | サーバー起動確認 & git push |
+| **P1-A** | プロジェクト初期化 & ツールチェーン構築（Bun / Vite / React / TS / Biome / Vitest） | 完了 | `28ebd30` (`package.json`, `bun.lock`, 設定ファイル群整備) |
+| **P1-B** | バックエンド YouTube プロキシ API 実装（Hono + `youtubei.js` + Range ストリーミング） | 完了 | `28ebd30` (`/api/search`, `/api/trending`, `/api/video/:id`, `/api/stream/:id`) |
+| **P1-C** | フロントエンド Web クライアント実装（Home, Search, Watch, Player, 関連動画） | 完了 | `28ebd30` (SPA UI コンポーネントおよび画面) |
+| **P1-D** | テストスイート構築 & 4検証（typecheck / biome / test / build） | 完了 | `28ebd30` (6 tests passed, build 成功 177 kB) |
+| **P1-E** | 結合確認・ドキュメント更新・コミット・プッシュ | 完了 | `28ebd30` (サーバー起動確認 & git push) |
 
 ---
 
