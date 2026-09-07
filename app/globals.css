@@ -8,9 +8,12 @@
 @layer base {
   :root {
     color-scheme: light;
+    /* ガラス面（グラスモフィズム）のフォールバック。toneTokens / 動的カラーが反映される前の初期値。 */
+    --md-sys-color-surface-translucent: rgba(255, 255, 255, 0.7);
   }
   [data-theme='dark'] {
     color-scheme: dark;
+    --md-sys-color-surface-translucent: rgba(22, 27, 34, 0.75);
   }
 
   html,
@@ -58,6 +61,20 @@
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+
+  /* グラスモフィズム（設計仕様書）: 背面を透かすすりガラス + 極細ハイライトライン */
+  .glass {
+    background-color: var(--md-sys-color-surface-translucent);
+    -webkit-backdrop-filter: blur(20px) saturate(1.2);
+    backdrop-filter: blur(20px) saturate(1.2);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .glass-strong {
+    background-color: var(--md-sys-color-surface-translucent);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    backdrop-filter: blur(24px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 }
 

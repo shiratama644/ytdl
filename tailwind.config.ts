@@ -45,6 +45,8 @@ const config: Config = {
         'surface-container-highest': 'var(--md-sys-color-surface-container-highest)',
         'on-surface': 'var(--md-sys-color-on-surface)',
         'on-surface-variant': 'var(--md-sys-color-on-surface-variant)',
+        // ガラス面（グラスモフィズム）: toneTokens で定義した半透明 surface
+        'surface-translucent': 'var(--md-sys-color-surface-translucent)',
       },
       // Indesignative / inverse
       inverseSurface: 'var(--md-sys-color-inverse-surface)',
@@ -68,6 +70,9 @@ const config: Config = {
         'm3-elevation-3': 'var(--md-sys-elevation-3)',
         'm3-elevation-4': 'var(--md-sys-elevation-4)',
         'm3-elevation-5': 'var(--md-sys-elevation-5)',
+        // ソフトシャドウ（設計仕様書: 高拡散・高透明の多重レイヤー / Ambient Occlusion 的）
+        'soft': '0 1px 2px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.06), 0 16px 40px rgba(0,0,0,0.08)',
+        'soft-lg': '0 2px 4px rgba(0,0,0,0.05), 0 6px 18px rgba(0,0,0,0.08), 0 24px 60px rgba(0,0,0,0.12)',
       },
       fontFamily: {
         display: ['var(--md-sys-font-display)', 'system-ui', 'sans-serif'],
