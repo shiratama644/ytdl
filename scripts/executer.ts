@@ -16,9 +16,12 @@
  * ## 実行環境の上書き
  *   YTDL_BUNDLER=auto|webpack|turbopack   … ビルダーを明示指定（既定: auto）
  *
- * ## ステップのスキップ（テスト・部分実行用）
- *   node scripts/executer.ts --no-install --no-build --no-start
- *   （--start を外すとサーバーを起動せずに終了する）
+ * ## 実行方法
+ *   pnpm launch                  # 通常起動（環境判定 → install → build → start）
+ *   pnpm launch -- --no-install --no-build --no-start   # ステップをスキップ（テスト・部分実行用）
+ *
+ *   # 直接 node で実行する場合（pnpm launch と同じ）
+ *   node scripts/executer.ts [オプション]
  */
 
 import { spawn } from 'node:child_process';
@@ -119,7 +122,9 @@ function parseArgs(argv: string[]): Options {
     start: true,
   };
   for (const arg of argv) {
-    if (arg === '--no-install') opts.install = false;
+    // pnpm が script 引数を `--` 区切りで渡す場合があるため、`--` 自体は無視する。
+    if (arg === '--') continue;
+    else if (arg === '--no-install') opts.install = false;
     else if (arg === '--no-build') opts.build = false;
     else if (arg === '--no-start') opts.start = false;
     else if (arg === '--install') opts.install = true;
@@ -149,7 +154,8 @@ function printUsage(): void {
 pnpm install / pnpm build / pnpm start を実行します。
 
   使い方:
-    node scripts/executer.ts [オプション]
+    pnpm launch [オプション]
+    node  scripts/executer.ts [オプション]   (直接実行、pnpm launch と同じ)
 
   オプション:
     --no-install          pnpm install をスキップ

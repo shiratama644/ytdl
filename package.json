@@ -11,6 +11,7 @@
   "packageManager": "pnpm@12.3.4",
   "scripts": {
     "dev": "next dev",
+    "launch": "node scripts/executer.ts",
     "build": "next build",
     "start": "next start",
     "lint": "biome lint .",

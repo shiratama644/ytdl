@@ -51,12 +51,12 @@ lib/
 ├── theme.ts            # M3 動的カラートークン算出
 ├── types.ts            # 共有型定義
 └── stores/             # Zustand stores（theme / player / download）
-scripts/executer.ts     # 環境判定ビルド/起動スクリプト（`import.meta.main` ガード）
+scripts/executer.ts     # 環境判定ビルド/起動スクリプト（`import.meta.main` ガード / `pnpm launch` で実行）
 __tests__/              # ソースと同階層の単体テスト
 types/                  # 追加の型定義（videojs-contrib-dash 等）
 ```
 
 ## 主なエントリポイント
 
-- `scripts/executer.ts` — Termux / Proot-Distro か通常 OS かを判定し、webpack / Turbopack を自動選択して `pnpm install → build → start` を実行。
+- `scripts/executer.ts` — Termux / Proot-Distro か通常 OS かを判定し、webpack / Turbopack を自動選択して `pnpm install → build → start` を実行。実行は `pnpm launch`（`package.json` の `launch` スクリプト経由）。
 - `app/api/watch/[videoId]/route.ts` — 動画情報（視聴・ダウンロード用フォーマット・チャプター・コメント・関連動画）を返す。

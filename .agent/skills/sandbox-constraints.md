@@ -22,4 +22,4 @@
 ## ビルド
 
 - `next build` はローカルで完結する。外部 API（YouTube 等）へ到達できなくても exit 0 なら成功扱い。
-- `scripts/executer.ts` は Termux / Proot-Distro を判定してバンドラ（webpack / Turbopack）を切り替える。`--no-install --no-build --no-start` でステップをスキップできる。
+- `scripts/executer.ts` は Termux / Proot-Distro を判定してバンドラ（webpack / Turbopack）を切り替える。実行は `pnpm launch`、`--no-install --no-build --no-start` でステップをスキップできる（`pnpm launch -- --no-install ...` の `--` は executer が無視する）。

@@ -1,5 +1,16 @@
 import { describe, it, expect, afterEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { isTermuxOrProot } from '@/scripts/executer';
+
+describe('package.json launch script', () => {
+  it('`pnpm launch` は scripts/executer.ts を実行する', () => {
+    const pkg = JSON.parse(
+      readFileSync(resolve(process.cwd(), 'package.json'), 'utf8'),
+    ) as { scripts?: Record<string, string> };
+    expect(pkg.scripts?.launch).toBe('node scripts/executer.ts');
+  });
+});
 
 describe('isTermuxOrProot', () => {
   const originalEnv = { ...process.env };
