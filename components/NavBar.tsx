@@ -57,14 +57,14 @@ export function NavBar() {
         </form>
 
         <div className="flex items-center gap-1 shrink-0">
-          <button
+          <button type="button"
             onClick={toggleMode}
             aria-label="テーマ切替"
             className="grid place-items-center h-10 w-10 rounded-m3-full hover:bg-surface-container-high text-on-surface-variant"
           >
             <Icon name={mounted && mode === 'light' ? 'sun' : 'moon'} size={20} />
           </button>
-          <button
+          <button type="button"
             onClick={() => setDynamic(dynamic === 'off' ? 'seed' : 'off')}
             aria-label="ダイナミックカラー"
             className={`grid place-items-center h-10 w-10 rounded-m3-full hover:bg-surface-container-high text-on-surface-variant ${

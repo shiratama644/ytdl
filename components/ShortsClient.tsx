@@ -36,16 +36,16 @@ export function ShortsClient({ videoId }: { videoId: string }) {
           </div>
           {/* 左のアクションバー */}
           <div className="absolute right-2 bottom-24 flex flex-col gap-4 text-white">
-            <button className="grid place-items-center h-11 w-11 rounded-m3-full bg-black/50" aria-label="いいね">
+            <button type="button" className="grid place-items-center h-11 w-11 rounded-m3-full bg-black/50" aria-label="いいね">
               <Icon name="thumb-up" size={22} />
             </button>
-            <button className="grid place-items-center h-11 w-11 rounded-m3-full bg-black/50" aria-label="コメント">
+            <button type="button" className="grid place-items-center h-11 w-11 rounded-m3-full bg-black/50" aria-label="コメント">
               <Icon name="comment" size={22} />
             </button>
-            <button className="grid place-items-center h-11 w-11 rounded-m3-full bg-black/50" aria-label="共有">
+            <button type="button" className="grid place-items-center h-11 w-11 rounded-m3-full bg-black/50" aria-label="共有">
               <Icon name="share" size={22} />
             </button>
-            <button className="grid place-items-center h-11 w-11 rounded-m3-full bg-black/50" aria-label="その他">
+            <button type="button" className="grid place-items-center h-11 w-11 rounded-m3-full bg-black/50" aria-label="その他">
               <Icon name="more" size={22} />
             </button>
           </div>

@@ -118,6 +118,7 @@ export function SearchClient() {
       {status === 'pending' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-6">
           {Array.from({ length: 9 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static loading skeleton has no stable unique identity.
             <div key={i} className="animate-pulse">
               <div className="aspect-video rounded-m3-md bg-surface-container-high" />
               <div className="mt-3 h-4 w-3/4 rounded-m3-xs bg-surface-container-high" />
@@ -139,8 +140,8 @@ export function SearchClient() {
       {status === 'success' && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-6">
-            {items.map((item, i) =>
-              item.type === 'video' ? <VideoCard key={`${(item as any).videoId}-${i}`} video={item as any} /> : null,
+            {items.map((item) =>
+              item.type === 'video' ? <VideoCard key={(item as any).videoId} video={item as any} /> : null,
             )}
           </div>
           {items.length === 0 && (

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { getInnertube } from '@/lib/innertube';
 import { serializeFeedNode } from '@/lib/serialize';
 import { continuationCache } from '@/lib/continuation-cache';
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
   try {
     const yt = await getInnertube();
 
-    let search;
+    let search: Awaited<ReturnType<typeof yt.search>>;
     let nextToken: string | undefined;
 
     if (continuation) {

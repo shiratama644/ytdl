@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import Image from 'next/image';
 import { Icon } from '@/components/ui/icons';
-import { Button } from '@/components/ui/Button';
 import type { CommentsResponse, CommentData } from '@/lib/types';
 
 export function CommentsSection({ videoId }: { videoId: string }) {
@@ -67,7 +66,7 @@ export function CommentsSection({ videoId }: { videoId: string }) {
           )}
         </h2>
         <div className="flex gap-1">
-          <button
+          <button type="button"
             onClick={() => setSort('TOP_COMMENTS')}
             className={`h-8 px-3 rounded-m3-full text-label-medium ${
               sort === 'TOP_COMMENTS' ? 'bg-secondary-container text-on-secondary-container' : 'hover:bg-surface-container-high'
@@ -75,7 +74,7 @@ export function CommentsSection({ videoId }: { videoId: string }) {
           >
             トップ順
           </button>
-          <button
+          <button type="button"
             onClick={() => setSort('NEWEST_FIRST')}
             className={`h-8 px-3 rounded-m3-full text-label-medium ${
               sort === 'NEWEST_FIRST' ? 'bg-secondary-container text-on-secondary-container' : 'hover:bg-surface-container-high'
@@ -89,6 +88,7 @@ export function CommentsSection({ videoId }: { videoId: string }) {
       {status === 'pending' && (
         <div className="space-y-4 mt-4">
           {Array.from({ length: 3 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static loading skeleton has no stable unique identity.
             <div key={i} className="animate-pulse flex gap-3">
               <div className="h-10 w-10 rounded-m3-full bg-surface-container-high" />
               <div className="flex-1 space-y-2">
@@ -111,9 +111,9 @@ export function CommentsSection({ videoId }: { videoId: string }) {
       )}
 
       <div className="mt-4 space-y-5">
-        {comments.map((c, i) => (
+        {comments.map((c) => (
           <CommentItem
-            key={`${c.commentId}-${i}`}
+            key={c.commentId}
             comment={c}
             expanded={!!expanded[c.commentId]}
             onToggle={() => toggleExpand(c.commentId)}
@@ -173,15 +173,15 @@ function CommentItem({
             </span>
           ) : null}
           {comment.replyCount != null && comment.replyCount > 0 && (
-            <button onClick={onToggle} className="hover:text-primary text-label-medium">
+            <button type="button" onClick={onToggle} className="hover:text-primary text-label-medium">
               {expanded ? '返信を折りたたむ' : `${comment.replyCount} 件の返信`}
             </button>
           )}
         </div>
         {expanded && comment.replies && comment.replies.length > 0 && (
           <div className="mt-3 pl-2 border-l-2 border-outline-variant space-y-3">
-            {comment.replies.map((r, i) => (
-              <CommentItem key={`${r.commentId}-${i}`} comment={r} expanded={false} onToggle={() => {}} />
+            {comment.replies.map((r) => (
+              <CommentItem key={r.commentId} comment={r} expanded={false} onToggle={() => {}} />
             ))}
           </div>
         )}

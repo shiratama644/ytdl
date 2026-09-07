@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { downloadQueue } from '@/lib/download-queue';
 import { z } from 'zod';
 

@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useDownloadStore } from '@/lib/stores/download';
-import { Button } from '@/components/ui/Button';
 import { Icon, type IconName } from '@/components/ui/icons';
 import { formatBytes, formatEta, formatSpeed } from '@/lib/format';
 import type { DownloadJob } from '@/lib/types';
@@ -49,7 +48,7 @@ export function DownloadTray() {
         const data = await res.json();
         if (aborted) return;
         if (data.jobs) {
-          (data.jobs as DownloadJob[]).forEach((j) => useDownloadStore.getState().updateJob(j));
+          (data.jobs as DownloadJob[]).forEach((j) => void useDownloadStore.getState().updateJob(j));
         }
       } catch {
         /* ignore */
@@ -74,7 +73,7 @@ export function DownloadTray() {
     <>
       {supported && (
         <div className="fixed bottom-6 left-6 z-50">
-          <button
+          <button type="button"
             onClick={() => setOpen((v) => !v)}
             className="inline-flex items-center gap-2 h-14 pl-4 pr-5 rounded-m3-xl bg-primary-container text-on-primary-container shadow-m3-elevation-3 hover:shadow-m3-elevation-4 transition-shadow"
           >
@@ -98,7 +97,7 @@ export function DownloadTray() {
       {supported && open && createPortal(
         <div className="fixed inset-0 z-[60] flex items-end justify-center" role="dialog" aria-modal="true">
           {/* Scrim */}
-          <button
+          <button type="button"
             aria-label="閉じる"
             className="absolute inset-0 bg-black/50"
             onClick={() => setOpen(false)}
@@ -107,7 +106,7 @@ export function DownloadTray() {
             <div className="p-4 border-b border-outline-variant">
               <div className="flex items-center justify-between">
                 <h2 className="text-title-large">ダウンロードキュー</h2>
-                <button onClick={() => setOpen(false)} className="grid place-items-center h-10 w-10 rounded-m3-full hover:bg-surface-container-highest">
+                <button type="button" onClick={() => setOpen(false)} className="grid place-items-center h-10 w-10 rounded-m3-full hover:bg-surface-container-highest">
                   <Icon name="close" size={20} />
                 </button>
               </div>
@@ -148,7 +147,7 @@ function ConcurrencyControl() {
   return (
     <div className="flex items-center gap-1">
       {[1, 2, 3, 4, 5, 6].map((n) => (
-        <button
+        <button type="button"
           key={n}
           onClick={() => apply(n)}
           className={`grid place-items-center h-8 w-8 rounded-m3-full text-label-medium ${
@@ -213,12 +212,12 @@ function JobRow({ job }: { job: DownloadJob }) {
       </div>
       <div className="flex flex-col gap-1 shrink-0">
         {isActive && (
-          <button onClick={cancel} className="grid place-items-center h-9 w-9 rounded-m3-full hover:bg-surface-container-highest" aria-label="キャンセル">
+          <button type="button" onClick={cancel} className="grid place-items-center h-9 w-9 rounded-m3-full hover:bg-surface-container-highest" aria-label="キャンセル">
             <Icon name="stop" size={18} />
           </button>
         )}
         {(job.status === 'done' || job.status === 'error' || job.status === 'cancelled') && (
-          <button onClick={remove} className="grid place-items-center h-9 w-9 rounded-m3-full hover:bg-surface-container-highest" aria-label="削除">
+          <button type="button" onClick={remove} className="grid place-items-center h-9 w-9 rounded-m3-full hover:bg-surface-container-highest" aria-label="削除">
             <Icon name="remove" size={18} />
           </button>
         )}

@@ -48,6 +48,7 @@ export function LiveClient({ videoId }: { videoId: string }) {
   });
 
   // 新しいメッセージで下へスクロール（ユーザーが上にいる間は停止）
+  // biome-ignore lint/correctness/useExhaustiveDependencies: messages changes drive the auto-scroll, even though the effect body doesn't read it directly.
   useEffect(() => {
     const el = chatRef.current;
     if (!el || paused) return;
@@ -117,7 +118,7 @@ export function LiveClient({ videoId }: { videoId: string }) {
           ))}
         </div>
         {paused && (
-          <button
+          <button type="button"
             onClick={() => {
               const el = chatRef.current;
               if (el) el.scrollTop = el.scrollHeight;
@@ -141,6 +142,7 @@ function useLiveChat(
   const [connected, setConnected] = useState(false);
   const [active, setActive] = useState(true);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: onMessage/onEvent are unstable inline callbacks; including them would tear down & reopen the EventSource on every render.
   useEffect(() => {
     const es = new EventSource(`/api/live/${videoId}/chat`);
     es.onopen = () => setConnected(true);

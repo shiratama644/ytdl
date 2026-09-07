@@ -42,6 +42,7 @@ export function VideoPlayer({
   const playerRef = useRef<any>(null);
   const [quality, setQuality] = useState<string>('auto');
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: player is initialized once per source; re-running on inline callback/option changes would dispose & recreate video.js on every render.
   useEffect(() => {
     if (!videoRef.current) return;
     let disposed = false;
@@ -129,6 +130,7 @@ export function VideoPlayer({
 
   return (
     <div className="relative w-full overflow-hidden rounded-m3-lg bg-surface-dim">
+      {/* biome-ignore lint/a11y/useMediaCaption: caption tracks are provided dynamically by video.js at runtime; no static <track> is available. */}
       <video ref={videoRef} className="video-js vjs-big-play-centered" playsInline />
       {qualityOptions.length > 0 && (
         <div className="absolute top-2 right-2 z-20">

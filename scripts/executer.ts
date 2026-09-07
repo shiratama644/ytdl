@@ -301,4 +301,8 @@ for (const sig of ['SIGINT', 'SIGTERM'] as const) {
   });
 }
 
-void main();
+// 実行起点は import.meta.main で判定する（Node v24+）。
+// 単体テストからこのモジュールを import した場合に main() を走らせないため。
+if (import.meta.main) {
+  void main();
+}

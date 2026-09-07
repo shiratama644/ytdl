@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { getInnertube } from '@/lib/innertube';
 import { serializeComments } from '@/lib/serialize';
 import { continuationCache } from '@/lib/continuation-cache';
@@ -28,7 +28,7 @@ export async function GET(
   try {
     const yt = await getInnertube();
 
-    let comments;
+    let comments: Awaited<ReturnType<typeof yt.getComments>>;
     let nextToken: string | undefined;
 
     if (continuation && !changeSort) {

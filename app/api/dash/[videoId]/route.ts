@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { getInnertube } from '@/lib/innertube';
 import { z } from 'zod';
 

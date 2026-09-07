@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { getInnertube } from '@/lib/innertube';
 import { serializeFeedNode, thumbnailsFrom, textToString } from '@/lib/serialize';
 import { continuationCache } from '@/lib/continuation-cache';

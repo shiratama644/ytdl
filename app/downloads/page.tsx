@@ -41,7 +41,7 @@ export default function DownloadsPage() {
         if (!res.ok) return;
         const data = await res.json();
         if (aborted) return;
-        if (data.jobs) (data.jobs as DownloadJob[]).forEach((j) => useDownloadStore.getState().updateJob(j));
+        if (data.jobs) (data.jobs as DownloadJob[]).forEach((j) => void useDownloadStore.getState().updateJob(j));
         if (data.concurrency) setConcurrencyStore(data.concurrency);
       } catch {
         /* ignore */
@@ -136,13 +136,13 @@ function JobCard({ job }: { job: DownloadJob }) {
       </div>
       <div className="flex md:flex-col gap-2 shrink-0 items-start">
         {isActive && (
-          <button onClick={cancel} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-m3-full hover:bg-surface-container-high text-on-surface-variant">
+          <button type="button" onClick={cancel} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-m3-full hover:bg-surface-container-high text-on-surface-variant">
             <Icon name="stop" size={16} />
             キャンセル
           </button>
         )}
         {(job.status === 'done' || job.status === 'error' || job.status === 'cancelled') && (
-          <button onClick={remove} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-m3-full hover:bg-surface-container-high text-on-surface-variant">
+          <button type="button" onClick={remove} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-m3-full hover:bg-surface-container-high text-on-surface-variant">
             <Icon name="remove" size={16} />
             削除
           </button>

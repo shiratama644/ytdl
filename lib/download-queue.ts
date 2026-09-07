@@ -161,8 +161,8 @@ class DownloadQueue {
   }
 
   private emit(job: DownloadJob): void {
-    this.listeners.get(job.id)?.forEach((cb) => cb(structuredClone(job)));
-    this.globalListeners.forEach((cb) => cb(structuredClone(job)));
+    this.listeners.get(job.id)?.forEach((cb) => void cb(structuredClone(job)));
+    this.globalListeners.forEach((cb) => void cb(structuredClone(job)));
   }
 
   private globalEmit(): void {

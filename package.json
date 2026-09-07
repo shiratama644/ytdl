@@ -4,12 +4,22 @@
   "private": true,
   "type": "module",
   "description": "YouTubeの代替視聴・ダウンロードサイト（プロキシ経由 / Material 3 Expressive）",
+  "engines": {
+    "node": ">=24.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@12.3.4",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "lint": "biome lint .",
+    "lint:fix": "biome lint . --write",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@material/material-color-utilities": "0.4.0",
@@ -28,14 +38,24 @@
     "zustand": "5.0.15"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.12",
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.7",
     "@types/fluent-ffmpeg": "2.1.28",
     "@types/node": "24.13.3",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
     "@types/video.js": "7.3.58",
+    "@vitejs/plugin-react": "6.1.1",
+    "@vitest/coverage-v8": "5.0.0",
     "autoprefixer": "10.5.5",
+    "fake-indexeddb": "6.2.5",
+    "jsdom": "30.0.1",
     "postcss": "8.5.28",
     "tailwindcss": "3.4.19",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "5.0.0"
   }
 }

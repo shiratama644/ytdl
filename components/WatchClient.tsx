@@ -119,7 +119,7 @@ export function WatchClient({ videoId }: { videoId: string }) {
               </div>
             </div>
             <div className="flex-1" />
-            <button
+            <button type="button"
               onClick={() => setOpenDownload(true)}
               className="inline-flex items-center gap-2 h-11 px-5 rounded-m3-full bg-primary text-on-primary hover:brightness-95 text-label-large"
             >
@@ -151,6 +151,7 @@ export function WatchClient({ videoId }: { videoId: string }) {
                 <h3 className="text-label-large mb-2">チャプター</h3>
                 <ul className="space-y-1">
                   {(data.chapters ?? []).map((c, i) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: chapters have no stable unique id; index is the only safe key.
                     <li key={i} className="text-body-small text-on-surface-variant">
                       <span className="text-primary font-medium">{formatDurationSeconds(c.start)}</span>{' '}
                       {c.title}
@@ -162,6 +163,7 @@ export function WatchClient({ videoId }: { videoId: string }) {
             {(data.tags ?? []).length > 0 && (
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {(data.tags ?? []).map((t, i) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: duplicate tags are possible; index keeps keys unique.
                   <span key={`${t}-${i}`} className="text-label-small text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded-m3-xs">
                     #{t}
                   </span>
@@ -177,8 +179,8 @@ export function WatchClient({ videoId }: { videoId: string }) {
       {/* 関連動画 */}
       <aside className="space-y-4">
         <h2 className="text-title-medium">関連動画</h2>
-        {(data.related ?? []).filter((r) => r.type === 'video').map((item, i) => (
-          <VideoCard key={`${(item as any).videoId}-${i}`} video={item as any} />
+        {(data.related ?? []).filter((r) => r.type === 'video').map((item) => (
+          <VideoCard key={(item as any).videoId} video={item as any} />
         ))}
         {(data.related ?? []).length === 0 && (
           <p className="text-body-small text-on-surface-variant">

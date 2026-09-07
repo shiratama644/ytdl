@@ -103,11 +103,11 @@ export function DownloadDialog({
 
   return createPortal(
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <button aria-label="閉じる" className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <button type="button" aria-label="閉じる" className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative w-full max-w-lg max-h-[85vh] overflow-y-auto bg-surface-container-high rounded-m3-xl rounded-m3-xl-inc shadow-m3-elevation-4 p-6">
         <div className="flex items-center justify-between">
           <h2 className="text-title-large">ダウンロード</h2>
-          <button onClick={onClose} className="grid place-items-center h-10 w-10 rounded-m3-full hover:bg-surface-container-highest">
+          <button type="button" onClick={onClose} className="grid place-items-center h-10 w-10 rounded-m3-full hover:bg-surface-container-highest">
             <Icon name="close" size={20} />
           </button>
         </div>
@@ -122,7 +122,7 @@ export function DownloadDialog({
               { id: 'audio', label: '音声のみ' },
             ] as const
           ).map((m) => (
-            <button
+            <button type="button"
               key={m.id}
               onClick={() => setMode(m.id)}
               className={`flex-1 h-10 rounded-m3-md text-label-large ${
@@ -139,12 +139,12 @@ export function DownloadDialog({
         {/* 映像品質 */}
         {!isAudioOnly && (
           <div className="mt-5">
-            <label className="text-label-medium text-on-surface-variant">映像品質</label>
+            <span className="block text-label-medium text-on-surface-variant">映像品質</span>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {videoOptions.map((f) => {
                 const sel = (selectedVideo?.itag ?? videoItag) === f.itag;
                 return (
-                  <button
+                  <button type="button"
                     key={f.itag}
                     onClick={() => setVideoItag(f.itag)}
                     className={`px-3 py-2 rounded-m3-md text-body-small text-left ${
@@ -174,12 +174,12 @@ export function DownloadDialog({
         {/* 音声品質 */}
         {!isVideoOnly(mode) && (
           <div className="mt-5">
-            <label className="text-label-medium text-on-surface-variant">音声品質</label>
+            <span className="block text-label-medium text-on-surface-variant">音声品質</span>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {audioOptions.map((f) => {
                 const sel = (selectedAudio?.itag ?? audioItag) === f.itag;
                 return (
-                  <button
+                  <button type="button"
                     key={f.itag}
                     onClick={() => setAudioItag(f.itag)}
                     className={`px-3 py-2 rounded-m3-md text-body-small text-left ${
@@ -207,10 +207,10 @@ export function DownloadDialog({
 
         {/* コンテナ */}
         <div className="mt-5">
-          <label className="text-label-medium text-on-surface-variant">出力コンテナ</label>
+          <span className="block text-label-medium text-on-surface-variant">出力コンテナ</span>
           <div className="mt-2 flex flex-wrap gap-2">
             {containers.map((c) => (
-              <button
+              <button type="button"
                 key={c.id}
                 onClick={() => setContainer(c.id)}
                 className={`h-9 px-4 rounded-m3-full text-label-large ${

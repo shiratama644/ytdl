@@ -68,6 +68,7 @@ export default function HomePage() {
       {status === 'pending' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-6">
           {Array.from({ length: 12 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static loading skeleton has no stable unique identity.
             <div key={i} className="animate-pulse">
               <div className="aspect-video rounded-m3-md bg-surface-container-high" />
               <div className="mt-3 flex gap-2.5">
@@ -97,8 +98,8 @@ export default function HomePage() {
       {status === 'success' && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-6">
-            {items.map((item, i) =>
-              item.type === 'video' ? <VideoCard key={`${item.videoId}-${i}`} video={item} /> : null,
+            {items.map((item) =>
+              item.type === 'video' ? <VideoCard key={item.videoId} video={item} /> : null,
             )}
           </div>
           {items.length === 0 && (

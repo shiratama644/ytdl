@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { getInnertube } from '@/lib/innertube';
 import { textToString, bestThumbnail, thumbnailsFrom } from '@/lib/serialize';
 import { z } from 'zod';

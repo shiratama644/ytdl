@@ -100,7 +100,7 @@ export function ChannelClient({ channelId }: { channelId: string }) {
       {/* タブ切替 */}
       <div className="flex gap-1 overflow-x-auto border-b border-outline-variant pb-0">
         {availableTabs.map((t) => (
-          <button
+          <button type="button"
             key={t}
             onClick={() => setTab(t)}
             className={`relative px-4 h-11 text-label-large whitespace-nowrap ${
@@ -126,8 +126,8 @@ export function ChannelClient({ channelId }: { channelId: string }) {
           )}
           {data.about?.links?.length ? (
             <div className="pt-2 space-y-1">
-              {data.about.links.map((l, i) => (
-                <a key={i} href={l.url} className="block text-primary hover:underline">
+              {data.about.links.map((l) => (
+                <a key={l.url} href={l.url} className="block text-primary hover:underline">
                   {l.title}
                 </a>
               ))}
@@ -137,8 +137,8 @@ export function ChannelClient({ channelId }: { channelId: string }) {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-6">
-          {feed.map((item, i) =>
-            item.type === 'video' ? <VideoCard key={`${(item as any).videoId}-${i}`} video={item as any} /> : null,
+          {feed.map((item) =>
+            item.type === 'video' ? <VideoCard key={(item as any).videoId} video={item as any} /> : null,
           )}
           {feed.length === 0 && (
             <p className="col-span-full text-body-medium text-on-surface-variant text-center py-16">
