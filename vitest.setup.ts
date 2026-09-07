@@ -2,10 +2,14 @@
  * Vitest グローバルセットアップ
  *
  * - @testing-library/jest-dom の matchers を追加 (toBeInTheDocument 等)
+ * - fake-indexeddb をグローバル登録（Dexie.js / IndexedDB のテスト用）
  * - 各テストの前後で React tree を reset し、NODE_ENV を明示
  */
 
 import '@testing-library/jest-dom/vitest';
+// IndexedDB を jsdom で使えるようにする（Dexie.js のテスト用）。
+// Dexie を import する前にグローバル登録する必要がある。
+import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 

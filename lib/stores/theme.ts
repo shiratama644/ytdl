@@ -1,6 +1,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { DEFAULT_SEED, generateDynamicTheme, applyThemeTokens, type ThemeMode } from '@/lib/theme';
+import {
+  DEFAULT_SEED,
+  DEFAULT_TONE,
+  generateDynamicTheme,
+  applyThemeTokens,
+  toneTokens,
+  type ThemeMode,
+  type ToneId,
+} from '@/lib/theme';
 
 export type ThemePreference = ThemeMode | 'system';
 export type ThemeDynamic = 'off' | 'seed' | 'thumbnail';
@@ -11,9 +19,12 @@ interface ThemeState {
   dynamic: ThemeDynamic;
   /** サムネイルから抽出した動的シードカラー */
   seed: string;
+  /** プリセット・カラートーン（動的カラーが off のとき使用） */
+  tone: ToneId;
   setPreference: (p: ThemePreference) => void;
   setDynamic: (d: ThemeDynamic) => void;
   setSeed: (seed: string) => void;
+  setTone: (tone: ToneId) => void;
   toggleMode: () => void;
   apply: () => void;
 }
@@ -30,6 +41,7 @@ export const useThemeStore = create<ThemeState>()(
       mode: 'dark',
       dynamic: 'off',
       seed: DEFAULT_SEED,
+      tone: DEFAULT_TONE,
       setPreference: (p) => {
         set({ preference: p });
         get().apply();
@@ -42,27 +54,36 @@ export const useThemeStore = create<ThemeState>()(
         set({ seed });
         get().apply();
       },
+      setTone: (tone) => {
+        set({ tone });
+        get().apply();
+      },
       toggleMode: () => {
         const next: ThemeMode = get().mode === 'dark' ? 'light' : 'dark';
         set({ mode: next, preference: next });
         get().apply();
       },
       apply: () => {
-        const { preference, dynamic, seed } = get();
+        const { preference, dynamic, seed, tone } = get();
         const mode: ThemeMode =
           preference === 'system' ? systemMode() : preference;
-        // dynamic が 'off' なら既定ブランド、それ以外はユーザー/サムネイル由来のシードを使用
-        const dynamicSeed = dynamic === 'off' ? DEFAULT_SEED : seed;
 
         set({ mode });
         const html = document.documentElement;
         html.setAttribute('data-theme', mode);
 
-        // 動的トークンはブラウザのみで計算（SSR では計算しない）
+        // ブラウザのみでトークンを反映（SSR では計算しない）
         if (typeof window !== 'undefined') {
-          void generateDynamicTheme(dynamicSeed, mode).then((tokens) =>
-            applyThemeTokens(tokens),
-          );
+          if (dynamic === 'off') {
+            // プリセット・カラートーン（設計仕様書の base/surface/accent）
+            const tokens = toneTokens(tone, mode);
+            applyThemeTokens(tokens);
+          } else {
+            // 動的カラー（seed / thumbnail）を従来どおり使用（共存）
+            void generateDynamicTheme(seed, mode).then((tokens) =>
+              applyThemeTokens(tokens),
+            );
+          }
         }
       },
     }),
@@ -72,6 +93,7 @@ export const useThemeStore = create<ThemeState>()(
         preference: s.preference,
         dynamic: s.dynamic,
         seed: s.seed,
+        tone: s.tone,
       }),
     },
   ),

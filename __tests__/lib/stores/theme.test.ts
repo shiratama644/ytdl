@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { ThemeMode } from '@/lib/theme';
+import type { ThemeMode, ToneId } from '@/lib/theme';
 
 // lib/theme.ts は material-color-utilities を dynamic import し、
 // その内部 import が拡張子なしのため厳格な Node ESM では解決できない。
@@ -22,31 +22,35 @@ describe('useThemeStore (state transitions)', () => {
       mode: 'dark',
       dynamic: 'off',
       seed: '#a01c2f',
+      tone: 'obsidian-frost',
     });
   });
 
-  it('既定値 (system / dark / off / DEFAULT_SEED)', () => {
+  it('既定値 (system / dark / off / DEFAULT_SEED / DEFAULT_TONE)', () => {
     const s = useThemeStore.getState();
     expect(s.preference).toBe('system');
     expect(s.mode).toBe('dark');
     expect(s.dynamic).toBe('off');
     expect(s.seed).toBe('#a01c2f');
+    expect(s.tone).toBe('obsidian-frost');
+  });
+
+  it('setSeed / setDynamic / setPreference / setTone を更新する', () => {
+    useThemeStore.getState().setSeed('#112233');
+    useThemeStore.getState().setDynamic('thumbnail');
+    useThemeStore.getState().setPreference('light');
+    useThemeStore.getState().setTone('smoky-quartz' as ToneId);
+    const s = useThemeStore.getState();
+    expect(s.seed).toBe('#112233');
+    expect(s.dynamic).toBe('thumbnail');
+    expect(s.preference).toBe('light');
+    expect(s.tone).toBe('smoky-quartz');
   });
 
   it('toggleMode は dark ⇔ light を切替え、preference も同期する', () => {
     useThemeStore.getState().toggleMode();
     const s = useThemeStore.getState();
     expect(s.mode).toBe('light');
-    expect(s.preference).toBe('light');
-  });
-
-  it('setSeed / setDynamic / setPreference を更新する', () => {
-    useThemeStore.getState().setSeed('#112233');
-    useThemeStore.getState().setDynamic('thumbnail');
-    useThemeStore.getState().setPreference('light');
-    const s = useThemeStore.getState();
-    expect(s.seed).toBe('#112233');
-    expect(s.dynamic).toBe('thumbnail');
     expect(s.preference).toBe('light');
   });
 
