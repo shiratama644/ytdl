@@ -1,14 +1,17 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { isTermuxOrProot } from '@/scripts/executer';
+import { lstatSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { buildCacheRoot, isTermuxOrProot, setupBuildCache } from '@/scripts/executer';
 
 describe('package.json launch script', () => {
-  it('`pnpm launch` は scripts/executer.ts を実行する', () => {
+  it('`pnpm launch` は strip-types + ExperimentalWarning 抑制付きで scripts/executer.ts を実行する', () => {
     const pkg = JSON.parse(
       readFileSync(resolve(process.cwd(), 'package.json'), 'utf8'),
     ) as { scripts?: Record<string, string> };
-    expect(pkg.scripts?.launch).toBe('node scripts/executer.ts');
+    expect(pkg.scripts?.launch).toBe(
+      'node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/executer.ts',
+    );
   });
 });
 
@@ -50,5 +53,54 @@ describe('isTermuxOrProot', () => {
     delete process.env.ANDROID_DATA;
     process.env.ANDROID_ROOT = '/system';
     expect(isTermuxOrProot()).toBe(true);
+  });
+});
+
+describe('build cache (buildCacheRoot / setupBuildCache)', () => {
+  const originalEnv = { ...process.env };
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  it('buildCacheRoot は既定で <root>/.cache/next-build を返す', () => {
+    delete process.env.YTDL_BUILD_CACHE_DIR;
+    const root = resolve(process.cwd(), 'scripts', '..');
+    expect(buildCacheRoot(root)).toBe(resolve(root, '.cache', 'next-build'));
+  });
+
+  it('buildCacheRoot は YTDL_BUILD_CACHE_DIR で上書きできる', () => {
+    process.env.YTDL_BUILD_CACHE_DIR = '.cache-custom';
+    const root = resolve(process.cwd(), 'scripts', '..');
+    expect(buildCacheRoot(root)).toBe(resolve(root, '.cache-custom'));
+  });
+
+  it('setupBuildCache は .next/cache を永続ディレクトリへの symlink にする', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'ytdl-cache-'));
+    try {
+      process.env.YTDL_BUILD_CACHE_DIR = '.cache-custom';
+      const cacheDir = setupBuildCache(tmp);
+      const nextCache = resolve(tmp, '.next', 'cache');
+      expect(cacheDir).toBe(resolve(tmp, '.cache-custom', 'next-cache'));
+      expect(lstatSync(nextCache).isSymbolicLink()).toBe(true);
+      expect(realpathSync(nextCache)).toBe(resolve(tmp, '.cache-custom', 'next-cache'));
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it('setupBuildCache は既に正しい symlink なら再利用する', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'ytdl-cache-'));
+    try {
+      process.env.YTDL_BUILD_CACHE_DIR = '.cache-custom';
+      const first = setupBuildCache(tmp);
+      const second = setupBuildCache(tmp);
+      const nextCache = resolve(tmp, '.next', 'cache');
+      expect(first).toBe(second);
+      expect(lstatSync(nextCache).isSymbolicLink()).toBe(true);
+      expect(realpathSync(nextCache)).toBe(resolve(tmp, '.cache-custom', 'next-cache'));
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
   });
 });

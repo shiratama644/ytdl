@@ -15,6 +15,14 @@
  *
  * ## 実行環境の上書き
  *   YTDL_BUNDLER=auto|webpack|turbopack   … ビルダーを明示指定（既定: auto）
+ *   YTDL_BUILD_CACHE_DIR=<path>           … ビルドキャッシュの永続先を変更（既定: <root>/.cache/next-build）
+ *
+ * ## ビルドキャッシュ
+ *   Next.js のビルドキャッシュ（webpack / turbopack 共通の `.next/cache`）を
+ *   `.cache/next-build/next-cache` への symlink に差し替えて永続化する。`.next` を
+ *   再生成・削除してもキャッシュは失われない。
+ *   - Webpack: `.next/cache/webpack` の filesystem キャッシュが永続化される。
+ *   - Turbopack: `next build --turbopack` が書く `.next/cache`（.tsbuildinfo 等）が永続化される。
  *
  * ## 実行方法
  *   pnpm launch                  # 通常起動（環境判定 → install → build → start）
@@ -25,7 +33,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -111,6 +119,69 @@ function resolveBundler(preference: Bundler): 'webpack' | 'turbopack' {
 }
 
 /* ----------------------------------------------------------------------------
+ * ビルドキャッシュ（webpack / turbopack 共通）の永続化
+ * ------------------------------------------------------------------------- */
+
+/**
+ * 永続ビルドキャッシュのルートを返す。
+ * `YTDL_BUILD_CACHE_DIR` が指定されていればそれを、無ければ `<root>/.cache/next-build` を使う。
+ * 既定値は `.cache/`（gitignore 済み）配下で、`.next` を消しても失われない。
+ */
+export function buildCacheRoot(root = ROOT): string {
+  const env = process.env.YTDL_BUILD_CACHE_DIR;
+  if (env) return resolve(root, env);
+  return resolve(root, '.cache', 'next-build');
+}
+
+/**
+ * Next.js のビルドキャッシュ（webpack / turbopack 共通の `.next/cache`）を失われない場所へ
+ * 誘導する。`.next/cache` を `<root>/.cache/next-build/next-cache` への symlink に差し替えることで、
+ * `.next` の再生成・削除でもキャッシュは永続ディレクトリに残る。
+ *
+ * - 失敗してもビルドは継続できる（キャッシュなしにフォールバック）。警告のみ出す。
+ * - ビルドキャッシュディレクトリは使い捨てなので、既存の実体は退避してから symlink 化する。
+ *
+ * @returns 実際に永続化したキャッシュディレクトリ（失敗時は null）
+ */
+export function setupBuildCache(root = ROOT): string | null {
+  const cacheRoot = buildCacheRoot(root);
+  const cacheDir = resolve(cacheRoot, 'next-cache');
+  const nextDir = resolve(root, '.next');
+  const nextCache = resolve(nextDir, 'cache');
+
+  try {
+    mkdirSync(cacheDir, { recursive: true });
+    mkdirSync(nextDir, { recursive: true });
+
+    // 既に .next/cache が cacheDir を指す symlink なら再利用する。
+    try {
+      const st = lstatSync(nextCache);
+      if (st.isSymbolicLink() && realpathSync(nextCache) === cacheDir) {
+        log('cache', `既存のキャッシュを利用します: ${cacheDir}`);
+        return cacheDir;
+      }
+    } catch {
+      /* .next/cache はまだ存在しない */
+    }
+
+    // 実体（通常のディレクトリや別の symlink）がある場合は退避してから差し替える。
+    if (existsSync(nextCache)) {
+      rmSync(nextCache, { recursive: true, force: true });
+    }
+    symlinkSync(cacheDir, nextCache);
+    log('cache', `ビルドキャッシュを永続化しました: ${cacheDir}`);
+    return cacheDir;
+  } catch (error) {
+    warn(
+      `ビルドキャッシュの永続化に失敗しました（キャッシュなしで継続します）: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+    return null;
+  }
+}
+
+/* ----------------------------------------------------------------------------
  * 引数パース
  * ------------------------------------------------------------------------- */
 
@@ -167,7 +238,8 @@ pnpm install / pnpm build / pnpm start を実行します。
     -h, --help            このヘルプを表示
 
   環境変数:
-    YTDL_BUNDLER=auto|webpack|turbopack  (自作のビルダー指定)${RESET}`);
+    YTDL_BUNDLER=auto|webpack|turbopack  (自作のビルダー指定)
+    YTDL_BUILD_CACHE_DIR=<path>          (ビルドキャッシュの永続先、既定 .cache/next-build)${RESET}`);
 }
 
 /* ----------------------------------------------------------------------------
@@ -278,6 +350,10 @@ async function main(): Promise<void> {
     }
 
     if (opts.build) {
+      // ビルドキャッシュ（webpack / turbopack 共通）を永続ディレクトリへ誘導する。
+      // 失敗しても cache なしでビルドを継続する。
+      setupBuildCache();
+
       const buildArgs = bundler === 'turbopack'
         ? ['exec', 'next', 'build', '--turbopack']
         : ['exec', 'next', 'build'];

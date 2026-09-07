@@ -23,3 +23,5 @@
 
 - `next build` はローカルで完結する。外部 API（YouTube 等）へ到達できなくても exit 0 なら成功扱い。
 - `scripts/executer.ts` は Termux / Proot-Distro を判定してバンドラ（webpack / Turbopack）を切り替える。実行は `pnpm launch`、`--no-install --no-build --no-start` でステップをスキップできる（`pnpm launch -- --no-install ...` の `--` は executer が無視する）。
+- **ビルドキャッシュ**: ビルド時に `.next/cache` を `<root>/.cache/next-build/next-cache` への symlink に差し替えて永続化する（`setupBuildCache`）。`YTDL_BUILD_CACHE_DIR` で永続先を変更可能。`.cache/` は gitignore 済み。失敗時は警告のみでビルドを継続する。
+  - stable の Next.js 15.5.25 では `experimental.turbopackPersistentCaching` は canary 専用のため**使用しない**（設定するとビルドエラー）。Turbopack のキャッシュは `next build --turbopack` 自体が `.next/cache` に書く。
