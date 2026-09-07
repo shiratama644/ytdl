@@ -58,7 +58,18 @@ pnpm start
 
 # 型チェック
 pnpm typecheck
+
+# Lint（Biome）
+pnpm lint
+
+# 単体テスト（Vitest）
+pnpm test:unit
+
+# カバレッジ（per-file threshold は未設定、全体のみ）
+pnpm test:coverage
 ```
+
+> `pnpm test` は watch モードです。commit 前の 1 回実行には `pnpm test:unit`（=`vitest run`）を使ってください。
 
 > `ffmpeg-static` はインストール時にバイナリを取得します。取得できない環境では
 > `FFMPEG_BIN` 環境変数でバイナリパスを指定するか、システムの `ffmpeg` を PATH に
@@ -95,6 +106,19 @@ styles/
 types/
   videojs-contrib-dash.d.ts
 ```
+
+## 開発規約・ドキュメント
+
+- [`AGENTS.md`](./AGENTS.md) — AI Agent 向けの開発規約（コミット手順・検証・Git 運用・コミュニケーション）。外部リポジトリ `github.com/shiratama644/dropmod` の規約を ytdl の技術スタックに合わせて翻案したものです。
+- [`docs/README.md`](./docs/README.md) — ドキュメント索引（計画書 / 運用 / 監査）。
+- [`.agent/`](./.agent/) — Agent の記憶システム（`skills/` コードベース知識・`hooks/` 定型ワークフロー・`logs/` 実行記録）。構造・規約は dropmod から導入し、コンテンツは ytdl 向けに書き直しています。
+
+## テスト
+
+- **配置**: ソースと**同じ階層構造**で `__tests__/` に配置します（例: `lib/serialize.ts` → `__tests__/lib/serialize.test.ts`）。
+- **ランナー**: Vitest 5 + jsdom 30 + @testing-library/react 16 + @testing-library/jest-dom 7 + fake-indexeddb。
+- **設定**: `vitest.config.ts` / `vitest.setup.ts` / `tsconfig.test.json`。
+- 詳細は [`.agent/skills/testing.md`](./.agent/skills/testing.md) を参照してください。
 
 ## ボット対策に関する注記
 
