@@ -109,9 +109,9 @@ types/
 
 ## 開発規約・ドキュメント
 
-- [`AGENTS.md`](./AGENTS.md) — AI Agent 向けの開発規約（コミット手順・検証・Git 運用・コミュニケーション）。外部リポジトリ `github.com/shiratama644/dropmod` の規約を ytdl の技術スタックに合わせて翻案したものです。
-- [`docs/README.md`](./docs/README.md) — ドキュメント索引（計画書 / 運用 / 監査）。
-- [`.agent/`](./.agent/) — Agent の記憶システム（`skills/` コードベース知識・`hooks/` 定型ワークフロー・`logs/` 実行記録）。構造・規約は dropmod から導入し、コンテンツは ytdl 向けに書き直しています。
+- [`AGENTS.md`](./AGENTS.md) — AI Agent 向けの開発規約（コミット手順・検証・Git 運用・コミュニケーション・ytdl 固有の知見）。
+- [`docs/README.md`](./docs/README.md) — ドキュメント索引（計画書 / 運用）。
+- [`.agent/`](./.agent/) — Agent の記憶システム（`skills/` コードベース知識・`hooks/` 定型ワークフロー・`logs/` 実行記録）。ytdl 専用のコンテンツ。
 
 ## テスト
 

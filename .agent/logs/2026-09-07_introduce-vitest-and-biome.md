@@ -1,4 +1,4 @@
-# vitest 5 + biome 2.5.12 導入、`__tests__` 実装、 dropmod ドキュメント導入
+# vitest 5 + biome 2.5.12 導入、`__tests__` 実装、開発規約・ドキュメント整備
 
 > Date: 2026-09-07(JST) / Commit: `db78f74` (vitest+biome) / Branch: `arena/01a0778c-ytdl`
 
@@ -7,7 +7,8 @@
 - vitest 5 と biome 2.5.12 を導入する。
 - テストファイルは `__tests__/` にソースと同じ階層構造で実装する。
 - 実装完了後に typecheck / lint / build / Git 更新を行う。
-- `github.com/shiratama644/dropmod` の `AGENTS.md` と `.agent/` フォルダ、`docs/`、`README.md` をこのリポジトリにコピーし、汎用性のあるものと本リポジトリに適しているものを見つけ、修正・翻案して導入する。
+- 開発規約（`AGENTS.md`）・エージェント記憶システム（`.agent/`）・ドキュメント索引（`docs/`）・`README.md` を導入し、
+  汎用性のあるものと本リポジトリに適しているものを見つけ、修正して ytdl 専用にする。
 
 ## 2. 実行内容 (Executed Actions)
 
@@ -20,7 +21,7 @@
 | 5 | lint エラーを解消（button type / 安定キー / biome-ignore 等、挙動は維持） | 完了（0 error） |
 | 6 | `scripts/executer.ts` に `import.meta.main` ガードを追加（テストから import しても main() を走らせない） | 完了 |
 | 7 | typecheck / lint / test / build を実行 | 全て PASS |
-| 8 | dropmod の `AGENTS.md`・`.agent/`・`docs/`・`README.md` を翻案して導入 | 完了 |
+| 8 | `AGENTS.md`・`.agent/`・`docs/`・`README.md` を導入し、ytdl の技術スタックに合わせて翻案 | 完了 |
 
 ## 3. 気づいたこと・知見 (Insights & Lessons Learned)
 

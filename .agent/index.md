@@ -17,5 +17,5 @@
 - **commit 前検証**: [`hooks/verify-before-commit.md`](./hooks/verify-before-commit.md)。
 - **タスク完了後**: [`hooks/log-task.md`](./hooks/log-task.md) でログ作成 + 知見を `skills/` へ同期。
 
-> このシステムは `github.com/shiratama644/dropmod` の `.agent/` から構造・規約を導入し、
-> コンテンツを ytdl 向けに書き直したものです。dropmod 固有の skills/logs（Modrinth・フェーズ計画等）は保持していません。
+コードベース知識（`skills/`）は **ytdl 専用**の内容で、`youtubei.js`・video.js / dashjs・ffmpeg ダウンロード・
+Zustand stores・`__tests__` 規約等を扱います。
