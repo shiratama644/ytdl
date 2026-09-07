@@ -19,6 +19,13 @@
 
 - `window.matchMedia` / `ResizeObserver` / `IntersectionObserver` / `EventSource` 等は jsdom に実装されていないものがある。`vitest.setup.ts` でスタブするか、テスト内で `vi.stubGlobal` or モックする。
 
+## TypeScript のビルド型（重要: aria-query / TS2688）
+
+- `@testing-library/dom@10.4.1`（devDependency）は `@types/aria-query@5.0.4` を推移的依存する。
+- ビルド用 `tsconfig.json` で `types` 未指定だと、TypeScript は `node_modules/@types` 配下の**全 `@types/*` を暗黙インクルード**する。Termux / Proot 等の環境で `@types/aria-query` が hoist されると `Cannot find type definition file for 'aria-query'`（TS2688）で `next build` が失敗する。
+- **対策**: ビルド用 `tsconfig.json` の `compilerOptions.types` を `["node","react","react-dom"]` に明示し、自動インクルードを止める。アプリ本体が必要とするグローバル型はこの 3 つだけ（video.js / fluent-ffmpeg はモジュール import 経由で解決されるため影響なし）。
+- テスト専用 `@types`（`@testing-library/*` 等）はビルドに混入させない。テスト側は `tsconfig.test.json` に分離済み。
+
 ## ビルド
 
 - `next build` はローカルで完結する。外部 API（YouTube 等）へ到達できなくても exit 0 なら成功扱い。

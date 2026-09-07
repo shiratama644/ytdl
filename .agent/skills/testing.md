@@ -6,9 +6,9 @@
 
 - **vitest 5.0.0** + **@vitest/coverage-v8 5.0.0** + **jsdom 30** + **@testing-library/react 16** + **@testing-library/jest-dom 7** + **fake-indexeddb 6**。
 - 設定ファイル:
-  - `vitest.config.ts` — `environment: 'jsdom'`、`setupFiles: ['./vitest.setup.ts']`、`include: ['__tests__/**/*.test.{ts,tsx}']`、`@` alias を `./` に解決。
+  - `vitest.config.ts` — `environment: 'jsdom'`、`globals: false`、`setupFiles: ['./vitest.setup.ts']`、`include: ['__tests__/**/*.test.{ts,tsx}']`、`@` alias を `./` に解決。
   - `vitest.setup.ts` — `@testing-library/jest-dom/vitest` を import。`window.matchMedia` の no-op スタブ。
-  - `tsconfig.test.json` — `types: ['vitest/globals', '@testing-library/jest-dom', 'node']`。テスト + 依存を typecheck。
+  - `tsconfig.test.json` — `types: ['@testing-library/jest-dom', 'node']`（`vitest/globals` は globals: false のため含めない）。テスト + 依存を typecheck。
 
 ## `__tests__` 階層規約
 
@@ -28,7 +28,7 @@
 
 ## 書き方のポイント
 
-- `import { describe, it, expect } from 'vitest';` を明示 import（`globals: true` でも明示推奨）。
+- `import { describe, it, expect } from 'vitest';` を明示 import（`globals: false` のため、**必ず明示 import**。`.beforeEach` / `.afterEach` / `vi` も同様）。
 - 純粋ロジック（format / serialize / continuation-cache 等）はモックなしで検証。
 - `window.matchMedia` は jsdom に無いため `vitest.setup.ts` でスタブ。
 - Browser API（`fetch` / `EventSource` / `IntersectionObserver` / `ResizeObserver`）は必要に応じて `vi.stubGlobal` or モック。

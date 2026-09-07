@@ -108,7 +108,7 @@ export function isTermuxOrProot(): boolean {
 
 /** 実行環境の表示名（ログ用）。 */
 function platformName(): string {
-  return isTermuxOrProot() ? 'Termux / Proot-Distro (Android)' : '通常の OS';
+  return isTermuxOrProot() ? 'Termux / Proot-Distro (Android)' : 'Regular OS';
 }
 
 /**
@@ -122,7 +122,7 @@ export function resolveBundler(preference: Bundler): 'webpack' | 'turbopack' {
   // 常に webpack を使用する（本リポジトリは serverExternalPackages の外部解決を webpack に依存）。
   if (isTermuxOrProot()) {
     if (preference === 'turbopack') {
-      warn('Termux / Proot-Distro では Turbopack は使用できません。webpack を使用します。');
+      warn('Turbopack is not available on Termux / Proot-Distro. Falling back to webpack.');
     }
     return 'webpack';
   }
@@ -170,7 +170,7 @@ export function setupBuildCache(root = ROOT): string | null {
     try {
       const st = lstatSync(nextCache);
       if (st.isSymbolicLink() && realpathSync(nextCache) === cacheDir) {
-        log('cache', `既存のキャッシュを利用します: ${cacheDir}`);
+        log('cache', `Reusing existing build cache: ${cacheDir}`);
         return cacheDir;
       }
     } catch {
@@ -182,11 +182,11 @@ export function setupBuildCache(root = ROOT): string | null {
       rmSync(nextCache, { recursive: true, force: true });
     }
     symlinkSync(cacheDir, nextCache);
-    log('cache', `ビルドキャッシュを永続化しました: ${cacheDir}`);
+    log('cache', `Persisted build cache to: ${cacheDir}`);
     return cacheDir;
   } catch (error) {
     warn(
-      `ビルドキャッシュの永続化に失敗しました（キャッシュなしで継続します）: ${
+      `Failed to persist the build cache (continuing without cache): ${
         error instanceof Error ? error.message : String(error)
       }`,
     );
@@ -221,7 +221,7 @@ function parseArgs(argv: string[]): Options {
       printUsage();
       process.exit(0);
     } else {
-      warn(`未知の引数: ${arg}、無視します。`);
+      warn(`Unknown argument: ${arg}. Ignoring.`);
     }
   }
   // 環境変数による上書き（CLI 引数が無ければ環境変数を優先）
@@ -234,25 +234,25 @@ function parseArgs(argv: string[]): Options {
 
 function printUsage(): void {
   info(`${BOLD}ytdl executer${RESET}
-実行環境（Termux/Proot-Distro か通常OSか）を判定し、ビルダーを自動選択して
-pnpm install / pnpm build / pnpm start を実行します。
+Detects the environment (Termux/Proot-Distro or a regular OS), selects the
+Bundler, and runs pnpm install / pnpm build / pnpm start.
 
-  使い方:
-    pnpm launch [オプション]
-    node  scripts/executer.ts [オプション]   (直接実行、pnpm launch と同じ)
+  Usage:
+    pnpm launch [options]
+    node  scripts/executer.ts [options]   (direct run, same as pnpm launch)
 
-  オプション:
-    --no-install          pnpm install をスキップ
-    --no-build            pnpm build をスキップ
-    --no-start            pnpm start をスキップ（サーバーを起動しない）
-    --bundler=webpack     ビルダーを webpack に固定
-    --bundler=turbopack   ビルダーを Turbopack に固定（Termux/Proot-Distro では使用不可 → webpack）
-    --bundler=auto        環境に応じて自動選択（既定。モバイルでは常に webpack）
-    -h, --help            このヘルプを表示
+  Options:
+    --no-install          skip pnpm install
+    --no-build            skip pnpm build
+    --no-start            skip pnpm start (do not start the server)
+    --bundler=webpack     force the webpack bundler
+    --bundler=turbopack   force the Turbopack bundler (unavailable on Termux/Proot-Distro → webpack)
+    --bundler=auto        auto-select by environment (default; always webpack on mobile)
+    -h, --help            print this help
 
-  環境変数:
-    YTDL_BUNDLER=auto|webpack|turbopack  (自作のビルダー指定)
-    YTDL_BUILD_CACHE_DIR=<path>          (ビルドキャッシュの永続先、既定 .cache/next-build)${RESET}`);
+  Environment variables:
+    YTDL_BUNDLER=auto|webpack|turbopack  (override the bundler)
+    YTDL_BUILD_CACHE_DIR=<path>          (build cache directory, default .cache/next-build)${RESET}`);
 }
 
 /* ----------------------------------------------------------------------------
@@ -277,7 +277,7 @@ function runCommand(command: string, args: string[], label: string): Promise<voi
       });
     }
     child.on('error', (err) => {
-      reject(new Error(`「${command}」の起動に失敗しました: ${err.message}`));
+      reject(new Error(`Failed to start "${command}": ${err.message}`));
     });
     child.on('close', (code) => {
       if (code === 0) {
@@ -286,8 +286,8 @@ function runCommand(command: string, args: string[], label: string): Promise<voi
         const detail = stderr.trim().split('\n').slice(-3).join(' ').slice(0, 300);
         reject(
           new Error(
-            `「${command}」が終了コード ${code} で失敗しました。${
-              detail ? ` 詳細: ${detail}` : ''
+            `"${command}" exited with code ${code}.${
+              detail ? `  Detail: ${detail}` : ''
             }`,
           ),
         );
@@ -301,8 +301,8 @@ async function runPnpm(args: string[], label: string): Promise<void> {
   try {
     await runCommand('pnpm', args, label);
   } catch (error) {
-    if (error instanceof Error && /起動に失敗|ENOENT|command not found/i.test(error.message)) {
-      warn('pnpm が見つからないため corepack でフォールバックします。');
+    if (error instanceof Error && /Failed to start|ENOENT|command not found/i.test(error.message)) {
+      warn('pnpm not found; falling back to corepack.');
       await runCommand('corepack', ['pnpm', ...args], label);
     } else {
       throw error;
@@ -323,10 +323,10 @@ async function installDependencies(): Promise<void> {
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     // ビルドスクリプト起因（ffmpeg-static 等）の失敗のみフォールバック
-    if (/ビルドスクリプト|build script|IGNORED_BUILDS|LIFECYCLE_SCRIPT_FAILED|TLS|certificate|UNABLE_TO_VERIFY|エラー|install/i.test(msg)) {
+    if (/build script|IGNORED_BUILDS|LIFECYCLE_SCRIPT_FAILED|TLS|certificate|UNABLE_TO_VERIFY|install/i.test(msg)) {
       warn(
-        '依存関係のビルドスクリプト（ffmpeg-static 等）を実行できませんでした。\n' +
-          '        ビルドスクリプトをスキップして再実行します。ffmpeg はシステムのバイナリを利用します。',
+        'Failed to run the dependency build scripts (e.g. ffmpeg-static).\n' +
+          '        Skipping build scripts and retrying. ffmpeg will use the system binary.',
       );
       await runPnpm(['install', '--ignore-scripts'], 'install (--ignore-scripts)');
     } else {
@@ -351,7 +351,7 @@ async function main(): Promise<void> {
   console.log(`${'='.repeat(60)}${RESET}`);
 
   if (!existsSync(resolve(ROOT, 'package.json'))) {
-    fail('package.json が見つかりません。リポジトリルートで実行してください。');
+    fail('package.json not found. Run this from the repository root.');
     process.exit(1);
   }
 
@@ -359,7 +359,7 @@ async function main(): Promise<void> {
     if (opts.install) {
       await installDependencies();
     } else {
-      log('install', 'スキップ');
+      log('install', 'Skipped');
     }
 
     if (opts.build) {
@@ -373,14 +373,14 @@ async function main(): Promise<void> {
       // webpack は既定ビルダーなので、明示的に --turbopack を付けない。
       await runPnpm(buildArgs, 'build');
     } else {
-      log('build', 'スキップ');
+      log('build', 'Skipped');
     }
 
     if (opts.start) {
       // pnpm start はサーバーを起動してブロックする（完了しない）。
       await runPnpm(['start'], 'start');
     } else {
-      log('start', 'スキップ（サーバーを起動しません）');
+      log('start', 'Skipped (server will not be started)');
     }
   } catch (error) {
     fail(error instanceof Error ? error.message : String(error));
@@ -391,7 +391,7 @@ async function main(): Promise<void> {
 // シグナルを子プロセスへ伝播（Ctrl+C 等）
 for (const sig of ['SIGINT', 'SIGTERM'] as const) {
   process.on(sig, () => {
-    info(`\n${sig} を受信しました。終了します。`);
+    info(`\nReceived ${sig}. Shutting down.`);
     process.exit(0);
   });
 }

@@ -17,7 +17,10 @@ export default defineConfig({
     // Node 24 (undici v7) の fetch が jsdom 由来の AbortSignal を拒否する問題
     // (vitest#8374) は vitest 4 以降で上流解決済みのため、素の 'jsdom' を使う。
     environment: 'jsdom',
-    globals: true,
+    // テストは vitest のグローバルを自動注入せず、各ファイルで明示 import する。
+    // これにより tsconfig の types にテスト専用型を足し忘れても「なぜか型エラー」に
+    // ならない（globals に依存しない）。ビルド側 tsconfig へテスト型が漏れるのも防ぐ。
+    globals: false,
     setupFiles: ['./vitest.setup.ts'],
     include: ['__tests__/**/*.test.{ts,tsx}'],
     exclude: ['node_modules/**', '.next/**', 'coverage/**', 'out/**'],

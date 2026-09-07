@@ -1,8 +1,9 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    // globals: false（vitest.config.ts）に合わせ、vitest/globals は types に含めない。
+    // テストは vitest を明示 import するため、ここでは jest-dom matcher と node 型のみ。
     "types": [
-      "vitest/globals",
       "@testing-library/jest-dom",
       "node"
     ]
