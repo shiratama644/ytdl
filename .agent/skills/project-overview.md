@@ -59,5 +59,5 @@ types/                  # 追加の型定義（videojs-contrib-dash 等）
 
 ## 主なエントリポイント
 
-- `scripts/executer.ts` — Termux / Proot-Distro か通常 OS かを判定し、webpack / Turbopack を自動選択して `pnpm install → build → start` を実行。実行は `pnpm launch`（`package.json` の `launch` スクリプト経由、`--experimental-strip-types` 付き）。ビルド時に `.next/cache` を `.cache/next-build/next-cache` への symlink へ差し替えてキャッシュを永続化する。
+- `scripts/executer.ts` — Termux / Proot-Distro か通常 OS かを判定し、`pnpm install → build → start` を実行。**Termux / Proot-Distro では Turbopack が使えないため常に webpack を使用**（通常 OS も既定 webpack。Turbopack は明示指定時のみ）。実行は `pnpm launch`（`package.json` の `launch` スクリプト経由、`--experimental-strip-types` 付き）。ビルド時に `.next/cache` を `.cache/next-build/next-cache` への symlink へ差し替えてキャッシュを永続化する。
 - `app/api/watch/[videoId]/route.ts` — 動画情報（視聴・ダウンロード用フォーマット・チャプター・コメント・関連動画）を返す。

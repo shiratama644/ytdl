@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { lstatSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { buildCacheRoot, isTermuxOrProot, setupBuildCache } from '@/scripts/executer';
+import { buildCacheRoot, isTermuxOrProot, resolveBundler, setupBuildCache } from '@/scripts/executer';
 
 describe('package.json launch script', () => {
   it('`pnpm launch` は strip-types + ExperimentalWarning 抑制付きで scripts/executer.ts を実行する', () => {
@@ -53,6 +53,57 @@ describe('isTermuxOrProot', () => {
     delete process.env.ANDROID_DATA;
     process.env.ANDROID_ROOT = '/system';
     expect(isTermuxOrProot()).toBe(true);
+  });
+});
+
+describe('resolveBundler', () => {
+  const originalEnv = { ...process.env };
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  /** Termux / Proot-Distro を模した環境へ切り替える。 */
+  function asTermux() {
+    delete process.env.ANDROID_ROOT;
+    delete process.env.ANDROID_DATA;
+    delete process.env.PREFIX;
+    process.env.TERMUX_VERSION = '0.118.3';
+  }
+
+  /** 通常の OS（本サンドボックス）を模した環境へ戻す。 */
+  function asNormalOs() {
+    delete process.env.PREFIX;
+    delete process.env.TERMUX_VERSION;
+    delete process.env.ANDROID_ROOT;
+    delete process.env.ANDROID_DATA;
+  }
+
+  it('通常 OS の auto は webpack を返す', () => {
+    asNormalOs();
+    expect(resolveBundler('auto')).toBe('webpack');
+  });
+
+  it('Termux / Proot-Distro の auto は webpack を返す（Turbopack は使えない）', () => {
+    asTermux();
+    expect(resolveBundler('auto')).toBe('webpack');
+  });
+
+  it('Termux / Proot-Distro で --bundler=turbopack を指定しても webpack を強制する', () => {
+    asTermux();
+    expect(resolveBundler('turbopack')).toBe('webpack');
+  });
+
+  it('通常 OS では --bundler=turbopack を尊重する', () => {
+    asNormalOs();
+    expect(resolveBundler('turbopack')).toBe('turbopack');
+  });
+
+  it('--bundler=webpack は通常 OS / Termux どちらでも webpack を返す', () => {
+    asNormalOs();
+    expect(resolveBundler('webpack')).toBe('webpack');
+    asTermux();
+    expect(resolveBundler('webpack')).toBe('webpack');
   });
 });
 

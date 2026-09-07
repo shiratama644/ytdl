@@ -8,10 +8,14 @@
  * を実行する。
  *
  * ## なぜビルダーを出し分けるのか
- * - Termux / Proot-Distro（Android 上、多くは ARM64）では webpack ビルドが
- *   メモリ消費が大きく、SWC のネイティブバイナリ起因で失敗しやすい。
- * - Turbopack（Rust 製）は軽量・高速で、制約のあるモバイル環境に適している。
- * - 通常の OS（x86_64 等）では互換性・安定性の高い webpack（既定）を使用する。
+ * - Termux / Proot-Distro（Android 上、多くは ARM64）では Turbopack は使えない。
+ *   Android 向けのネイティブ SWC / Turbopack バイナリが提供されておらず、Next は
+ *   WASM フォールバックへ落ちるが、`turbo.createProject` 等の API が未実装で
+ *   dev / build が失敗する。そのためモバイル環境では常に webpack を使用する。
+ * - 通常の OS（x86_64 等）でも、`serverExternalPackages`（youtubei.js / ffmpeg-static /
+ *   fluent-ffmpeg）の外部解決や安定性を優先し、webpack（既定）を使用する。
+ *   Turbopack は明示的に `YTDL_BUNDLER=turbopack` / `--bundler=turbopack` を指定した
+ *   場合のみ用いる（モバイル環境では不可）。
  *
  * ## 実行環境の上書き
  *   YTDL_BUNDLER=auto|webpack|turbopack   … ビルダーを明示指定（既定: auto）
@@ -109,13 +113,22 @@ function platformName(): string {
 
 /**
  * ビルダーを決定する。
- * - auto: Termux/Proot なら Turbopack、通常 OS なら webpack
- * - YTDL_BUNDLER で明示上書き可能
+ * - Termux / Proot-Distro では Turbopack が使えないため、常に webpack を強制する
+ *   （`--bundler=turbopack` を指定しても警告して webpack に落とす）。
+ * - 通常の OS では既定 webpack。Turbopack は明示指定時のみ。
  */
-function resolveBundler(preference: Bundler): 'webpack' | 'turbopack' {
+export function resolveBundler(preference: Bundler): 'webpack' | 'turbopack' {
+  // モバイル環境ではネイティブ Turbopack/SWC が無く WASM フォールバックも未実装のため、
+  // 常に webpack を使用する（本リポジトリは serverExternalPackages の外部解決を webpack に依存）。
+  if (isTermuxOrProot()) {
+    if (preference === 'turbopack') {
+      warn('Termux / Proot-Distro では Turbopack は使用できません。webpack を使用します。');
+    }
+    return 'webpack';
+  }
   if (preference === 'webpack' || preference === 'turbopack') return preference;
   // auto
-  return isTermuxOrProot() ? 'turbopack' : 'webpack';
+  return 'webpack';
 }
 
 /* ----------------------------------------------------------------------------
@@ -233,8 +246,8 @@ pnpm install / pnpm build / pnpm start を実行します。
     --no-build            pnpm build をスキップ
     --no-start            pnpm start をスキップ（サーバーを起動しない）
     --bundler=webpack     ビルダーを webpack に固定
-    --bundler=turbopack   ビルダーを Turbopack に固定
-    --bundler=auto        環境に応じて自動選択（既定）
+    --bundler=turbopack   ビルダーを Turbopack に固定（Termux/Proot-Distro では使用不可 → webpack）
+    --bundler=auto        環境に応じて自動選択（既定。モバイルでは常に webpack）
     -h, --help            このヘルプを表示
 
   環境変数:
