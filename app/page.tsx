@@ -56,23 +56,31 @@ export default function HomePage() {
 
   return (
     <div className="space-y-6">
+      {/* 主役: ホーム */}
+      <header className="space-y-1">
+        <h1 className="text-title-large font-bold tracking-tight">ホーム</h1>
+        <p className="text-body-small text-on-surface-variant">おすすめの動画</p>
+      </header>
+
       {/* カテゴリフィルタ（チップ列） */}
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-        {filters.map((f) => (
-          <Chip key={f} selected={filter === f} onClick={() => setFilter(f)}>
-            {f}
-          </Chip>
-        ))}
+      <div className="glass rounded-m3-md border border-outline-variant/60 shadow-soft p-3">
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+          {filters.map((f) => (
+            <Chip key={f} selected={filter === f} onClick={() => setFilter(f)}>
+              {f}
+            </Chip>
+          ))}
+        </div>
       </div>
 
       {status === 'pending' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {Array.from({ length: 12 }).map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: static loading skeleton has no stable unique identity.
-            <div key={i} className="animate-pulse">
-              <div className="aspect-video rounded-m3-md bg-surface-container-high" />
-              <div className="mt-3 flex gap-2.5">
-                <div className="h-9 w-9 rounded-m3-full bg-surface-container-high" />
+            <div key={i} className="animate-pulse rounded-m3-md border border-outline-variant/60 overflow-hidden">
+              <div className="aspect-video bg-surface-container-high" />
+              <div className="p-3 flex gap-2.5">
+                <div className="h-9 w-9 rounded-m3-sm bg-surface-container-high" />
                 <div className="flex-1 space-y-2">
                   <div className="h-4 w-3/4 rounded-m3-xs bg-surface-container-high" />
                   <div className="h-3 w-1/2 rounded-m3-xs bg-surface-container-high" />
@@ -97,7 +105,7 @@ export default function HomePage() {
 
       {status === 'success' && (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {items.map((item) =>
               item.type === 'video' ? <VideoCard key={item.videoId} video={item} /> : null,
             )}

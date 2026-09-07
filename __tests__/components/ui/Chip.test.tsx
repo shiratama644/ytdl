@@ -18,13 +18,15 @@ describe('Chip', () => {
     expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'false');
   });
 
-  it('選択時の ring クラスが付く', () => {
+  it('選択時に primary 面でハイライトする', () => {
     render(<Chip selected>選択</Chip>);
-    expect(screen.getByRole('button').className).toContain('ring-2');
+    expect(screen.getByRole('button').className).toContain('bg-primary');
+    expect(screen.getByRole('button').className).toContain('text-on-primary');
   });
 
-  it('既定 variant は filter', () => {
+  it('既定 variant は filter ベース面', () => {
     render(<Chip>既定</Chip>);
-    expect(screen.getByRole('button').className).toContain('bg-secondary-container/90');
+    expect(screen.getByRole('button').className).toContain('bg-surface-container-high');
+    expect(screen.getByRole('button').className).toContain('text-on-surface-variant');
   });
 });

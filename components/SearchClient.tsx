@@ -73,42 +73,49 @@ export function SearchClient() {
 
   const items: FeedItem[] = data?.pages.flatMap((p) => p.items) ?? [];
   const refinements = data?.pages[0]?.refinements ?? [];
+  const estimatedResults = data?.pages[0]?.estimatedResults;
 
   return (
     <div className="space-y-6">
-      {/* フィルタチップ列（常時可視化） */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-label-medium text-on-surface-variant">期間なし</span>
-        {durationOptions.map((d) => (
-          <Chip key={d.id} selected={duration === d.id} onClick={() => setDuration(d.id)}>
-            {d.label}
-          </Chip>
-        ))}
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-label-medium text-on-surface-variant">種別</span>
-        {typeOptions.map((t) => (
-          <Chip key={t.id} selected={type === t.id} onClick={() => setType(t.id)}>
-            {t.label}
-          </Chip>
-        ))}
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-label-medium text-on-surface-variant">並び替え</span>
-        <Chip selected={sort === 'relevance'} onClick={() => setSort('relevance')}>関連度</Chip>
-        <Chip selected={sort === 'popularity'} onClick={() => setSort('popularity')}>人気順</Chip>
-      </div>
+      {/* 主役: 検索クエリ */}
+      <header className="space-y-1">
+        <h1 className="text-title-large font-bold tracking-tight">「{q}」</h1>
+        <p className="text-body-small text-on-surface-variant">
+          {estimatedResults
+            ? `約 ${estimatedResults.toLocaleString()} 件`
+            : 'の検索結果'}
+        </p>
+      </header>
 
-      <p className="text-body-small text-on-surface-variant">
-        {data?.pages[0]?.estimatedResults
-          ? `約 ${data.pages[0].estimatedResults.toLocaleString()} 件`
-          : `「${q}」の検索結果`}
-      </p>
+      {/* フィルタチップ列（Fパターン: 上部に左右並列） */}
+      <div className="glass rounded-m3-md border border-outline-variant/60 shadow-soft p-3 space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-label-medium text-on-surface-variant">期間</span>
+          {durationOptions.map((d) => (
+            <Chip key={d.id} selected={duration === d.id} onClick={() => setDuration(d.id)}>
+              {d.label}
+            </Chip>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-label-medium text-on-surface-variant">種別</span>
+          {typeOptions.map((t) => (
+            <Chip key={t.id} selected={type === t.id} onClick={() => setType(t.id)}>
+              {t.label}
+            </Chip>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-label-medium text-on-surface-variant">並び替え</span>
+          <Chip selected={sort === 'relevance'} onClick={() => setSort('relevance')}>関連度</Chip>
+          <Chip selected={sort === 'popularity'} onClick={() => setSort('popularity')}>人気順</Chip>
+        </div>
+      </div>
 
       {refinements.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto">
+        <div className="flex flex-wrap gap-2">
           {refinements.slice(0, 12).map((r) => (
-            <span key={r} className="text-label-small text-primary bg-primary/10 px-2 py-1 rounded-m3-xs">
+            <span key={r} className="text-label-small text-primary bg-primary/10 px-2.5 py-1 rounded-m3-sm">
               {r}
             </span>
           ))}
@@ -116,13 +123,15 @@ export function SearchClient() {
       )}
 
       {status === 'pending' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 9 }).map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: static loading skeleton has no stable unique identity.
-            <div key={i} className="animate-pulse">
-              <div className="aspect-video rounded-m3-md bg-surface-container-high" />
-              <div className="mt-3 h-4 w-3/4 rounded-m3-xs bg-surface-container-high" />
-              <div className="mt-2 h-3 w-1/2 rounded-m3-xs bg-surface-container-high" />
+            <div key={i} className="animate-pulse rounded-m3-md border border-outline-variant/60 overflow-hidden">
+              <div className="aspect-video bg-surface-container-high" />
+              <div className="p-3 space-y-2">
+                <div className="h-4 w-3/4 rounded-m3-xs bg-surface-container-high" />
+                <div className="h-3 w-1/2 rounded-m3-xs bg-surface-container-high" />
+              </div>
             </div>
           ))}
         </div>
@@ -139,7 +148,7 @@ export function SearchClient() {
 
       {status === 'success' && (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {items.map((item) =>
               item.type === 'video' ? <VideoCard key={(item as any).videoId} video={item as any} /> : null,
             )}
