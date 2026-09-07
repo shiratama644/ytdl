@@ -1,0 +1,155 @@
+/* ============================================================================
+ * Material 3 Expressive tokens — CSS custom properties
+ * ----------------------------------------------------------------------------
+ * このファイルは「静的フォールバック」を定義する。実際のカラー値は
+ * lib/theme.ts が @material/material-color-utilities の HCT 空間で算出し、
+ * <html data-theme="light|dark"> 上の --md-sys-color-* を上書きする。
+ * ここでは first paint を安定させるための既定値を持っておく。
+ * ========================================================================== */
+
+:root {
+  /* ---------- Typography font families ---------- */
+  --md-sys-font-display: 'Inter', 'Noto Sans JP', system-ui, sans-serif;
+  --md-sys-font-headline: 'Inter', 'Noto Sans JP', system-ui, sans-serif;
+  --md-sys-font-title: 'Inter', 'Noto Sans JP', system-ui, sans-serif;
+  --md-sys-font-body: 'Inter', 'Noto Sans JP', system-ui, sans-serif;
+  --md-sys-font-label: 'Inter', 'Noto Sans JP', system-ui, sans-serif;
+
+  /* ---------- Shape scale ---------- */
+  --md-sys-shape-none: 0px;
+  --md-sys-shape-xs: 4px;
+  --md-sys-shape-sm: 8px;
+  --md-sys-shape-md: 12px;
+  --md-sys-shape-lg: 16px;
+  --md-sys-shape-lg-inc: 20px;
+  --md-sys-shape-xl: 28px;
+  --md-sys-shape-xl-inc: 32px;
+  --md-sys-shape-xxl: 48px;
+  --md-sys-shape-full: 9999px;
+
+  /* ---------- Motion (spring approximations) ---------- */
+  --md-sys-motion-spatial-fast: 320ms cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-spatial-default: 380ms cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-spatial-slow: 480ms cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-effects-fast: 200ms cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-effects-default: 320ms cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-effects-slow: 480ms cubic-bezier(0.2, 0, 0, 1);
+
+  /* ---------- Elevation ---------- */
+  --md-sys-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+  --md-sys-elevation-2: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
+  --md-sys-elevation-3: 0 4px 8px 3px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --md-sys-elevation-4: 0 6px 10px 4px rgba(0, 0, 0, 0.15), 0 2px 3px rgba(0, 0, 0, 0.3);
+  --md-sys-elevation-5: 0 8px 12px 6px rgba(0, 0, 0, 0.15), 0 4px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* ============================================================================
+ * Light scheme (default seed derived scheme)
+ * ========================================================================== */
+:root,
+[data-theme='light'] {
+  --md-sys-color-primary: #8f4952;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #ffd9dc;
+  --md-sys-color-on-primary-container: #3f0712;
+  --md-sys-color-secondary: #765659;
+  --md-sys-color-on-secondary: #ffffff;
+  --md-sys-color-secondary-container: #ffd9dc;
+  --md-sys-color-on-secondary-container: #2c1517;
+  --md-sys-color-tertiary: #795831;
+  --md-sys-color-on-tertiary: #ffffff;
+  --md-sys-color-tertiary-container: #ffdda4;
+  --md-sys-color-on-tertiary-container: #2b1600;
+  --md-sys-color-error: #ba1a1a;
+  --md-sys-color-on-error: #ffffff;
+  --md-sys-color-error-container: #ffdad6;
+  --md-sys-color-on-error-container: #410002;
+  --md-sys-color-outline: #867170;
+  --md-sys-color-outline-variant: #d9c1bf;
+  --md-sys-color-background: #fcf7f8;
+  --md-sys-color-on-background: #21191a;
+  --md-sys-color-surface: #fcf7f8;
+  --md-sys-color-on-surface: #21191a;
+  --md-sys-color-surface-variant: #f3dedf;
+  --md-sys-color-on-surface-variant: #524344;
+  --md-sys-color-surface-dim: #dcd6d7;
+  --md-sys-color-surface-bright: #fcf7f8;
+  --md-sys-color-surface-container-lowest: #ffffff;
+  --md-sys-color-surface-container-low: #f7f1f2;
+  --md-sys-color-surface-container: #f1ebec;
+  --md-sys-color-surface-container-high: #ebe6e7;
+  --md-sys-color-surface-container-highest: #e5e0e1;
+  --md-sys-color-inverse-surface: #372e2f;
+  --md-sys-color-inverse-on-surface: #fceff0;
+  --md-sys-color-inverse-primary: #ffb2b8;
+  --md-sys-color-scrim: #000000;
+  --md-sys-color-shadow: #000000;
+}
+
+/* ============================================================================
+ * Dark scheme
+ * ========================================================================== */
+[data-theme='dark'] {
+  --md-sys-color-primary: #ffb2b8;
+  --md-sys-color-on-primary: #5c2027;
+  --md-sys-color-primary-container: #72333b;
+  --md-sys-color-on-primary-container: #ffd9dc;
+  --md-sys-color-secondary: #e7bdc0;
+  --md-sys-color-on-secondary: #45282b;
+  --md-sys-color-secondary-container: #5e3d40;
+  --md-sys-color-on-secondary-container: #ffd9dc;
+  --md-sys-color-tertiary: #edc192;
+  --md-sys-color-on-tertiary: #442b08;
+  --md-sys-color-tertiary-container: #5e4119;
+  --md-sys-color-on-tertiary-container: #ffdda4;
+  --md-sys-color-error: #ffb4ab;
+  --md-sys-color-on-error: #690005;
+  --md-sys-color-error-container: #93000a;
+  --md-sys-color-on-error-container: #ffdad6;
+  --md-sys-color-outline: #a08c8c;
+  --md-sys-color-outline-variant: #524344;
+  --md-sys-color-background: #181112;
+  --md-sys-color-on-background: #f1dfe0;
+  --md-sys-color-surface: #181112;
+  --md-sys-color-on-surface: #f1dfe0;
+  --md-sys-color-surface-variant: #524344;
+  --md-sys-color-on-surface-variant: #d5c2c1;
+  --md-sys-color-surface-dim: #181112;
+  --md-sys-color-surface-bright: #403839;
+  --md-sys-color-surface-container-lowest: #120c0d;
+  --md-sys-color-surface-container-low: #211a1b;
+  --md-sys-color-surface-container: #251e1f;
+  --md-sys-color-surface-container-high: #302829;
+  --md-sys-color-surface-container-highest: #3b3234;
+  --md-sys-color-inverse-surface: #f1dfe0;
+  --md-sys-color-inverse-on-surface: #372e2f;
+  --md-sys-color-inverse-primary: #8f4952;
+  --md-sys-color-scrim: #000000;
+  --md-sys-color-shadow: #000000;
+}
+
+/* ============================================================================
+ * M3 Type scale utilities (5 roles x 3 sizes)
+ * ========================================================================== */
+.type-display-large { font-family: var(--md-sys-font-display); font-size: 57px; line-height: 64px; font-weight: 400; letter-spacing: -0.5px; }
+.type-display-medium { font-family: var(--md-sys-font-display); font-size: 45px; line-height: 52px; font-weight: 400; letter-spacing: 0; }
+.type-display-small { font-family: var(--md-sys-font-display); font-size: 36px; line-height: 44px; font-weight: 400; letter-spacing: 0; }
+.type-headline-large { font-family: var(--md-sys-font-headline); font-size: 32px; line-height: 40px; font-weight: 400; letter-spacing: 0; }
+.type-headline-medium { font-family: var(--md-sys-font-headline); font-size: 28px; line-height: 36px; font-weight: 400; letter-spacing: 0; }
+.type-headline-small { font-family: var(--md-sys-font-headline); font-size: 24px; line-height: 32px; font-weight: 400; letter-spacing: 0; }
+.type-title-large { font-family: var(--md-sys-font-title); font-size: 22px; line-height: 28px; font-weight: 400; letter-spacing: 0; }
+.type-title-medium { font-family: var(--md-sys-font-title); font-size: 16px; line-height: 24px; font-weight: 500; letter-spacing: 0.15px; }
+.type-title-small { font-family: var(--md-sys-font-title); font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0.1px; }
+.type-body-large { font-family: var(--md-sys-font-body); font-size: 16px; line-height: 24px; font-weight: 400; letter-spacing: 0.5px; }
+.type-body-medium { font-family: var(--md-sys-font-body); font-size: 14px; line-height: 20px; font-weight: 400; letter-spacing: 0.25px; }
+.type-body-small { font-family: var(--md-sys-font-body); font-size: 12px; line-height: 16px; font-weight: 400; letter-spacing: 0.4px; }
+.type-label-large { font-family: var(--md-sys-font-label); font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0.1px; }
+.type-label-medium { font-family: var(--md-sys-font-label); font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.5px; }
+.type-label-small { font-family: var(--md-sys-font-label); font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: 0.5px; }
+
+/* Emphasized variants (weight up 1-2 steps) */
+.type-display-large-emphasized { font-weight: 600; }
+.type-headline-large-emphasized { font-weight: 600; }
+.type-headline-medium-emphasized { font-weight: 600; }
+.type-title-large-emphasized { font-weight: 600; }
+.type-label-large-emphasized { font-weight: 700; }

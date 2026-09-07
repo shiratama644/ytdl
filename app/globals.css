@@ -1,0 +1,116 @@
+@import '../styles/m3-tokens.css';
+/* Material Symbols (Rounded) アイコンフォント。node_modules から自己ホストで読み込む。 */
+@import 'material-symbols/rounded.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    /* ガラス面（グラスモフィズム）のフォールバック。toneTokens / 動的カラーが反映される前の初期値。 */
+    --md-sys-color-surface-translucent: rgba(255, 255, 255, 0.7);
+  }
+  [data-theme='dark'] {
+    color-scheme: dark;
+    --md-sys-color-surface-translucent: rgba(22, 27, 34, 0.75);
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-surface text-on-surface font-body antialiased;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--md-sys-color-outline-variant) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--md-sys-color-outline-variant);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+@layer utilities {
+  /* クリップ可能な長いタイトル用の行クランプ */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* グラスモフィズム（設計仕様書）: 背面を透かすすりガラス + 極細ハイライトライン */
+  .glass {
+    background-color: var(--md-sys-color-surface-translucent);
+    -webkit-backdrop-filter: blur(20px) saturate(1.2);
+    backdrop-filter: blur(20px) saturate(1.2);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .glass-strong {
+    background-color: var(--md-sys-color-surface-translucent);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    backdrop-filter: blur(24px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* ============================================================================
+ * video.js の M3 スキニング（最小限）
+ * ========================================================================== */
+.video-js .vjs-control-bar {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent);
+  height: 4.5em;
+}
+.video-js .vjs-slider {
+  background: var(--md-sys-color-outline-variant);
+}
+.video-js .vjs-play-progress,
+.video-js .vjs-volume-level {
+  background-color: var(--md-sys-color-primary);
+}
+.video-js .vjs-load-progress {
+  background-color: var(--md-sys-color-secondary-container);
+}
+.video-js .vjs-big-play-button {
+  width: 1.6em;
+  height: 1.6em;
+  border-radius: 9999px;
+  border: none;
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  margin-top: -0.8em;
+  margin-left: -0.8em;
+}
+.video-js .vjs-big-play-button .vjs-icon-placeholder:before {
+  font-size: 1.5em;
+  line-height: 1.6em;
+}
+.video-js.video-js-root {
+  background-color: var(--md-sys-color-surface-dim);
+  border-radius: var(--md-sys-shape-lg, 16px);
+  overflow: hidden;
+}
