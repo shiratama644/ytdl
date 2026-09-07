@@ -1,4 +1,6 @@
 @import '../styles/m3-tokens.css';
+/* Material Symbols (Rounded) アイコンフォント。node_modules から自己ホストで読み込む。 */
+@import 'material-symbols/rounded.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

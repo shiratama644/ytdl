@@ -13,6 +13,7 @@
 | 動画/コメント/検索/チャンネルのシリアライズ・変換 | [`innertube-and-media.md`](./innertube-and-media.md) |
 | State / Store / テーマ / Download に関する操作 | [`state-and-storage.md`](./state-and-storage.md) |
 | Next.js ルーティング / URL / ページ・API 追加 | [`routing-and-pages.md`](./routing-and-pages.md) |
+| アイコン / `Icon` コンポーネント / Material Symbols を触る | [`ui-and-icons.md`](./ui-and-icons.md) |
 | テスト / `__tests__` / vitest を触る | [`testing.md`](./testing.md) |
 | 「動かない / 重い / ビルドが失敗する」環境トラブル | [`sandbox-constraints.md`](./sandbox-constraints.md) |
 
@@ -25,6 +26,7 @@
 | [innertube-and-media.md](./innertube-and-media.md) | `youtubei.js`（Innertube）取得・シリアライズ・動画プレイヤー（video.js / dashjs）・プロキシ。 | 2026-09-07 |
 | [state-and-storage.md](./state-and-storage.md) | Zustand store（theme / player / download）と continuation-cache の設計・用途。 | 2026-09-07 |
 | [routing-and-pages.md](./routing-and-pages.md) | App Router のページ・Route Handler 一覧と URL 設計。 | 2026-09-07 |
+| [ui-and-icons.md](./ui-and-icons.md) | `Icon` コンポーネント（Material Symbols Rounded リガチャ）と自己ホスト読み込み。 | 2026-09-07 |
 | [testing.md](./testing.md) | vitest 5 + jsdom 30 + Testing Library のテスト規約・`__tests__` 階層・スタブ/モック。 | 2026-09-07 |
 | [sandbox-constraints.md](./sandbox-constraints.md) | Sandbox の制約（ffmpeg-static / material-color-utilities / Node ESM）と迂回策。 | 2026-09-07 |
 
