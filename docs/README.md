@@ -12,7 +12,8 @@ Agent のコードベース知識は [`.agent/`](../.agent/) を参照してく�
 docs/
 ├── README.md                          ← 本ファイル (全ドキュメントの目次)
 ├── planning/                          # 計画書 (必要時に _TEMPLATE.md 形式で作成)
-│   └── _TEMPLATE.md                   # 計画書テンプレート (新規計画書は必ず本形式)
+│   ├── _TEMPLATE.md                   # 計画書テンプレート (新規計画書は必ず本形式)
+│   └── SEARCH_UI_REDESIGN_PLAN.md     # 検索UIリファクタリング & 次世代デザイン刷新
 └── ops/                               # 運用メモ (デプロイ・CI 等、必要時に追加)
 ```
 
@@ -27,6 +28,10 @@ ytdl ではタスクを [`AGENTS.md`](../AGENTS.md) §5 の完了条件で管理
 | --- | --- | --- |
 | 計画書 | `docs/planning/{TOPIC}_PLAN.md` | 着手前に作成する詳細設計・検討記録。新規は `_TEMPLATE.md` 形式 |
 | 運用メモ | `docs/ops/*.md` | デプロイ・CI・本番運用の手順書。実際にデプロイする際に参照 |
+
+現在の計画書:
+
+- [`docs/planning/SEARCH_UI_REDESIGN_PLAN.md`](./planning/SEARCH_UI_REDESIGN_PLAN.md) — 検索UIリファクタリング & 次世代デザイン刷新
 
 ## 命名規約
 
