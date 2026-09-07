@@ -24,6 +24,7 @@
 | `thumb-up` | `thumb_up` | |
 | `remove` / `close` | `close` | 両方 close に集約 |
 | `sun` / `moon` | `light_mode` / `dark_mode` | テーマ切替 |
+| `settings` / `check` | `settings` / `check` | カラートーンシート / 選択状態（2026-09-08 追記） |
 | `arrow-up` / `arrow-down` | `arrow_upward` / `arrow_downward` | |
 | `back` / `forward` | `arrow_back` / `arrow_forward` | |
 | `sparkle` | `auto_awesome` | |

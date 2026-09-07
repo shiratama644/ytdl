@@ -145,11 +145,11 @@
 
 | ID | コミット | テスト | 実測値・備考 |
 |---|---|---|---|
-| 1 | | | |
-| 2 | | | |
-| 3 | | | |
-| 4 | | | |
-| 5 | | | |
-| 6 | | | |
-| 7 | | | |
-| 8 | | | |
+| 1 | `f684e81` | `search-history.test.ts` 5件 | Dexie 検索履歴（上限10件 / 重複は visitedAt 更新）。fake-indexeddb/auto を vitest セットアップに追加 |
+| 2 | `f684e81` | — | `getSearchSuggestions` ラッパー。失敗時 `[]` + 502 |
+| 3 | `f684e81` | `theme-tone.test.ts` 5件 / `theme.test.ts` | 4 プリセット × dark/light、`tone` state + `setTone`、動的カラーと共存 |
+| 4 | `676826d` | — | `surface-translucent` / `soft` shadow / `.glass` `.glass-strong` ユーティリティ + CSS フォールバック |
+| 5 | `8f7a950` | — | NavBar 予測変換（履歴+サジェスト、3文字以上、debounce、キーボードナビ）+ カラートーンシート + グラス化 |
+| 6 | `10c63d6` | — | SearchClient F パターン刷新（ヒーロークエリ + グラスフィルタパネル） |
+| 7 | `10c63d6` | `Chip.test.tsx` 更新 | VideoCard / Button / Chip / Home トーン調整（ピル回避・12px角丸・soft shadow） |
+| 8 | 本タスク | typecheck=0 / lint=clean / **test:unit 111 passed** / build ✓ | スキル更新（testing / sandbox-constraints / ui-and-icons / state-and-storage / innertube-and-media）+ ログ + push |

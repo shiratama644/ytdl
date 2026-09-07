@@ -6,6 +6,7 @@
 
 - `getInnertube()` をシングルトンで使い回す。`youtubei.js` の Innertube クライアントを返す。
 - Route Handler からはこの関数の戻り値を使って `getInfo` / `getComments` / `search` / `getHome` 等を呼ぶ。
+- **検索サジェスト（2026-09-08 追記）**: `Innertube.getSearchSuggestions(query)` → `Promise<string[]>` が標準搭載（`suggestqueries-clients6.youtube.com` をライブラリがラップ）。`app/api/search/suggest/route.ts` が `?q=` を受け取り `{ q, suggestions }` を返す。失敗時は `[]` + 502（補助機能なので UI を壊さない）。
 - データレスポンスは `any` / `unknown` の生ノードとして返り、`lib/serialize.ts` でアプリ型へ変換する。
 
 ## 動画再生（video.js）

@@ -19,6 +19,13 @@
 
 - `window.matchMedia` / `ResizeObserver` / `IntersectionObserver` / `EventSource` 等は jsdom に実装されていないものがある。`vitest.setup.ts` でスタブするか、テスト内で `vi.stubGlobal` or モックする。
 
+## Dexie / IndexedDB（2026-09-08 追記）
+
+- `dexie@4.4.5` は**ブラウザ専用**。SSR（Node の Route Handler）では import しない（IndexedDB が無いため失敗する）。
+  - `lib/search-history.ts` は NavBar（`'use client'`）のみから import する。API Route Handler は YouTube サジェスト取得のみで、履歴には触れない。
+  - 履歴は `ytdl-search-history` DB、テーブル `searchHistory: '++id, query, visitedAt'`、上限 10 件、クエリ重複は `visitedAt` 更新。
+- テストは `fake-indexeddb/auto` を `vitest.setup.ts` で import。詳細は [`testing.md`](./testing.md)。
+
 ## TypeScript のビルド型（重要: aria-query / TS2688）
 
 - `@testing-library/dom@10.4.1`（devDependency）は `@types/aria-query@5.0.4` を推移的依存する。

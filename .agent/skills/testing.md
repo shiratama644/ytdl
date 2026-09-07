@@ -7,8 +7,16 @@
 - **vitest 5.0.0** + **@vitest/coverage-v8 5.0.0** + **jsdom 30** + **@testing-library/react 16** + **@testing-library/jest-dom 7** + **fake-indexeddb 6**。
 - 設定ファイル:
   - `vitest.config.ts` — `environment: 'jsdom'`、`globals: false`、`setupFiles: ['./vitest.setup.ts']`、`include: ['__tests__/**/*.test.{ts,tsx}']`、`@` alias を `./` に解決。
-  - `vitest.setup.ts` — `@testing-library/jest-dom/vitest` を import。`window.matchMedia` の no-op スタブ。
+  - `vitest.setup.ts` — `@testing-library/jest-dom/vitest` を import。`window.matchMedia` の no-op スタブ。**Dexie テスト用に `import 'fake-indexeddb/auto'` を先頭で import**（Dexie を import する前にグローバルに IndexedDB を登録する）。
   - `tsconfig.test.json` — `types: ['@testing-library/jest-dom', 'node']`（`vitest/globals` は globals: false のため含めない）。テスト + 依存を typecheck。
+
+## Dexie / IndexedDB テスト（2026-09-08 追記）
+
+- **fake-indexeddb/auto の import 順が重要**: `Dexie` を import する前に `import 'fake-indexeddb/auto'` が実行されている必要がある。`vitest.setup.ts` の先頭に置く。
+- fake-indexeddb v5+ は `structuredClone` を自前ポリフィルしない。**Node v22+ のグローバル `structuredClone` を利用**（本プロジェクトは Node >= 24）。
+- **テスト用 DB 注入ハック**: `lib/search-history.ts` が `__setSearchHistoryDbForTest(db)` / `__resetSearchHistoryDbForTest()` を export。テストでは `new Dexie('...-test-<random>')` を作り注入し、`beforeEach`/`afterEach` で生成/削除してテスト間の IndexedDB 汚染を防ぐ。
+- パッケージ: `dexie@4.4.5`（型定義は bundled、`@types/dexie` は不要・deprecated スタブ）。`fake-indexeddb` は devDependency。
+- **ブラウザ専用注意**: Dexie は SSR（Node）で import しない。`'use client'` コンポーネント/ブラウザ専用モジュールに閉じ込める（AGENT.md §3.5 / sandbox-constraints）。
 
 ## `__tests__` 階層規約
 

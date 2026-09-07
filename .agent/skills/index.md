@@ -23,12 +23,12 @@
 | :--- | :--- | :--- |
 | [project-overview.md](./project-overview.md) | 製品概要・技術スタック・ディレクトリ構成。最初に読む。 | 2026-09-07 |
 | [architecture-and-data-flow.md](./architecture-and-data-flow.md) | Route Handler → Innertube → serialize → Client props、および Zustand / TanStack Query のデータフロー。 | 2026-09-07 |
-| [innertube-and-media.md](./innertube-and-media.md) | `youtubei.js`（Innertube）取得・シリアライズ・動画プレイヤー（video.js / dashjs）・プロキシ。 | 2026-09-07 |
-| [state-and-storage.md](./state-and-storage.md) | Zustand store（theme / player / download）と continuation-cache の設計・用途。 | 2026-09-07 |
+| [innertube-and-media.md](./innertube-and-media.md) | `youtubei.js`（Innertube）取得・シリアライズ・動画プレイヤー（video.js / dashjs）・プロキシ。 | 2026-09-08 |
+| [state-and-storage.md](./state-and-storage.md) | Zustand store（theme / player / download）と continuation-cache / Dexie 検索履歴の設計・用途。 | 2026-09-08 |
 | [routing-and-pages.md](./routing-and-pages.md) | App Router のページ・Route Handler 一覧と URL 設計。 | 2026-09-07 |
-| [ui-and-icons.md](./ui-and-icons.md) | `Icon` コンポーネント（Material Symbols Rounded リガチャ）と自己ホスト読み込み。 | 2026-09-07 |
-| [testing.md](./testing.md) | vitest 5 + jsdom 30 + Testing Library のテスト規約・`__tests__` 階層・スタブ/モック。 | 2026-09-07 |
-| [sandbox-constraints.md](./sandbox-constraints.md) | Sandbox の制約（ffmpeg-static / material-color-utilities / Node ESM）と迂回策。 | 2026-09-07 |
+| [ui-and-icons.md](./ui-and-icons.md) | `Icon` コンポーネント（Material Symbols Rounded リガチャ）と自己ホスト読み込み。 | 2026-09-08 |
+| [testing.md](./testing.md) | vitest 5 + jsdom 30 + Testing Library のテスト規約・`__tests__` 階層・スタブ/モック / Dexie。 | 2026-09-08 |
+| [sandbox-constraints.md](./sandbox-constraints.md) | Sandbox の制約（ffmpeg-static / material-color-utilities / Node ESM / Dexie ブラウザ専用）と迂回策。 | 2026-09-08 |
 
 ## 運用ルール
 
