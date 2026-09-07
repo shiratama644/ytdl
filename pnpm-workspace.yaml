@@ -1,6 +1,7 @@
 packages:
   - '.'
+# pnpm v12 は依存関係のビルドスクリプト実行可否を allowBuilds（map 形式）で表す。
+# ffmpeg-static はインストール時にネイティブバイナリを取得するため許可する。
+# ネットワーク制限のある環境では executer が --ignore-scripts でフォールバックする。
 allowBuilds:
-  ffmpeg-static: set this to true or false
-onlyBuiltDependencies:
-  - ffmpeg-static
+  ffmpeg-static: true

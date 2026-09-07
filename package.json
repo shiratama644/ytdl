@@ -2,6 +2,7 @@
   "name": "youtube-proxy",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "YouTubeの代替視聴・ダウンロードサイト（プロキシ経由 / Material 3 Expressive）",
   "scripts": {
     "dev": "next dev",
@@ -27,19 +28,14 @@
     "zustand": "5.0.15"
   },
   "devDependencies": {
-    "@types/fluent-ffmpeg": "2.1.27",
-    "@types/node": "22.10.2",
-    "@types/react": "19.0.0",
-    "@types/react-dom": "19.0.0",
+    "@types/fluent-ffmpeg": "2.1.28",
+    "@types/node": "24.13.3",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
     "@types/video.js": "7.3.58",
-    "autoprefixer": "10.4.20",
-    "postcss": "8.4.49",
+    "autoprefixer": "10.5.5",
+    "postcss": "8.5.28",
     "tailwindcss": "3.4.19",
-    "typescript": "5.7.2"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "ffmpeg-static"
-    ]
+    "typescript": "5.9.3"
   }
 }
