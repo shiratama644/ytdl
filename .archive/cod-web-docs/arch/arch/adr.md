@@ -1,0 +1,91 @@
+# 意思決定ログ（ADR）
+
+実装中に覆したくなったら **実装せず人間へ確認**する。
+
+## ADR-001: タイプごとに Sim Profile を分離
+
+統合移動モデルは却下。物理・座標範囲・ティック・スナップショットが全て異なる。代償は L2 が約 2 倍。L0/L1 は完全共有。
+
+## ADR-002: レンダラは自作しない
+
+**Babylon.js** を使う。bloxd は Noa（Babylon）、Krunker は Three。価値はプラットフォーム層。「自作エンジン」は L1+L2+L3 インタフェースで、レンダラを含まない。
+
+## ADR-003: React Three Fiber を捨てる
+
+3D に React を使わない。ボクセルのチャンクメッシュ生成破棄と React 再調整が合わない。React はハブ・HUD・設定・メニュー。
+
+## ADR-004: 手書きバイナリ
+
+高頻度は DataView。入力 16B 固定などは msgpack では出せない。制御メッセージは JSON。
+
+## ADR-005: 今は WebSocket のみ。WebTransport は将来目標
+
+今は WT / WebRTC DataChannel / geckos.io を実装しない。Bun に WT サーバ API が無い（HTTP/3 実験、WS over H3 未対応）。`NetTransport`・Channel・seq 欠落・1200B・Hello 認証は最初から入れる。WS 実装は WT 移行後も削除しない。
+
+再検討は [protocol.md](./protocol.md) の 3 条件。フェーズ 9。
+
+## ADR-006: Havok を使わない
+
+fps は自前 BVH + カプセル。voxel は voxel-physics-engine。サーバ同一コードのため。
+
+## ADR-007: プレイヤー同士の衝突は当面なし
+
+すり抜けを許容。剛体同士はライブラリ非対応。自前 AABB 押し出しは決定論コストが増える。ゲーム性に問題が出たら再検討。
+
+## ADR-008: 座席予約を必須
+
+HMAC チケット。マッチメイカーとノードで秘密鍵共有。
+
+## ADR-009: クライアント側チート対策に投資しない
+
+サーバ権威のみ。統計的異常検知は将来。
+
+## ADR-010: 1 つ目のゲームモードは雑に作る
+
+`fps-ffa` は最小。早く 2 つ目（voxel-bedwars）へ。API の正しさは 2 つ目まで分からない。フェーズ 6 で 1 回作り直す前提。
+
+## ADR-011: ライセンスは MIT
+
+確定。LICENSE ファイル配置は別タスクでよい。
+
+## ADR-012: 初期は匿名、認証は後続
+
+表示名 + 一時 uid。OAuth 等はマッチメイカー以降に再設計。
+
+## ADR-013: モバイルは両タイプ。ボイスは理想に含める
+
+タッチは後続フェーズ。ボイスはゲーム同期と別の WebRTC メディア。着手時期は未定。ゲーム `NetTransport` に音声を混ぜない。
+
+## ADR-014: ワールド運用の初期値
+
+- voxel ワールドは **保存して再開**（詳細はフェーズ 4）
+- FPS マップは **CDN**
+- チャンクは当面メモリ保持（遠方アンロードは後で）
+- 初期リージョンは **1 拠点**
+- ランキング / 戦績の RDB は後続
+
+## ADR-015: Input `dtMs` はミリ秒
+
+`Input` 16B 固定レイアウト末尾の `dtMs` は **ミリ秒**として扱う。60Hz 入力では通常 16〜17ms。0.1ms 単位（×10）は採用しない。名前・ログ・clamp（500ms）の意味が一致し、実装とデバッグが単純になるため。
+
+## ADR-016: fps Snapshot には `vy` を含める
+
+fps Snapshot の速度成分には `vy` を含める。重力は決定論だが、現行実装からの移行・補間・デバッグを単純にすることを優先する。PH1-C では現行 Snapshot レイアウトを Channel 以外変更しない。将来 Snapshot `0x11` 化や delta/AOI を入れる時も `vy` を含める前提で bytes と MTU 予算を再計算する。
+
+## ADR-017: PH1 workspace package name は `@cod/*`
+
+PH1-A で作る Bun workspaces の内部 package 名は `@cod/*` に統一する。対象は `@cod/protocol`, `@cod/engine-core`, `@cod/profile-fps`, `@cod/gameserver`, `@cod/web`。workspace 間依存は Bun の `workspace:*` を使う。
+
+## ADR-018: Babylon Engine options は型にあるものだけ使う
+
+Babylon 導入時、`desynchronized` / `preserveDrawingBuffer` が導入済み `@babylonjs/core` の public `.d.ts` に無い場合は、`EngineOptions` に渡さない。Canvas/WebGL context attributes としての低遅延 hint は後続最適化タスクへ回す。型に無い key を invent したり、Babylon private field に依存したりしない。
+
+## 実装時まで持ち越す未決
+
+| # | 事項 |
+|---|---|
+| A | 認証方式（ADR-012 の「後続」の中身） |
+| B | ボイスの SFU / 着手フェーズ |
+| C | voxel 永続化の保存先（オブジェクトストレージ等） |
+
+これらに到達したら人間に聞く。
