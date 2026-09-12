@@ -3,6 +3,17 @@
 > 進捗の唯一の正本。各タスクの詳細は `docs/planning/` の計画書。
 > 状態: `未着手` / `進行中` / `完了` / `停止(要判断)`
 
+## 検証(Phase 0 着手前)
+
+| ID | タスク | 証跡 | 状態 | 進捗 / 証拠 |
+|---|---|---|---|---|
+| V1-a | youtubei.js バンドル + Node 初期化(WEB_EMBEDDED_PLAYER 受入) | [VERIFICATION_P0.md](research/VERIFICATION_P0.md) | 完了 | 2026-09-12 / v18.0.0・1.3MB バンドル・create() 到達(通信はサンドボックス遮断) |
+| V1-b | GAS 実環境でのストリーム解決(1080p 確認) | 同上 | 進行中 | ユーザー実行待ち: `verification/v1-gas-test.gs` |
+| V2 | ブラウザ直接取得(CORS/Range/有効期限/codec) | 同上 | 進行中 | ユーザー実行待ち: `verification/v2-browser-test.html` |
+| V3-a | GAS `?_sw=` ディスパッチの HTTP 契約検証 | 同上 | 完了 | 2026-09-12 / ローカル模倣で HTML・JS MIME 同居確認 |
+| V3-b | script.google.com での SW 登録(StreamSaver 経路) | 同上 | 進行中 | ユーザー実行待ち(最重要): `verification/v3-gas-test.gs` |
+| V4 | iOS Safari 挙動 | 同上 | 進行中 | ユーザー実行待ち(任意): 同一 HTML |
+
 ## Phase 0: 基盤構築
 
 | ID | タスク | 計画書 | 状態 | 進捗 / 証拠 |

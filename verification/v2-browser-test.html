@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V2: googlevideo 直接取得検証</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 880px; margin: 2rem auto; padding: 0 1rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 14px; }
+  th, td { border: 1px solid #ccc; padding: .45rem .6rem; text-align: left; vertical-align: top; }
+  th { background: #f0f0f0; }
+  td.ok { background: #e6f6e6; } td.ng { background: #fde8e8; } td.wait { background: #fff8e0; }
+  video { width: 100%; max-height: 320px; background: #000; margin: .5rem 0; }
+  button { font-size: 15px; padding: .5rem 1rem; }
+  pre { background: #f5f5f5; padding: .8rem; overflow: auto; font-size: 12px; }
+  .muted { color: #777; font-size: 12px; }
+</style>
+</head>
+<body>
+<h3>V2: ブラウザからの直接取得検証 (CORS / Range / 有効期限 / codec)</h3>
+<p class="muted">
+  動画ID: <input id="vid" value="dQw4w9WgXcQ" size="14">
+  <button onclick="runAll()">実行</button>
+  <button onclick="copyResults()">結果をコピー</button>
+  <span class="muted">— PC の Chrome で開いてください(ファイル自体をダブルクリック可)。iOS では iOS 項目のみ確認。</span>
+</p>
+<video id="player" controls muted></video>
+<table id="tbl"><thead><tr><th>項目</th><th>結果</th><th>判定</th></tr></thead><tbody></tbody></table>
+<pre id="raw"></pre>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const results = [];
+function row(name, value, verdict) {
+  const tr = document.createElement('tr');
+  const cls = verdict === 'OK' ? 'ok' : verdict === 'NG' ? 'ng' : 'wait';
+  tr.innerHTML = `<td>${name}</td><td class="${cls}"></td><td class="${cls}">${verdict || '…'}</td>`;
+  tr.children[1].textContent = value;
+  $('#tbl tbody').appendChild(tr);
+  results.push(`${name} | ${verdict || '?'} | ${value}`);
+}
+function fmtUrl(u) { return u ? u.substring(0, 90) + '…' : '(none)'; }
+
+async function runAll() {
+  const body = $('#tbl tbody'); body.innerHTML = '';
+  results.length = 0;
+  const id = $('#vid').value.trim();
+  const api = `https://siatube.com/api/stream/${id}`;
+  let d;
+  try {
+    const r = await fetch(api);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    d = await r.json();
+  } catch (e) {
+    row('API取得(siatube.com)', String(e), 'NG');
+    $('#raw').textContent = results.join('\n');
+    return;
+  }
+  row('API取得(siatube.com)', `ok, counts=${JSON.stringify(d.counts || {})}`, 'OK');
+  const muxed = (d.streams && d.streams.muxed || [])[0];
+  const vOnly = ((d.streams && d.streams.videoOnly) || [])[0];
+  const aOnly = ((d.streams && d.streams.audioOnly) || [])[0];
+  const muxedUrl = muxed && (muxed.streamUrl || muxed.url);
+  const vUrl = vOnly && (vOnly.streamUrl || vOnly.url);
+  const aUrl = aOnly && (aOnly.streamUrl || aOnly.url);
+  row('codec/container(muxed)', muxed ? `${muxed.formatId}/${muxed.vcodec}+${muxed.acodec}/${muxed.container || muxed.ext}` : 'none', muxedUrl ? 'OK' : 'NG');
+  row('codec/container(videoOnly)', vOnly ? `${vOnly.formatId}/${vOnly.vcodec}/${vOnly.container || vOnly.ext}` : 'none', vUrl ? 'OK' : 'NG');
+  row('codec/container(audioOnly)', aOnly ? `${aOnly.formatId}/${aOnly.acodec}/${aOnly.container || aOnly.ext}` : 'none', aUrl ? 'OK' : 'NG');
+  if (!muxedUrl) { $('#raw').textContent = results.join('\n'); return; }
+
+  // 有効期限
+  try {
+    const expire = new URL(muxedUrl).searchParams.get('expire');
+    const left = expire ? Math.round((Number(expire) * 1000 - Date.now()) / 1000) : null;
+    row('URL有効期限(expire)', left !== null ? `${left}秒残` : 'param なし', left > 60 ? 'OK' : 'NG');
+  } catch (e) { row('URL有効期限(expire)', String(e), 'NG'); }
+
+  // A: <video> 再生 (fetch を経由しない経路)
+  row('A: <video> 再生開始', '試行中…', '');
+  try {
+    const v = $('#player');
+    v.src = muxedUrl;
+    const res = await new Promise((resolve) => {
+      const t = setTimeout(() => resolve('timeout-6s'), 6000);
+      v.onplaying = () => { clearTimeout(t); resolve('playing'); };
+      v.onerror = () => { clearTimeout(t); resolve('error:' + (v.error ? v.error.code : '?')); };
+      v.play().catch(() => {});
+    });
+    v.pause();
+    row('A: <video> 再生開始', res, res === 'playing' ? 'OK' : 'NG');
+  } catch (e) { row('A: <video> 再生開始', String(e), 'NG'); }
+
+  // B: fetch 全体 (CORS + 実バイト)
+  row('B: fetch(muxed 全体)', '試行中…', '');
+  try {
+    const t0 = performance.now();
+    const r = await fetch(muxedUrl);
+    const buf = await r.arrayBuffer();
+    const ms = Math.round(performance.now() - t0);
+    const acao = r.headers.get('access-control-allow-origin');
+    const kb = Math.round(buf.byteLength / 1024);
+    row('B: fetch(muxed 全体)', `status=${r.status} ACAO=${acao || '(なし)'} bytes=${kb}KB ${ms}ms`, r.status === 200 ? 'OK' : 'NG');
+  } catch (e) { row('B: fetch(muxed 全体)', String(e), 'NG'); }
+
+  // C: Range
+  row('C: fetch(Range 0-1023)', '試行中…', '');
+  try {
+    const r = await fetch(muxedUrl, { headers: { Range: 'bytes=0-1023' } });
+    const buf = await r.arrayBuffer();
+    row('C: fetch(Range 0-1023)',
+      `status=${r.status} content-range=${r.headers.get('content-range') || '(なし)'} bytes=${buf.byteLength}`,
+      r.status === 206 ? 'OK' : r.status === 200 ? 'NG' : 'NG');
+  } catch (e) { row('C: fetch(Range 0-1023)', String(e), 'NG'); }
+
+  // D: DASH の 2 成分
+  for (const [name, u] of [['D1: fetch(videoOnly)', vUrl], ['D2: fetch(audioOnly)', aUrl]]) {
+    if (!u) { row(name, 'URL なし', 'NG'); continue; }
+    row(name, '試行中…', '');
+    try {
+      const r = await fetch(u, { headers: { Range: 'bytes=0-65535' } });
+      const buf = await r.arrayBuffer();
+      row(name, `status=${r.status} bytes=${Math.round(buf.byteLength / 1024)}KB ACAO=${r.headers.get('access-control-allow-origin') || '(なし)'}`,
+        r.status === 206 || r.status === 200 ? 'OK' : 'NG');
+    } catch (e) { row(name, String(e), 'NG'); }
+  }
+
+  // F: ブラウザ能力
+  row('F1: File System Access API', 'showSaveFilePicker' in window ? 'あり' : 'なし', '');
+  row('F2: Service Worker', 'serviceWorker' in navigator ? 'あり' : 'なし', '');
+  row('F3: MediaSource(MSE)', 'MediaSource' in window ? 'あり' : 'なし', '');
+  row('F4: ネイティブHLS', $('#player').canPlayType('application/vnd.apple.mpegurl') ? 'あり' : 'なし', '');
+  row('F5: mp4 再生', $('#player').canPlayType('video/mp4; codecs="avc1.42E01E,mp4a.40.2"') ? 'あり' : 'なし', '');
+  row('UA', navigator.userAgent, '');
+  row('UA-Platform', navigator.platform || '(none)', '');
+
+  $('#raw').textContent = results.join('\n');
+}
+
+async function copyResults() {
+  const text = results.join('\n');
+  try { await navigator.clipboard.writeText(text); alert('コピーしました'); }
+  catch { $('#raw').textContent = text; alert('クリップボード不可 → 下のテキストを手動選択してください'); }
+}
+</script>
+</body>
+</html>
