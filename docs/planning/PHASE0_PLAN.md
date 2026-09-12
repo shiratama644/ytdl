@@ -47,6 +47,7 @@
 
 - [ ] `apps/web` が build 成功(`output: 'export'`)+ `scripts/` が単一 HTML を生成(inline 済み)
 - [ ] `backend/gas` が GAS Webアプリとしてデプロイでき、`/`(単一 HTML)と `/api/health`・`/api/search?q=...`(doGet クエリディスパッチ)が動作することを実測で確認
+- [ ] **V3**: GAS ページから SW スクリプトを fetch でき(`?_sw=` + `MimeType.JAVASCRIPT`)、`navigator.serviceWorker.register` が成功することを実測
 - [ ] **GAS 検証(最重要)**: youtubei.js(esbuild バンドル)が GAS V8 で動き、`WEB_EMBEDDED_PLAYER` client で search / video meta / stream format を取得できる(取得できなければ §10.9 のフォールバック「raw InnerTube + UrlFetchApp」に切替を判断し ADR 化)
 - [ ] `packages/shared` の API client が GAS 輸送(クエリ / google.script.run)と fetch 輸送の両モードを持つ(vitest でユニットテスト)
 - [ ] M3 Design Expressive のテーマトークン(Tailwind `@theme`)と 2 画面(ホーム / watch スケルトン)が整う
@@ -60,7 +61,7 @@
 | Unit (vitest) | packages/shared | API client の URL 構築・レスポンス正規化・エラーコード分類 |
 | Build | apps/web | `next build` が成功し `out/` が生成される |
 | 単一 HTML | scripts | 生成物が 1 ファイル(CDN 依存なし・オフラインで画面が出る) |
-| 実環境(GAS) | script.google.com でデプロイ | /, /api/health, /api/search, /api/stream が実データ返却。実行時間・クォータ観察 |
+| 実環境(GAS) | script.google.com でデプロイ | /, /api/health, /api/search, /api/stream が実データ返却。実行時間・クォータ観察。**SW 登録(V3)** |
 | 実環境(ブラウザ) | Chrome / iOS Safari | 単一 HTML の再生スケルトン表示、エラー表示の正常性 |
 
 ## 7. 停止条件
@@ -88,7 +89,7 @@
 | P00-B | web スキャフォールド | `apps/web`(Next.js App Router, `output:'export'`, Tailwind v4, GSAP 導入, M3 トークン, ルータ骨格) | A |
 | P00-C | shared パッケージ | `packages/shared`(API client 双方向輸送、types、定数、エラー分類)+ vitest | A |
 | P00-D | GAS 後端 | `backend/gas`(doGet ディスパッチ、/api/health・search・video・stream、youtubei.js embedded client、bridge) | A,C |
-| P00-E | 単一 HTML ビルド + GAS デプロイ | `scripts/build-single-file.ts`(Next export → inline → 単一 HTML)、GAS デプロイ手順書 | B,D |
+| P00-E | 単一 HTML ビルド + GAS デプロイ(SW 配信含む) | `scripts/build-single-file.ts`(Next export → inline → 単一 HTML)、GAS デプロイ手順書、**SW ディスパッチ(`?_sw=` + JAVASCRIPT MIME)と V3 実測** | B,D |
 | P00-F | M3 Expressive 基線 | テーマ(色/形状/タイポ)、ホーム + watch スケルトン、GSAP トランジション 1 種 | B |
 
 ---
@@ -117,7 +118,7 @@
 │                     youtube.com (InnerTube: WEB_EMBEDDED_PLAYER client)           │
 │                          │  → JSON(メタ + 署名済み googlevideo URL + itag/codec) │
 │  [ブラウザ] ◀──JSON───┘                                                        │
-│    再生: <video>/<audio> 直リンク(ブラウザ→googlevideo.com 直接、CORS 不要)     │
+│    再生: <video>/<audio> 直リンク(ブラウザ直接取得可否 = V2 で検証した上で利用) │
 │    ダウンロード: FSA(Chrome) で googlevideo を fetch → muxer → ディスク          │
 └──────────────────────────────────────────────────────────────────────────────────┘
 
@@ -128,18 +129,22 @@
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**不変の原則(しあTube 調査 §5.1 と同じ)**: サーバーは「解決(署名 URL + メタ)」のみ。再生・結合・書き出しは常にブラウザ側。
+**設計原則(ユーザー定義・絶対表現は禁止)**:
+1. **サーバー側で動画データを中継・変換しない限り**、動画処理に伴う CPU/メモリ負荷を最小化できる(サーバーの役割 = 解決のみ: 署名 URL + メタ)
+2. **StreamSaver.js 等のストリーミングダウンロード機構を利用し**、巨大な Blob をメモリ上に保持することを避ける
+3. **再エンコードを行わないため**、FFmpeg 等による再エンコードより CPU 負荷を大幅に低減できる
+4. **ブラウザからの直接取得可否(CORS、Range、URL 有効期限、codec/container 対応等)を検証した上で利用する**。「生 URL を返せば再生できる」は前提にしない(検証 = V1〜V4、§10.9)
 
 ### 10.3 AI 推奨構成文書への修正点(本設計の根拠)
 
 | # | 推奨文書の記述 | 修正 | 根拠 |
 |---|---|---|---|
-| C1 | 再生は MSE / dash.js / shaka-player | **DASH 再生は MSE 不要**。ネイティブ `<video>`(映像)+ `<audio>`(音声)の**2 要素シンクロ**で再生する(しあTube StreamType2 が実証済み)。CORS フリー・メモリ最小・低スペック機に最も優しい。MSE 系(dash.js/shaka)は後日の拡張候補のみ。**m3u8(ライブ)のみ hls.js** | しあTube 調査 §5.6(実コード読了) |
+| C1 | 再生は MSE / dash.js / shaka-player | **DASH 再生は MSE 不要**。ネイティブ `<video>`(映像)+ `<audio>`(音声)の**2 要素シンクロ**で再生する(しあTube StreamType2 が実証済み)。fetch を経由しない経路でメモリ負荷が最小。MSE 系(dash.js/shaka)は後日の拡張候補のみ。**m3u8(ライブ)のみ hls.js**。いずれの経路もブラウザ直接取得可否は V2 で検証した上で利用 | しあTube 調査 §5.6(実コード読了) |
 | C2 | 「GAS で動かし CORS が出たら移行」 | CORS が効くのは**ダウンロード(fetch)経路**であり、再生(`<video src>`)ではない。googlevideo の CORS は**報告が分かれる**(2017 年 SO で ACAO なしの報告例あり、近年は機能する報告も多数)→ **P0/P3 で実測必須**。NG なら「fetch 不可」はダウンロード・FSA/StreamSaver 経路全体を阻害し、**自宅サーバーの relay が必須**になる | 検索証拠 + しあTube 調査 §5.5-4(httpHeaders 要求) |
 | C3 | 「バックエンド(GAS / Next.js API)が JSON を返す」(fetch 前提) | **GAS は CORS ヘッダを設定できない + POST に対応しない(doGet のみ)**。よって GAS フェーズの API は**同一オリジン**(doGet のクエリ引数ディスパッチ / google.script.run RPC)で必須。`fetch('/api/...')` は Phase B 専用。API client は**双方向輸送**を先に抽象化する | GAS 仕様(公式ドキュメントの既知制限) |
 | C4 | 「YouTubei.js 等のライブラリ」 | 方向は正しい。**GAS では yt-dlp(子プロセス)は実行不可** → GAS フェーズは youtubei.js(または raw InnerTube)のみ。**yt-dlp は Phase B(自宅サーバー)専用**(PO token 対応・堅牢性のため)。しあTube 生産版(v2.x)は yt-dlp ベース | しあTube 調査 §5.4/5.5 |
 | C5 | (未言及) | API が返す `httpHeaders`(カスタム UA 等)は**ブラウザの fetch では上書き不可**。高画質 DASH の fetch(ダウンロード)が UA を要求されれば失敗し得る。対処: 実測で確認、失敗時は Phase B の relay がヘッダを付与 | しあTube 調査 §5.5(実測レスポンスに httpHeaders 存在) |
-| C6 | StreamSaver.js を採用 | StreamSaver は**同一オリジンの Service Worker が必要**。GAS(script.google.com)には SW をデプロイできない → **GAS フェーズの第一選択肢は File System Access API**(Chrome の学校 PC 向け、メモリゼロでディスク直書き)。StreamSaver は Phase B(自ドメイン + SW)。iOS(Safari)は FSA 非対応 → **720p 以下の muxed 直リンク下载(新タブ)フォールバック** | FSA/StreamSaver のブラウザ対応表 |
+| C6 | StreamSaver.js を採用(**ダウンロードの主経路**) | 指示どおり主経路に据える。唯一の難所は **Service Worker が必要**なこと。解決策: **GAS ページ自身が SW スクリプトを配信する** — doGet の `?_sw=1` ディスパッチで `ContentService.MimeType.JAVASCRIPT` を返し、ブラウザがそれを SW スクリプトとして fetch(同オリジン・scope=`/macros/s/<id>/`)。**可行性は V3 で実測**(§10.9)。フォールバック: FSA(Chrome、SW 不要)→ 720p 以下 muxed 直リンク(特に iOS) | SW の同オリジン要件・GAS の MIME ディスパッチ・FSA/StreamSaver のブラウザ対応 |
 | C7 | (未言及) | 署名 URL の **`ip=` 束縛**: 解決元 IP(GAS=Google IP)と視聴者 IP が一致しない場合の再生失敗リスク。対処: 失敗(403)時は**再解決(re-resolve)+ フォールバック画質**。shiatube も同種のフォールバック群を実装 | しあTube 調査 §5.5-4 |
 
 ### 10.4 スタック決定
@@ -212,15 +217,18 @@ shiatube 調査 §5.3 の実測形状を踏襲し、**ダウンロード需要�
 
 **UX フロー**: 動画ページで「ダウンロード」→ シート(拡張子 **mp4 / webm** × 画質 144p〜4K × 音声のみ/動画のみ)→ **キューに追加**(複数可)→ 下段トレイ(Dexie 永続、ページ遷移で失われない)で逐次処理。進捗%(byte 基準)、一時停止/再開(リジェクト)、キャンセル、完了通知。
 
-**パイプライン(高画質 DASH)**:
+**パイプライン(高画質 DASH)** — ストリーミングで巨大 Blob をメモリに保持しない:
 ```
 /api/stream から (video itag, audio itag) を選択
-  → fetch(streamUrl, { Range? }) ×2   ← CORS 要検証(C2)
-  → Web Worker: mp4-muxer / webm-muxer(再エンコードなし・ストリーミング)
-  → 書き出し先(優先順):
-     1. File System Access API(Chrome: ディスク直書き・メモリ数 MB)
-     2. StreamSaver(Phase B のみ)
-     3. Blob フォールバック(小ファイル・低画質のみ)
+  → fetch(streamUrl, { Range? }) ×2   ← ブラウザ直接取得可否(CORS/Range/有効期限/codec)を検証した上で利用(V2)
+  → Web Worker: mp4-muxer / webm-muxer
+     (再エンコードを行わないため、FFmpeg 等による再エンコードより CPU 負荷を大幅に低減)
+  → **StreamSaver.js 等のストリーミングダウンロード機構(Service Worker 経由)**
+     (巨大な Blob をメモリ上に保持することを避ける。
+      メインスレッドは Worker の小バッファのみ保持し、ファイルは SW 側へ流す)
+  フォールバックチェーン:
+     1. File System Access API(Chrome、SW が不要な場合)
+     2. 720p 以下 muxed 直リンク(iOS / fetch が不可な環境)
 ```
 
 **拡張子 × コデック行列**(container は muxer の制約で決定):
@@ -242,8 +250,17 @@ shiatube 調査 §5.3 の実測形状を踏襲し、**ダウンロード需要�
 | doGet のみ(POST 不可)・CORS ヘッダ不可 | API は同一オリジン `?api=` ディスパッチ + google.script.run RPC。§10.6 |
 | UrlFetchApp: URL 長 2000 字 / 1 リクエスト 50MB / ヘッダ UA 設定可 | 長い continuation は RPC 経由。UA・Sec-* は addHeaders で再現(shiatube v1 と同じ手法) |
 | 実行時間 6 分 / CPU 10K ms / 日次クォータ(約 6 万ユニット) | 解決は軽量(JSON のみ)だが、**公開運用では日次クォータが移行トリガー**の筆頭 |
-| Service Worker デプロイ不可 | FSA 第一(C6) |
-| V8 サンドボックス | youtubei.js のバンドル可行性 = **P00-D の最重要検証**。不通なら raw InnerTube(`youtubei/v1/next` + 公開 key、shiatube v1 と同型)へ |
+| 静的ファイル/SW 配信ができない | **SW スクリプトを doGet ディスパッチで配信**(`?_sw=1` → `MimeType.JAVASCRIPT`)— **V3 で実測**。不通なら FSA 第一 |
+| V8 サンドボックス | youtubei.js のバンドル可行性 = **P00-D の最重要検証(V1)**。不通なら raw InnerTube(`youtubei/v1/next` + 公開 key、shiatube v1 と同型)へ |
+
+### 可行性検証リスト(P00-D/E と P2 冒頭で実施し §12 に結果を記録)
+
+| ID | 検証項目 | 方法 | 失敗時 |
+|---|---|---|---|
+| V1 | youtubei.js バンドルが GAS V8 で動作し、embedded client で 1080p を解決できるか | P00-D で実デプロイ + 実動画で確認 | raw InnerTube + UrlFetchApp へ切替(ADR 化) |
+| V2 | googlevideo のブラウザ直接取得: **CORS(ACAO 有無)・Range・URL 有効期限・codec/container・UA 依存** | fetch / `<video>` で実測(P00-E〜P2 冒頭) | CORS が詰まれば P4 の relay 设计で補完(§10.10)。UA 依存なら relay のみ対応可能 |
+| V3 | GAS ページからの **Service Worker 登録**(doGet ディスパッチ + JAVASCRIPT MIME + scope `/macros/s/<id>/`) | P00-E で実測(`navigator.serviceWorker.register`) | FSA 第一 / 体感悪ければ P4 早期移行 |
+| V4 | iOS Safari の挙動(SW 経由の DL トリガ、FSA 無、新タブ動作) | P2/P3 で実機テスト | 720p muxed 直リンク方針を iOS 既定に |
 
 ### 10.10 自宅サーバー フェーズ(Phase B / P5)
 
@@ -278,11 +295,12 @@ shiatube 調査 §5.3 の実測形状を踏襲し、**ダウンロード需要�
 | R1 | youtubei.js が GAS V8 で動作しない | P00-D が頓挫 | raw InnerTube + UrlFetchApp への切替(設計済み・ADR 化) |
 | R2 | bot チェック / PO token(Google IP でも高画質で発生し得る) | 1080p 解決失敗 | embedded client 中心、失敗時のフォールバック画質、Phase B で yt-dlp |
 | R3 | googlevideo の CORS / UA / Range が想定と異なる | ダウンロード経路が縮小 | P0(P3 冒頭)で実測し設計を確定(C2/C5)。relay は Phase B |
-| R4 | iOS に FSA がない | iOS で高画質 DL 不可 | 720p muxed 直リンクフォールバック(§10.8) |
+| R4 | iOS Safari(FSA 無、SW 経由の DL トリガも不安定) | iOS で高画質 DL が不可になり得る | 720p muxed 直リンク(新タブ)フォールバック(V4 実測で iOS 既定を確定) |
 | R5 | 学校フィルタが script.google.com もブロックする | 製品が成立しない環境 | 対象学校の前提を明記。CF Workers / Pages 等への別経路配布を後日検討 |
 | R6 | 法的リスク(ToS) | 運営停止 | §10.12 の規律。shiatube より露出を抑える(無名・小規模) |
 | R7 | Next.js export の単一ファイル化(JS/CSS inline)の複雑さ | GAS 配布が煩雑化 | scripts/build-single-file.ts を P00-E で早期実装。代替は「GitHub Pages 版 + GAS が fetch して中継」(shiatube 方式) |
 | R8 | GAS の日次クォータ | 公開利用で停止 | P0 からモニタリング(使用量ログ)。超過 = 移行トリガー |
+| R9 | GAS の SW 配信(V3)が不可 | StreamSaver 経路が GAS 期で閉塞 | フォールバックチェーン(FSA / 720p 直リンク)は確保済み。UX が許容できなければ P4 早期移行 |
 
 ## 12. 実績と証拠(実装後に記入)
 
