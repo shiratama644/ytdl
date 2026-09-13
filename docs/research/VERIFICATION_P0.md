@@ -68,6 +68,22 @@ $ git clone https://github.com/...        → 正常(比較)
 **判定(暫定)**: 自社解決(GAS + youtubei.js / raw InnerTube)は**現時点で未成立**。
 v1b の結果で「どの client が通るか / bot チェックか version 問題か」を切り分ける。
 
+### V1-b(第 2 回・試行 1) — ❌ 実行前のファイルバージョン不一致(データなし)
+
+実行: ユーザー / 2026-09-14 / デプロイ URL `script.google.com/macros/s/AKfycbz4dxlLUwsEIxyWdQIl3F0zd40dGQCdhc-qC8ZkiPENiH791KOcFia7Qosfzb5viLLK/exec`
+
+```
+Exception: パラメータ（String）が ContentService.TextOutput.setMimeType のメソッドの
+シグネチャと一致しません。（行 41、ファイル「a.gs」）
+```
+
+**解釈**: 行 41 = v1b の `setMimeType` 箇所。例外は **String 引数**に対して出た = ユーザーが
+貼付したのが **修正前の v1b(旧コピー)**。リポジトリの最新 v1b は enum 使用済みで
+(行 41 = `.setMimeType(ContentService.MimeType.JSON);`)この例外は出ない(リモート raw 確認済み)。
+→ **最新版を再取得して再実行**(raw URL + 自己チェック行:
+https://raw.githubusercontent.com/shiratama644/ytdl/arena/01a094ec-ytdl/verification/v1b-gas-test.gs)。
+実行データは未取得 = V1-b 第 2 回はまだ未実施。
+
 ---
 
 ## V2: ブラウザからの直接取得(CORS / Range / 有効期限 / codec)
