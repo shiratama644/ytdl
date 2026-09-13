@@ -14,7 +14,7 @@
 | V3-b | script.google.com での SW 登録(StreamSaver 経路) | 同上 | 進行中 | **第 1 回**: ページが **text/plain として配信**され描画されず(リモートヘッダ確認済み) / **第 2 回**: v3b の `setMimeType(String)` が例外 — **GAS は `MimeType` 列挙型のみ受け付け**(O7)。enum 修正済み。→ **第 3 回待ち(最重要)**: 修正版 `verification/v3b-gas-test.gs` を**新しいプロジェクト**で実行(まず `?probe=1`) |
 | V4 | iOS Safari 挙動 | 同上 | 進行中 | ユーザー実行待ち(任意): `verification/v2b-browser-test.html` |
 
-> **設計判断の現状(2026-09-13)**: DL 経路は**ユーザー判断で確定** — 自宅サーバーは siatube 型の動画全面プロキシにはしない(高負荷のため)、DL = **サーバー側バッチパイプライン**(yt-dlp ダウンロード+mux(再エンコードなし) → 完成ファイル配信 → クライアントが自社サーバーから StreamSaver/保存)。サーバーは再生経路(googlevideo 直)には関与しない。**残る未確定**: (1) v1b 後の GAS 期リゾラ戦略(siatube.com 依存 vs セルフ解決) (2) v3b 後の GAS からの SW 配信(StreamSaver 成立可否)。**P2 / P4 の内容はこの 2 点で確定する**。詳細: [VERIFICATION_P0.md §設計への影響](research/VERIFICATION_P0.md)
+> **設計判断の現状(2026-09-13)**: DL 経路の**方向性は確定** — 自宅サーバーは siatube 型の動画全面プロキシにはしない(高負荷のため)、**再生経路は googlevideo 直(サーバー負荷ゼロ)**、DL のときだけサーバーが関与。**ただし「直リンク + StreamSaver + 進捗」の同時成立は技術的に不可能**と調査で判明([DOWNLOAD_MECHANISM_RESEARCH.md](research/DOWNLOAD_MECHANISM_RESEARCH.md): StreamSaver は fetch 必須 = googlevideo 直 fetch は CORS 不可)。**残る未確定**: (1) **自宅サーバー期 DL 主方式**: A=ダウンロード専用 relay+クライアント mux(当初設計) / B=サーバー側 mux バッチ(§6 でユーザー選択待ち) (2) v1b 後の GAS 期リゾラ戦略(siatube.com 依存 vs セルフ解決) (3) v3b 後の GAS からの SW 配信(StreamSaver 成立可否)。**P2 / P4 の内容は (1)(2)(3) で確定する**。詳細: [VERIFICATION_P0.md §設計への影響](research/VERIFICATION_P0.md)
 
 ## Phase 0: 基盤構築
 
