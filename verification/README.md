@@ -25,9 +25,9 @@
    さらに **v3b 初回実行(ユーザー)で GAS の制約を発見**: `setMimeType` は **`MimeType` 列挙型のみ**
    受け付け、String は例外(O7)。v3b/v1b は enum 使用に**修正済み**。
 
-## 第 2 回結果(2026-09-13/14)と第 3 回キットの由来
+## 第 2 回・第 3 回結果と第 4 回キット(v1d)の由来
 
-1. **V1 / v1b(実行済み・コミット `c53eddb`)**: **全 client 失敗** —
+1. **V1 / v1b(第 2 回・実行済み・コミット `c53eddb`)**: **全 client 失敗** —
    C1/C2(WEB_EMBEDDED_PLAYER、最新 version 2.20260911.01.00)= `ERROR「この動画は再生できません」` /
    C3(WEB)= `UNPLAYABLE` / C4(ANDROID)= `HTTP 400`。
    version 陳腐化は排除。embed ページ自体は 200/131KB で実取得可(制限は `/player` 単位)
@@ -35,18 +35,34 @@
    → **第 3 回 `v1c`**: **`/watch/` ページの `ytInitialPlayerResponse` 抽出を主経路に**
    (PO token 不要の可能性)+ `/player` 改善(visitorData+playbackContext)+
    playabilityStatus 詳細(messages)記録 + bot チェック自動検知。
-2. **V3 / v3b**: 実行未了。DL 設計確定(GAS 期 = 直リンク)により**参考レベルに降格**
+2. **V1 / v1c(第 3 回・実行済み・コミット `bf513ab`・生データ `verification/v1c-res.md`)**:
+   **キット側の抽出バグ 2 点で未了**(= ユーザー環境・YouTube 側の問題ではない) —
+   - **陽性シグナル**: `/watch/` ページは **200 / 718KB(ja-JP)で取得成功** +
+     `ytInitialPlayerResponse` マーカー存在 + consent でも botCheck でもない
+     → **データセンター IP 壁は確定していない**。
+   - バグ①: マーカーの初回出現が `WIZ_global_data` 内の別構文に命中 → 不正な `{ … }` 領域を
+     JSON.parse 失敗("Expected property name or '}' in JSON at position 1")。
+   - バグ②: API キー抽出の正規表現が新形式 `ytcfg.setINNERTUBE_API_KEY('...')` に非マッチ
+     → `/player` 改善版テストが全スキップ。
+   → **第 4 回 `v1d`**: 抽出のみ修正。代入文 `ytInitialPlayerResponse = {` を正規表現で**全候補列挙**
+   → バランス切片 → JSON.parse → 実レスポンス判定(偽出現は自動スキップ・敵対的モック検証済み)+
+   API キー/バージョンの新形式対応(3 段 fallback)+ 他は v1c と同じ測定。
+3. **V3 / v3b**: 実行未了。DL 設計確定(GAS 期 = 直リンク)により**参考レベルに降格**
    (PWA/オフライン機能の判断材料)。任意。
 
-## 第 3 回: ユーザー側で実行していただくもの(合計 ~2 分)
+## 第 4 回: ユーザー側で実行していただくもの(合計 ~2 分)
 
 > **すべて「新しい GAS プロジェクト」でお願いします**(旧プロジェクトのデプロイは
 > 旧バージョンを配信し続けるため)。ファイルは**必ず下記の raw URL から取得**してください
-> (手元の古いコピーは setMimeType 例外で失敗します: 過去に 2 回発生)。
+> (手元の古いコピーは v1c の抽出バグ or setMimeType 例外になります: 過去に複数回発生)。
 
-### 1. V1 再検証(第 3 回): `v1c-gas-test.gs`(2 分)— **最重要・これだけやってください**
+### 1. V1 再検証(第 4 回): `v1d-gas-test.gs`(2 分)— **最重要・これだけやってください**
 
-1. [v1c-gas-test.gs (raw)](https://raw.githubusercontent.com/shiratama644/ytdl/arena/01a094ec-ytdl/verification/v1c-gas-test.gs)
+> v1c は **watch ページの取得は成功**(200/718KB・マーカーあり・botCheck なし)でしたが、
+> **私の抽出ロジックのバグ 2 点**でデータを取得できませんでした。
+> v1d は**抽出の修正のみ**で、測定内容は v1c と同じです。
+
+1. [v1d-gas-test.gs (raw)](https://raw.githubusercontent.com/shiratama644/ytdl/arena/01a094ec-ytdl/verification/v1d-gas-test.gs)
    を開いて中身を**全てコピー**
 2. [script.google.com](https://script.google.com) で「新しいプロジェクト」→ 貼付
    **自己チェック**: `doGet()` の最後の行が
@@ -90,10 +106,12 @@ DL フォールバック方針の確定に必要です。
 
 ## 結果の使い道
 
-- **v1c の結果**が届いたら: `docs/research/VERIFICATION_P0.md` に証跡として追記し、
+- **v1d の結果**が届いたら: `docs/research/VERIFICATION_P0.md` に証跡として追記し、
   GAS 期リゾラの可行性を判定する:
   - **watch ページで streamingData OK** → 主経路 = watch 抽出で確定。P00-D(GAS 後端)着手。
   - **全経路 bot-check/ERROR** → データセンター IP 壁 = **設計分岐**(リゾラを初期から
     自宅サーバー(yt-dlp)へ = Phase A のスコープ変更)をユーザーと合意して決定。
-- **P00-B/C/E/F**(Next.js スキャフォールド・shared・単一 HTML ビルド・M3 基線)は v1c に
+  - (参考: v1c で watch ページの取得自体は成功済み = IP 壁ではない見込みが高い。
+    v1d は抽出バグ修正のみ。)
+- **P00-B/C/E/F**(Next.js スキャフォールド・shared・単一 HTML ビルド・M3 基線)は v1d に
   依存しない = ユーザーの GO 次第で着手可能。

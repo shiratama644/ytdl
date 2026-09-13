@@ -1,8 +1,8 @@
 # AI 引き継ぎドキュメント(ytdl)
 
 > 作成: 2026-09-14 / 作成者: 前職 AI エージェント(Arena Agent Mode)
-> 対象ブランチ: `arena/01a094ec-ytdl` / 最新コミット: ブランチ先端(`c53eddb` = ユーザーの
-> V1-b 第 2 回結果 + v1c キット追加を必ず含む)
+> 対象ブランチ: `arena/01a094ec-ytdl` / 最新コミット: ブランチ先端(`bf513ab` = ユーザーの
+> v1c 実行結果 + v1d キット追加を必ず含む)
 > **引き継ぐ AI へ: このファイルが第一のエントリポイントです。§1 → §13 の順で読み、
 >  §9 に指定したファイル群をその優先順で読んでから作業を開始してください。**
 
@@ -13,9 +13,11 @@
 1. **このプロジェクトの全設計判断は確定済み**(§4)。再議論・再提案しないこと。ユーザーが確認済み。
 2. **ユーザーとのコミュニケーションは日本語**(返信もドキュメントも)。
 3. **ユーザーの常設指示: 「検証してから構築する」**(verify first, build second)。検証はほぼ完了(§6)。
-4. **唯一の gating 項 = ユーザー実行の `v1c` キットの結果**(GAS 実環境での解決可行性・第 3 回)。
-   `v1b`(第 2 回)は**既に実行済み = 全 client 失敗**(§6)。v1c の結果が来たら §8 のフローで判定 →
-   P00-D 着手 or **アーキ分岐**(リゾラの置き場)。P00-B/C/E/F は v1c 非依存 = ユーザーの GO 次第で着手可。
+4. **唯一の gating 項 = ユーザー実行の `v1d` キットの結果**(GAS 実環境での解決可行性・第 4 回)。
+   第 2 回(v1b)= 全 client 失敗 / 第 3 回(v1c)= **キット側の抽出バグで未了**だが
+   **watch ページは 200/718KB で取得成功 + マーカー存在 + botCheck なし**(§6)。
+   v1d の結果が来たら §8 のフローで判定 → P00-D 着手 or **アーキ分岐**(リゾラの置き場)。
+   P00-B/C/E/F は v1d 非依存 = ユーザーの GO 次第で着手可。
 5. **このサンドボックスはターン跨ぎにリポジトリを再クローンする**。作業のたびに必ず **commit して push**
    (復旧手順は §11)。push しない作業は消える。
 
@@ -98,7 +100,7 @@ Dexie.js 4 / TypeScript / biome / vitest / pnpm workspaces。GAS 後端 = youtub
 | ID | 内容 | 状態 | 要点 |
 |---|---|---|---|
 | V1-a | youtubei.js バンドル + Node 初期化 | ✅ 完了 | v18.0.0・1.3MB バンドル・create() 到達(通信はサンドボックス遮断のため未実測) |
-| **V1-b** | **GAS 実環境でのストリーム解決** | ⏳ **v1c 実行待ち(最重要)** | 第 1 回失敗 / **第 2 回(v1b・コミット `c53eddb`)も全 client 失敗**: C1/C2 embedded(最新 ver 2.20260911.01.00)= ERROR「この動画は再生できません」/ C3 WEB = UNPLAYABLE / C4 ANDROID = HTTP 400。**version 陳腐化は排除**。embed ページは 200/131KB で実取得可(=`/player` 単位の制限)→ **データセンター IP + PO token/visitorData 欠如の疑い**。→ **次 = `v1c-gas-test.gs`**(§8.1): **`/watch/` ページの `ytInitialPlayerResponse` 抽出が主経路**(PO token 不要の可能性)+ `/player` 改善版 + messages 詳細記録 |
+| **V1-b** | **GAS 実環境でのストリーム解決** | ⏳ **v1d 実行待ち(最重要)** | 第 1 回失敗 / 第 2 回(v1b・`c53eddb`)= 全 client 失敗(version 陳腐化は排除)/**第 3 回(v1c・`bf513ab`・生データ `verification/v1c-res.md`)= キット側の抽出バグ 2 点で未了**(マーカー初回出現誤認 → JSON.parse 不正領域 / API キー新形式 `setINNERTUBE_API_KEY(...)` 非マッチ)。**重要な陽性: `/watch/` ページは 200/718KB(ja-JP)で取得成功 + `ytInitialPlayerResponse` マーカー存在 + consent でも botCheck でもない → **データセンター IP 壁は確定していない**。→ **次 = `v1d-gas-test.gs`**(§8.1)= 抽出のみ修正(代入文の全候補列挙 + 検証 + キー/バージョン新形式対応・敵対的モック検証済み) |
 | V2 | ブラウザ直接取得 | ✅ 部分判定で確定 | 第 1 回(ユーザー Android): `<video>` 再生 **OK** / fetch 全 **Failed to fetch** → **CORS(ACAO 欠如)成立**。expire ≈5.9h / 他 IP 再生 OK(ip= 縛りなし)。v2b は D8 でスキップ |
 | V3-a | GAS `?_sw=` の HTTP 契約 | ✅ 完了 | ローカル模倣で HTML/JS MIME 同居確認 |
 | V3-b | GAS からの SW 登録 | ⏳ 任意(参考) | DL 設計確定で **GAS 期は StreamSaver 不使用** → 「最重要」から**降格**。PWA/オフライン判断用のみ。第 1 回 = text/plain 配信(旧デプロイ)、第 2 回 = setMimeType 例外(私のバグ、修正済み) |
@@ -169,24 +171,32 @@ Dexie.js 4 / TypeScript / biome / vitest / pnpm workspaces。GAS 後端 = youtub
 
 ## 8. ユーザー実行待ちのキットと、結果到着時の対応フロー
 
-### 8.1 v1c(最重要・唯一の gating 項)
-- **v1b(第 2 回)は実行済み = 全 client 失敗**(2026-09-13/14、`verification/Verification-Results.md`
-  にコミット `c53eddb` で記録): C1/C2 WEB_EMBEDDED_PLAYER(最新 ver 2.20260911.01.00)=
-  ERROR「この動画は再生できません」/ C3 WEB = UNPLAYABLE「動画を再生できません」/
-  C4 ANDROID = HTTP 400。**version 陳腐化は排除**。embed ページは 200/131KB で実取得可
-  (= 制限は `/player` エンドポイント単位)→ **データセンター IP + PO token/visitorData 欠如の疑い**。
-- キット: **`verification/v1c-gas-test.gs`**(新規作成・構文+モックスモーク検証済み)。
-  中身:
+### 8.1 v1d(最重要・唯一の gating 項)
+- **これまでの経過(要約)**:
+  - 第 2 回(v1b・`c53eddb`): 全 client 失敗(C1/C2 embedded = ERROR / C3 WEB = UNPLAYABLE /
+    C4 ANDROID = HTTP 400)。version 陳腐化は排除。embed ページは 200/131KB 実取得可。
+  - 第 3 回(v1c・`bf513ab`・生データ `verification/v1c-res.md`): **キット側の抽出バグ 2 点で未了**
+    (① マーカー初回出現が WIZ_global_data 内の別構文に命中 → 不正領域を JSON.parse 失敗 /
+    ② API キー抽出の正規表現が新形式 `setINNERTUBE_API_KEY(...)` に非マッチ)。**ただし重要な陽性:
+    `/watch/` ページは 200/718KB(ja-JP)で取得成功 + `ytInitialPlayerResponse` マーカー存在 +
+    consent/botCheck でもない → データセンター IP 壁は確定していない。**
+- キット: **`verification/v1d-gas-test.gs`**(抽出のみ修正・敵対的モックで v1c 失敗の再現検証済み)。
+  中身(v1c と同じ測定):
   1. **主経路候補: `/watch/` ページから `ytInitialPlayerResponse` を直接抽出**
      (desktop UA + mobile UA の 2 種)。**PO token を通さない別経路** = ここが OK なら
      GAS 解決は成立(本番リゾラ = watch 抽出)。
-  2. `/player` POST を **visitorData + playbackContext + userAgent 付き**で改善
+     抽出 = 代入文 `ytInitialPlayerResponse = {` を正規表現で**全候補列挙** → バランス切片 →
+     JSON.parse → `playabilityStatus/streamingData/videoDetails` を持つ実レスポンスを採用
+     (偽出現は自動スキップ)。
+  2. API キー = `setINNERTUBE_API_KEY('...')` 新形式 + 旧形式 + 公開キー fallback(v1b 実績)の
+     3 段。clientVersion も新形式対応。
+  3. `/player` POST を **visitorData + playbackContext + userAgent 付き**で改善
      (C2b embedded / C3b WEB / C4b ANDROID=アプリ UA)。
-  3. playabilityStatus の **`messages` 配列**(bot チェック等の詳細が入る)を全部記録。
-  4. bot チェック / consent ページの自動検知フラグ。
+  4. playabilityStatus の **`messages` 配列**(bot チェック等の詳細が入る)を全部記録 +
+     bot チェック / consent ページの自動検知フラグ + `videoTitle`(対象動画の裏取り)。
 - **注意: ユーザーに渡すファイルは必ずブランチ先端のもの**(raw URL):
-  `https://raw.githubusercontent.com/shiratama644/ytdl/arena/01a094ec-ytdl/verification/v1c-gas-test.gs`
-  手元の古いコピーは setMimeType 例外で失敗する(過去に v3b・v1b で 2 回発生)。
+  `https://raw.githubusercontent.com/shiratama644/ytdl/arena/01a094ec-ytdl/verification/v1d-gas-test.gs`
+  手元の古いコピーはバグを含む or setMimeType 例外になる(過去に v3b・v1b で 2 回発生)。
   自己チェック: `doGet()` の最後の行が `.setMimeType(ContentService.MimeType.JSON);`(enum)。
 - 手順: 新しい GAS プロジェクト → 貼付 → デプロイ(Web アプリ / 自分 / 全員)→
   URL を開く → **JSON を丸ごと送付**(チャット貼付 or リポジトリコミット)。
@@ -245,7 +255,8 @@ ytdl/
 ├── verification/
 │   ├── README.md                    # ★ 検証キットの実行手順(ユーザー向け)
 │   ├── Verification-Results.md      # ユーザーの第 1 回 + 第 2 回(v1b)実行結果(生データ)
-│   ├── v1-gas-test.gs / v1b-gas-test.gs / v1c-gas-test.gs  # V1 キット(旧 / 中 / **最新=実行待ち**)
+│   ├── v1c-res.md                   # ユーザーの第 3 回(v1c)実行結果(生 JSON・抽出バグで未了)
+│   ├── v1〜v1d の .gs/.html         # V1 キット系(旧→新 / **最新 = v1d = 実行待ち**)
 │   ├── v2-browser-test.html / v2b-browser-test.html  # V2 キット(旧 / 最新・v2b はスキップ)
 │   ├── v3-gas-test.gs / v3b-gas-test.gs      # V3 キット(旧 / 最新)
 └── (P00-B 以降で) apps/web, packages/shared, backend/gas, backend/home, scripts/
@@ -261,13 +272,21 @@ ytdl/
 ## 10. git / ブランチ状況(2026-09-14 時点)
 
 - リポジトリ: `shiratama644/ytdl`(GitHub。認証はこの環境で設定済み)
-- **全作業はブランチ `arena/01a094ec-ytdl` にある(先端 = v1c キット追加 commit)。`main`
+- **全作業はブランチ `arena/01a094ec-ytdl` にある(先端 = v1d キット追加 commit)。`main`
   は `69db5af`(Initial commit)のまま**。→ 引き継いだセッションでは、作業開始前に
   `git fetch origin` してこのブランチを起点にすること(新しい Arena セッションは
   別の `arena/<id>` ブランチを main から作られる場合がある = その場合は
   `origin/arena/01a094ec-ytdl` をマージ/リベースしてから作業)。
+- **ユーザーは GitHub Web UI で直接コミットする**(commit `c53eddb`・`bf513ab`)。
+  **worktree にユーザーが変更したファイルの古いコピーが残っていることがある** →
+  コミット前に必ず `git checkout origin/<ブランチ> -- <ファイル>` で同期すること
+  (例: `bf513ab` で `Verification-Results.md` が削除され `v1c-res.md` がリポジトリ直下追加
+   になっていた = Web UI のリネ名が直下に落ちた事故。v1d 追加 commit で
+   `verification/` 配下へ整理済み)。
 - 主要コミット(新しい順):
-  - (先端) v1c キット追加 + v1b 第 2 回結果の分析記録(VERIFICATION_P0 / task-list / README)
+  - (先端) v1d キット追加 + v1c 結果分析(VERIFICATION_P0 / task-list / README / HANDOVER)
+  - `bf513ab` ユーザー: v1c 実行結果(= `v1c-res.md`・抽出バグで未了)
+  - (8ba00f8) v1c キット追加 + v1b 第 2 回結果の分析記録
   - `c53eddb` ユーザー: V1-b 第 2 回実行結果(生 JSON)の記録(= **全 client 失敗**)
   - `768f6b0` 本 HANDOVER 作成 + docs/README index 更新
   - `329d902` V1-b 試行 1(旧ファイルによる例外)の記録
@@ -327,15 +346,17 @@ ytdl/
 
 ## 13. 次の一手(引き継いだらこれ)
 
-1. **ユーザーに確認**: 「v1c(第 3 回・watch ページ抽出)は実行できましたか?」
+1. **ユーザーに確認**: 「v1d(第 4 回・抽出修正版)は実行できましたか?」
    - 結果(JSON)が来ている場合 → §8.1 の判定フローに従う:
      - **watch OK** → 主経路確定 → 証跡追記(VERIFICATION_P0 / task-list / 本ファイル §6 §10)
        → **P00-D 着手可**。
      - **全経路 dead** → **アーキテクチャ分岐**(リゾラを初期から自宅サーバーへ)を
        ユーザーと相談(§8.1 のフローを踏襲。決定後は PHASE0_PLAN §10.2 と task-list を書き換え)。
    - 未実行の場合 → raw URL + 自己チェック行を再提示(§8.1)。
-   - **v1c 結果が来るまで P00-D は着手しない**。
-2. **P00-B/C/E/F は v1c に依存しない** = ユーザーの GO 次第で着手可。前職 AI は 2 回
+   - **v1d 結果が来るまで P00-D は着手しない**。
+   - (参考: v1c の `/watch/` ページは 200/718KB で取得成功しマーカーも存在 = IP 壁は確定していない。
+     v1d は抽出バグ修正のみで、解決データが取得できる見込みは高い。)
+2. **P00-B/C/E/F は v1d に依存しない** = ユーザーの GO 次第で着手可。前職 AI は 2 回
    「着手してよいですか」と確認したが、まだ明示的な GO は無い = 引き継いだら最初に確認すること:
    - P00-B: `apps/web` スキャフォールド(Next.js App Router + `output:'export'` + Tailwind v4 +
      GSAP 導入 + M3 トークン + ルータ骨格)
@@ -343,7 +364,7 @@ ytdl/
      Phase B の fetch。types・itag/codec 定数・エラー分類)+ vitest
    - P00-F: M3 Expressive 基線(テーマ + ホーム/watch スケルトン + GSAP 1 種)
    - P00-E: 単一 HTML ビルド(`scripts/build-single-file.ts`)+ GAS デプロイ手順書
-   - P00-D: GAS 後端(v1c 結果に基づく主経路の採用 = watch 抽出 or player client)+
+   - P00-D: GAS 後端(v1d 結果に基づく主経路の採用 = watch 抽出 or player client)+
      doGet ディスパッチ + `/api/*`
    - 各タスクの DoD は `docs/planning/PHASE0_PLAN.md` §5、作業手順は §8(完了時に行うこと)。
 3. **作業のたびに commit+push**(§11)。タスク ID をコミットメッセージに含める。
@@ -360,8 +381,8 @@ P0(基盤構築)前の検証フェーズを完了し、設計判断が全部確�
 1. リポジトリの `docs/HANDOVER.md` を全部読む(これがコンテキストの唯一の入口)。
 2. その指示に従って、docs/task-list.md → docs/planning/PHASE0_PLAN.md →
    docs/research/VERIFICATION_P0.md の順に読む。
-3. 作業ブランチの確認: 全作業は GitHub のブランチ `arena/01a094ec-ytdl`(先端 = v1c キット追加
-   commit、`c53eddb` ユーザーの v1b 結果を含む)にある。main は古い。自分のセッションブランチに
+3. 作業ブランチの確認: 全作業は GitHub のブランチ `arena/01a094ec-ytdl`(先端 = v1d キット追加
+   commit、`bf513ab` ユーザーの v1c 結果を含む)にある。main は古い。自分のセッションブランチに
    `origin/arena/01a094ec-ytdl` を取り込むことを最初にやる(HANDOVER §10・§11 の手順)。
 
 現状の要約:
@@ -369,14 +390,16 @@ P0(基盤構築)前の検証フェーズを完了し、設計判断が全部確�
   DL=自宅サーバー期は「DL 専用 relay + クライアント側 mux + StreamSaver」主経路、GAS 期は 720p 以下
   直リンク)。HANDOVER §4 を再議論せず踏襲すること。
 - ユーザーの 4 設計原則(HANDOVER §3)と禁止表現を守ること。
-- 検証の現状: V2(CORS)= 確定 / V1(GAS 解決)= **v1b 第 2 回で全 client 失敗**(version 陳腐化は排除、
-  データセンター IP 壁の疑い)。唯一の未完了 = ユーザー実行の検証キット **`v1c`**
-  (`/watch/` ページの `ytInitialPlayerResponse` 抽出が主経路。PO token 不要の別経路)。
+- 検証の現状: V2(CORS)= 確定 / V1(GAS 解決)= 第 2 回(v1b)で全 client 失敗(version 陳腐化は排除)/
+  第 3 回(v1c)= **キット側の抽出バグで未了**だが **`/watch/` ページは 200/718KB で取得成功 +
+  マーカー存在 + botCheck なし**(= データセンター IP 壁は確定していない)。
+  唯一の未完了 = ユーザー実行の検証キット **`v1d`**(抽出修正版・
+  `/watch/` ページの `ytInitialPlayerResponse` 抽出が主経路、PO token 不要の別経路)。
   結果が来たら HANDOVER §8.1 の判定フローに従う:
   - **watch OK** → GAS 解決成立 → P00-D 着手。
   - **全経路 dead** → **アーキテクチャ分岐**(リゾラを初期から自宅サーバーへ)。ユーザーと合意すること。
 - ユーザーから「P00 開始の GO」が来たら P00-B(Next.js スキャフォールド)から着手
-  (P00-B/C/E/F は v1c 非依存、P00-D のみ v1c 待ち)。まだ GO が無いなら最初に確認すること。
+  (P00-B/C/E/F は v1d 非依存、P00-D のみ v1d 待ち)。まだ GO が無いなら最初に確認すること。
 
 作業ルール:
 - ユーザーとのやり取りは全部日本語。
@@ -385,7 +408,7 @@ P0(基盤構築)前の検証フェーズを完了し、設計判断が全部確�
   git commit + git push(HANDOVER §11 の復旧手順を知っておくこと)。
 - docs/task-list.md を常に最新に保つ。
 
-最初に、(a) 理解した状況の要約 1 段落、(b) 最初に確認したいこと(v1c の結果の有無、
+最初に、(a) 理解した状況の要約 1 段落、(b) 最初に確認したいこと(v1d の結果の有無、
 P00 開始の GO)を日本語で答えてください。
 ```
 
@@ -395,9 +418,9 @@ P00 開始の GO)を日本語で答えてください。
 
 | # | 項目 | 誰が | 状態 |
 |---|---|---|---|
-| 1 | **v1c** の実行 + JSON 送付 | ユーザー | **実行待ち**(v1b は完了=全 client 失敗、次は watch ページ抽出の v1c) |
+| 1 | **v1d** の実行 + JSON 送付 | ユーザー | **実行待ち**(v1c は完了=抽出バグで未了・ただし watch ページ取得は OK。次は抽出修正版の v1d) |
 | 2 | P00-B/C/E/F の開始 GO | ユーザー | 前職 AI が 2 回確認済み・GO 未回答 |
-| 3 | P00-B ~ P00-F の実装 | AI(P00-D は v1c 後) | 未着手 |
-| 4 | **アーキテクチャ分岐の判断**(v1c が全経路 dead の場合のみ発生) | ユーザー + AI | 未発生(判断フローは §8.1) |
+| 3 | P00-B ~ P00-F の実装 | AI(P00-D は v1d 後) | 未着手 |
+| 4 | **アーキテクチャ分岐の判断**(v1d が全経路 dead の場合のみ発生) | ユーザー + AI | 未発生(判断フローは §8.1) |
 | 5 | v3b / V4(iOS)の実行 | ユーザー | 任意・未実施(v3b は DL には不要=参考のみ) |
 | 6 | main へのマージ | ユーザー | 未実施(全作業は arena/01a094ec-ytdl にある) |

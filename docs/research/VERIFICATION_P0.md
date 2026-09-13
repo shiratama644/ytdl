@@ -124,6 +124,41 @@ https://raw.githubusercontent.com/shiratama644/ytdl/arena/01a094ec-ytdl/verifica
   初期から自宅サーバー(yt-dlp・residential IP)が解決源 / Phase A のスコープ変更)。
   これは D2(自前解決)は維持したまま「どこで実行するか」の変更なので、ユーザーと合意する。
 
+### V1-c(第 3 回・試行 1) — ⚠️ キット側の抽出バグ(YouTube 側は陽性シグナル取得済み)
+
+実行: ユーザー / 2026-09-13T22:51Z / 生データ: `verification/v1c-res.md`(コミット `bf513ab`)
+
+| 経路 | httpStatus | 結果 |
+|---|---|---|
+| **watchPage(desktop)** | **200** / 718,271B / lang=ja-JP | `ytInitialPlayerResponse` **マーカー存在** / consent=false / botCheck=false / **抽出失敗 = キットバグ(O8)** |
+| watchPageMobile | **200** / 709,084B | 同上(同じバグで抽出失敗) |
+| players C2b/C3b/C4b | — | **全スキップ**(API キー抽出の正規表現が新形式 `setINNERTUBE_API_KEY(...)` に非マッチ → キー取得失敗) |
+
+**キットバグ 2 点(私の実装ミス = ユーザー環境・YouTube 側の問題ではない):**
+1. **O8-① マーカーの初回出現誤認**: `ytInitialPlayerResponse` という文字列はページ先頭の
+   `WIZ_global_data` 等の別構文にも含まれ、「初回出現の直後の `=` → 最初の `{`」からの
+   バランス走査が**不正な領域**(JS オブジェクトリテラル・JSON として無効)を切り出した
+   → `SyntaxError: Expected property name or '}' in JSON at position 1`。
+2. **O8-② API キー抽出の非マッチ**: 新版 watch ページは
+   `ytcfg.setINNERTUBE_API_KEY('AIza...')` 形式。旧 `INNERTUBE_API_KEY:` 形式の正規表現が
+   非マッチ → `/player` 改善版テストが未実施。
+
+**解釈(重要な陽性シグナル):**
+1. **`/watch/` ページは GAS から完全に取得可能**(200 / 718KB / 本物の ja-JP ページ /
+   consent でも bot-check でもない)= **データセンター IP 壁は確定していない**。
+   (v1b との違い: embed ページは player response の「シェル」だったに対し、
+   **watch ページは `ytInitialPlayerResponse` を含んでいる** = 主経路候補が有力)
+2. 残る課題は**ページ内 JSON の抽出精度**だけ。→ **v1d キット**(抽出のみ修正):
+   - 代入文 `ytInitialPlayerResponse = {` を正規表現で**全候補列挙** → バランス切片 →
+     JSON.parse → `playabilityStatus/streamingData/videoDetails` を持つ実レスポンスを採用
+     (先頭の偽出現は自動的にスキップ = 敵対的モックで再現検証済み)
+   - API キー抽出を新形式対応(`setINNERTUBE_API_KEY(...)`)+ 公開キー fallback(v1b 実績)
+   - clientVersion も新形式対応
+3. **アーキ分岐(IP 壁 → リゾラを初期から自宅サーバーへ)は保留**。v1d で
+   playability が取れて初めて判定する。
+
+**判定: 未了(キット再実行へ)。P00-D ゲートは v1d の結果に。**
+
 ---
 
 ## V2: ブラウザからの直接取得(CORS / Range / 有効期限 / codec)
@@ -264,7 +299,7 @@ iOS 固有(FSA なし / SW / 再生)の最終確認は `verification/v2-browser-
 |---|---|---|---|
 | 1 | **再生経路**(dual `<video>` DASH 直読み) | **成立を確認**(ユーザー環境 Android で playing) | 確定済み(V2 第 1 回 A) |
 | 2 | **DL 経路**(fetch → muxer → StreamSaver) | googlevideo 直接 fetch は **CORS で不可**(V2 実測 + 第三者的証拠)。**ユーザー決定(2026-09-13)**: 自宅サーバーは siatube 型の動画全面プロキシにはしない(高負荷のため)。→ **A(DL 専用 relay + クライアント mux + StreamSaver + 進捗UI)主 + B(yt-dlp バッチ + 完成ファイル)フォールバック**(主方式はユーザー選択済み・[DOWNLOAD_MECHANISM_RESEARCH.md §6](DOWNLOAD_MECHANISM_RESEARCH.md))。**relay はダウンロード時のみに限定(再生には一切使用しない=ユーザーの常設制約)**。GAS 期は C(720p 以下直リンク) | 確定済み |
-| 3 | **GAS 期セルフ解決**(youtubei.js / raw InnerTube) | **ユーザー決定(2026-09-13): youtubei.js による自前実装(siatube.com API は使用しない)**。**v1b 完了(2026-09-14): 全 client 失敗**(ERROR / UNPLAYABLE / ANDROID 400。version 陳腐化は排除。embed ページは実取得可 = 制限は `/player` 単位 → データセンター IP + PO token/visitorData 欠如の疑い)。**次 = v1c**(`/watch/` ページの `ytInitialPlayerResponse` 抽出が主経路)。watch も NG なら**アーキテクチャ分岐**(リゾラを初期から自宅サーバーへ = Phase A のスコープ変更、ユーザーと合意要) | **v1c 実行待ち** |
+| 3 | **GAS 期セルフ解決**(youtubei.js / raw InnerTube) | **ユーザー決定(2026-09-13): youtubei.js による自前実装(siatube.com API は使用しない)**。**v1b 完了(2026-09-14): 全 client 失敗**(ERROR / UNPLAYABLE / ANDROID 400。version 陳腐化は排除。embed ページは実取得可 = 制限は `/player` 単位 → データセンター IP + PO token/visitorData 欠如の疑い)。**v1c(第 3 回)= キット側の抽出バグで未了**(ただし **watch ページは 200/718KB で取得成功 + マーカー存在 + botCheck なし** = IP 壁は確定せず)。**次 = v1d**(抽出修正版)。全経路が dead とならなければアーキ分岐(IP 壁 → リゾラを初期から自宅サーバーへ)は**保留** | **v1d 実行待ち** |
 | 4 | ~~GAS 期リゾルの代替戦略~~ | **決定(2026-09-13): (b) セルフ解決のみ**。siatube.com API 依存は不採用(第三者依存・O1 の可用性リスクを排除)。shiatube の実測 API 形状は**参考資料**としては残す(応答正規化・PO token の知見) | 確定済み |
 | 5 | **GAS からの SW 配信** | DL 設計確定により **GAS 期は StreamSaver 不使用(直リンク)** → V3-b は**参考**(PWA/オフライン機能の判断材料)に降格 | v3b は任意 |
 
