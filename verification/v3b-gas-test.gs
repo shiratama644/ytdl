@@ -5,8 +5,15 @@
  *  - ページが Content-Type: text/plain として配信され、HTML として描画されず、
  *    インラインスクリプトが一切実行されなかった(ユーザーが見たのはソース文字列)
  *  - 原因候補: デプロイの MIME 指定が反映されていない(旧デプロイ / 貼付崩れ?)
+ *
+ * v3b 初回実行(2026-09-13)で判明した GAS の制約:
+ *  - setMimeType(String) は**例外**を投げる:
+ *    "パラメータ（String）が ContentService.TextOutput.setMimeType のメソッドのシグネチャと一致しません"
+ *    = GAS の setMimeType は ContentService.MimeType **列挙型のみ**を受け付ける
+ *  → 本ファイルは全て列挙型(MimeType.HTML / JAVASCRIPT / JSON)を使用(修正済み)
+ *
  *  → 対策:
- *    1. MIME を列挙型(enum)ではなく文字列リテラルで明示 (text/html / application/javascript)
+ *    1. MIME は ContentService.MimeType 列挙型で指定(文字列リテラルは GAS で無効 = 上記例外)
  *    2. ?probe=1 の JSON ping を追加(= 本デプロイが更新された証拠 + JSON は前回動作確認済み)
  *    3. ページ JS が document.contentType を記録(配信 MIME の自己診断)
  *    4. ページが文字列として表示された場合用の「コンソールコマンド」を画面に常時表示
@@ -27,7 +34,7 @@ function doGet(e) {
   if (e && e.parameter) {
     if (e.parameter._sw === '1') {
       return ContentService.createTextOutput(SW_CODE)
-        .setMimeType('application/javascript; charset=utf-8');
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
     }
     if (e.parameter.probe === '1') {
       return ContentService.createTextOutput(JSON.stringify({
@@ -36,11 +43,11 @@ function doGet(e) {
         pageMime: 'text/html; charset=utf-8',
         swMime: 'application/javascript; charset=utf-8',
         note: 'v3b デプロイ確認。次は ?probe なし URL を開くこと。'
-      }, null, 1)).setMimeType('application/json; charset=utf-8');
+      }, null, 1)).setMimeType(ContentService.MimeType.JSON);
     }
   }
   return ContentService.createTextOutput(PAGE_HTML)
-    .setMimeType('text/html; charset=utf-8');
+    .setMimeType(ContentService.MimeType.HTML);
 }
 
 var SW_CODE = [

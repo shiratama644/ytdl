@@ -38,7 +38,7 @@ function doGet() {
     out.clients[attempts[i].id] = playerPost(attempts[i], key);
   }
   return ContentService.createTextOutput(JSON.stringify(out, null, 1))
-    .setMimeType('application/json; charset=utf-8');
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 function fetchEmbedPage() {

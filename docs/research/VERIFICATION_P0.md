@@ -157,21 +157,40 @@ GET /macros/s/FAKEID/exec?_sw=1  → status=200 content-type=application/javascr
 | /exec?_sw=1 の本文 | 同上 | SW コード本文を返却(ディスパッチ自体は動作) |
 | **/exec のレスポンスヘッダ** | allorigins(サーバー側取得でヘッダ報告) | **`Content-Type: text/plain; charset=utf-8`**, HTTP 200, content_length 1208 |
 
-**結論: ページが `text/plain` として配信されていた**。`ContentService.MimeType.HTML` の指定が
-デプロイ側に反映されていない(旧デプロイ版 / 貼付時の崩れ / enum 指定が効いていない、のいずれか)。
-`createTextOutput()` の既定 MIME が `text/plain` であるため、MIME 指定が落ちるとこの現象になる。
+**結論: ページが `text/plain` として配信されていた**。`createTextOutput()` の既定 MIME が
+`text/plain` であるため、MIME 指定がデプロイに反映されていないとこの現象になる。
 ※ ユーザーの GAS プロジェクト内部からはサンドボックス側では確認できない。
 
-**v3b(修正版)キット**: `verification/v3b-gas-test.gs` — 上記問題への 4 重対策:
-1. MIME を**文字列リテラル**で明示(`text/html; charset=utf-8` / `application/javascript; charset=utf-8`)
+### V3-b(第 2 回: v3b 初回実行) — ❌ ランタイム例外(GAS の新制約を発見)
+
+実行: ユーザー / 2026-09-13 / デプロイ URL `script.google.com/macros/s/AKfycbw8ZWHmctAK9mMXeJkxiMlLXc6DGlnRJLlDckXyYVqVrgH2OG7DGa9SpJasHex5BUY/exec`
+
+```
+Exception: パラメータ（String）が ContentService.TextOutput.setMimeType のメソッドの
+シグネチャと一致しません。（行 43、ファイル「コード」）
+```
+
+**解釈(重要):**
+1. v3b は MIME を**文字列リテラル**(`'text/html; charset=utf-8'`)で指定していた → **GAS の
+   `ContentService.TextOutput.setMimeType` は `ContentService.MimeType` 列挙型のみを受け付け、
+   String は例外**だった(行 43 = 該当箇所と完全一致)。「文字列リテラル化」の対策は誤り =
+   **修正済み: 全て enum に戻す**。
+2. **逆説的に重要な証拠**: 例外が「行 43」で出た = **ユーザーの新規プロジェクトには v3b のコードが
+   忠実にデプロイされ、doGet が実行されていた**。→ 第 1 回 V3 の text/plain は「enum 指定が GAS で
+   無効」ではなく、**デプロイバージョンの問題(旧版を配信し続けていた / MIME 行が欠落して既定の
+   text/plain になっていた)** と再診断する(enum 指定は V1 の JSON 配信で正常動作した実績あり)。
+
+**v3b(修正版・enum 修正済み)キット**: `verification/v3b-gas-test.gs` — 上記問題への 4 重対策:
+1. MIME は **`ContentService.MimeType` 列挙型**で指定(String は GAS で例外 = 第 2 回の発見)
 2. **`?probe=1` の JSON ping** — デプロイが v3b 版かを一発で確認可能(JSON 配信は V1 で動作確認済み)
 3. ページ JS が **`document.contentType`** を記録(配信 MIME の自己診断)+ self-fetch によるページ自身の content-type 確認
 4. **テキスト表示された場合のフォールバック**: 画面に常時表示するコンソールコマンド
    (ページのオリジンで実行されるため SW 取得・登録は same-origin で成立)
 + 結果の自動コピー / `window.onerror` キャプチャ / 15 秒 watchdog
 
-**判定(暫定)**: GAS からの SW 配信は**未確認**(第 1 回は配信 MIME の問題でテスト自体未実行)。
-v3b の結果が StreamSaver 経路の成立可否を決定する。
+**判定(暫定)**: GAS からの SW 配信は**未確認**(第 1 回: text/plain 配信でテスト自体未実行 /
+第 2 回: setMimeType 例外で未実行)。修正済み v3b(enum)の再実行の結果が StreamSaver 経路の
+成立可否を決定する。
 
 ---
 
@@ -188,7 +207,7 @@ iOS 固有(FSA なし / SW / 再生)の最終確認は `verification/v2-browser-
 | # | 事項 | 暫定結論 | 確定の条件 |
 |---|---|---|---|
 | 1 | **再生経路**(dual `<video>` DASH 直読み) | **成立を確認**(ユーザー環境 Android で playing) | 確定済み(V2 第 1 回 A) |
-| 2 | **クライアント fetch DL 経路**(fetch → muxer → StreamSaver) | googlevideo 直接 fetch は **CORS で不可の可能性が高い** → GAS 期の DL は「720p 以下 muxed 直リンク(ブラウザ UI 経由で保存)」に縮小。本格 DL(mux+キュー+StreamSaver)は **CORS を許可するソース = 自宅サーバー relay**(サーバー側 fetch + `ACAO:*` + Range + SW)が前提 → **Phase B に DL 主機能が集約**される(= ユーザーが定義した移行トリガー「CORS 制限などが出てきたら」の発動) | v2b T2(no-cors)・T3(relay 実証) |
+| 2 | **クライアント fetch DL 経路**(fetch → muxer → StreamSaver) | googlevideo 直接 fetch は **CORS で不可の可能性が高い**。→ **ユーザー判断(2026-09-13)**: v2b(確定テスト)はスキップ、自宅サーバー期で解決する前提とする。**ただし制約: 自宅サーバーは siatube 型の「動画バイト全面プロキシ」にはしない(高負荷になるため、ユーザー事前調査)** → DL は**サーバー側バッチパイプライン**にする: クライアントキュー(Dexie)→ 自宅サーバーが yt-dlp でダウンロード+mux(再エンコードなし)→ 完成ファイルを配信(Nginx 静的、Range、ACAO は自社管理)→ クライアントは**自社サーバー**から StreamSaver/保存。サーバーは再生経路(googlevideo 直 = 負荷ゼロ)には関与せず、DL ジョブ(バッチ・品質上限付き)のときだけ関与 = 負荷をコントロール可能。GAS 期の DL は「720p 以下 muxed 直リンク(ブラウザ UI 経由で保存)」の縮小版(またはなし) | v2b は任意(スキップ可)/ v1b と v3b の結果 |
 | 3 | **GAS 期セルフ解決**(youtubei.js / raw InnerTube) | 現時点で失敗(playability ERROR、原因未特定)。bot チェック壁なら早期に自宅サーバー(yt-dlp)へ | v1b(4 client 比較 + reason 記録) |
 | 4 | **GAS 期リゾルの代替戦略**(3 が NG 場合の意思決定) | (a) siatube.com API 依存(= しあTube 元アーキ、V2 で動作確認済み。リスク: 第三者依存・O1 の可用性) (b) セルフ解決のみ(自宅サーバー期まで DL/解決なし) (c) 併用 failover | v1b 後、ユーザー判断 |
 | 5 | **GAS からの SW 配信**(StreamSaver 主経路の成立) | 未確認(第 1 回は text/plain 配信でテスト未実行) | v3b |
@@ -201,10 +220,11 @@ iOS 固有(FSA なし / SW / 再生)の最終確認は `verification/v2-browser-
 |---|---|---|
 | O1 | siatube.com の `/api/stream` を第三者(取得プロキシ IP)から連続で叩くと、2 回目で**空 HTML** が返る | 中央 API 依存型の既知脆弱性。暫定戦略 4-(a) を採る場合は本プロジェクト側でリトライ / キャッシュを必須とする |
 | O2 | ストリーム URL の `expire` は解決時刻から**約 6 時間**(第 1 回実測: 5.9h) | DL キューの「URL 失効前までに処理する」前提・再解決トリガーの閾値に使用 |
-| O3 | ~~ストリーム URL の `ip=`(解決サーバー IP)の他 IP 取得可否が未判定~~ | **解決(V2 第 1 回)**: 別 IP(Android 端末)で `<video>` 再生 OK → 再生経路では IP 縛りなし。fetch 経路の他 IP 動作は v2b T3(relay=別 IP)で確認 |
+| O3 | ~~ストリーム URL の `ip=`(解決サーバー IP)の他 IP 取得可否が未判定~~ | **解決(V2 第 1 回)**: 別 IP(Android 端末)で `<video>` 再生 OK → 再生経路では IP 縛りなし。fetch 経路の他 IP 動作は v2b T3(relay=別 IP)で確認(v2b スキップ判断により未実施 = DL がサーバー側パイプラインになるため非必須) |
 | O4 | siatube API の `streams.audioOnly` 配列に **null エントリ**を含む(counts=4 に対し [0]=null) | 本プロジェクトのリゾラ実装時は `streamUrl` 持ちエントリをフィルタして扱う |
 | O5 | GAS の `ContentService` 出力が **text/plain で配信された事例**(V3 第 1 回) | 本プロジェクトの GAS 期でも、デプロイの MIME 指定・バージョン管理を厳密に(= v3b 型の `?probe=` ピングを本番コードにも組み込むべき) |
-| O6 | ユーザー環境の FSA / ネイティブ HLS「あり」記録が Android UA と矛盾 | 実行環境の混入疑い。判定は PC Chrome(v2b)と iOS(V4)の結果を優先 |
+| O6 | ユーザー環境の FSA / ネイティブ HLS「あり」記録が Android UA と矛盾 | 実行環境の混入疑い。v2b はスキップ判断のため、本プロジェクトのブラウザ能力判定は iOS(V4)のみ残る(任意) |
+| O7 | GAS `setMimeType` は **`ContentService.MimeType` 列挙型のみ**受け付ける — String は例外を投げる(V3 第 2 回実測: 「パラメータ（String）が ContentService.TextOutput.setMimeType のメソッドのシグネチャと一致しません」) | 本プロジェクトの GAS 実装でも MIME 指定は必ず列挙型で記述する(文字列リテラル禁止) |
 
 ---
 
@@ -213,8 +233,8 @@ iOS 固有(FSA なし / SW / 再生)の最終確認は `verification/v2-browser-
 | ID | 状態 | 次アクション |
 |---|---|---|
 | V1-a | ✅ 完了(サンドボックス) | - |
-| V1-b | ❌ 第 1 回失敗 → 再検証 | **`verification/v1b-gas-test.gs`** を GAS で実行し JSON を送付 |
-| V2 | ⚠️ 第 1 回(Android)部分判定 → 再検証 | **`verification/v2b-browser-test.html`** を **PC Chrome** で実行し結果を送付 |
+| V1-b | ❌ 第 1 回失敗 → 再検証 | **`verification/v1b-gas-test.gs`** を GAS で実行し JSON を送付(※ setMimeType は enum 修正済み) |
+| V2 | ⚠️ 第 1 回(Android)部分判定(再生 OK / fetch 全 NG → CORS 最有力) | **ユーザー判断(2026-09-13): v2b 未実施** — DL をサーバー側パイプラインとする設計では、CORS はクライアントが googlevideo 直接 fetch しない限り無関係のため |
 | V3-a | ✅ 完了(サンドボックス) | - |
-| V3-b | ❌ 第 1 回: ページ text/plain 配信で未実行 → 再検証 | **`verification/v3b-gas-test.gs`** を実行(まず `?probe=1` を確認)し結果を送付(**最重要**) |
+| V3-b | ❌ 第 1 回: text/plain 配信で未実行 / 第 2 回: setMimeType 例外で未実行 | **`verification/v3b-gas-test.gs`(enum 修正版)** を**新しいプロジェクト**で実行(まず `?probe=1` を確認)し結果を送付(**最重要**) |
 | V4 | ⏳ 待ち(任意) | 同一 HTML を iOS で実行 |

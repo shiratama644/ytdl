@@ -16,11 +16,14 @@
 ## 第 1 回(2026-09-13)で判明したこと → 第 2 回キットの由来
 
 1. **V2(ユーザーの Android 実行)**: `<video>` 再生は **OK**、fetch は全て **Failed to fetch**
-   → CORS(ACAO 欠如)が最有力。**PC Chrome での確定切り分け**が必要(`v2b`)。
+   → CORS(ACAO 欠如)が最有力。→ **ユーザー判断: `v2b` はスキップ**(DL をサーバー側パイプラインとすれば
+   クライアントは googlevideo を直接 fetch しないため。`v2b-browser-test.html` は任意の残置物)。
 2. **V1(GAS)**: /embed/ ページに `ytInitialPlayerResponse` マーカーなし + player POST が
    **playability ERROR**(reason 未記録)→ マーカー級联 + 複数 client 比較の**診断キット**が必要(`v1b`)。
 3. **V3(GAS)**: ページが **`text/plain` として配信され描画されず**(リモートヘッダ確認済み)、
-   スクリプト未実行 → MIME 文字列リテラル + `?probe=` ピング + コンソールフォールバック付き(`v3b`)。
+   スクリプト未実行 → `?probe=` ピング + コンソールフォールバック付き(`v3b`)。
+   さらに **v3b 初回実行(ユーザー)で GAS の制約を発見**: `setMimeType` は **`MimeType` 列挙型のみ**
+   受け付け、String は例外(O7)。v3b/v1b は enum 使用に**修正済み**。
 
 ## 第 2 回: ユーザー側で実行していただくもの(合計 ~5 分)
 
@@ -41,6 +44,10 @@ ERROR の reason(bot チェックか version 問題かの切り分け)
 
 ### 2. V3 再検証: `v3b-gas-test.gs`(2 分) — **最重要・最初にやってください**
 
+> **(2026-09-13 修正)** v3b 初回実行で `setMimeType(String)` が例外になったため、
+> MIME 指定を `ContentService.MimeType` 列挙型に**全て修正済み**。
+> 前の v3b プロジェクトは破棄(新しいプロジェクトで作ってください)。
+
 1. 上記と同様に**新しいプロジェクト**で `v3b-gas-test.gs` を貼付しデプロイ
 2. **まず** WebアプリURL の末尾に `?probe=1` を付けて開く
    → `{"test":"V3b",...}` の JSON が表示されればデプロイは最新です(なければ JSON を送ってください)
@@ -51,13 +58,12 @@ ERROR の reason(bot チェックか version 問題かの切り分け)
 
 → 確認できること: **script.google.com 上で Service Worker を登録できるか**(StreamSaver 経路の成立可否)
 
-### 3. V2 再検証: `v2b-browser-test.html`(1 分)
+### 3. V2 再検証: `v2b-browser-test.html`(1 分)— **任意(ユーザー判断: スキップ)**
 
-**PC の Chrome** でファイルをダブルクリックして開く(前回は Android で実行され、能力フラグの解釈が
-曖昧になっているため)→ 「実行」ボタン → 完了したら「結果をコピー」で送ってください。
-(先頭に表示される protocol/origin/UA を必ずそのままにしてください)
-
-→ 確認できること: **CORS の確定切り分け**(no-cors mode + 公開 proxy 経由の relay 実証)+ Range / 再生 / 能力
+ユーザー判断(2026-09-13): 自宅サーバー期に DL をサーバー側パイプラインとするため、
+ブラウザが googlevideo を直接 fetch する場面がなくなり、CORS の確定テストは不要と判断。
+→ もし後で「GAS 期に直リンク以外の DL を入れる」等と方針が変わったら、このテストを
+PC Chrome で実行して送ってください(ファイルはそのまま有効)。
 
 ### 4. V4: 同一の `v2b-browser-test.html` を iOS(Safari)で開く(任意・時間がある時)
 

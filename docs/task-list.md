@@ -8,13 +8,13 @@
 | ID | タスク | 証跡 | 状態 | 進捗 / 証拠 |
 |---|---|---|---|---|
 | V1-a | youtubei.js バンドル + Node 初期化(WEB_EMBEDDED_PLAYER 受入) | [VERIFICATION_P0.md](research/VERIFICATION_P0.md) | 完了 | 2026-09-12 / v18.0.0・1.3MB バンドル・create() 到達(通信はサンドボックス遮断) |
-| V1-b | GAS 実環境でのストリーム解決(1080p 確認) | 同上 | 進行中 | **第 1 回(2026-09-13)失敗**: /embed/ に `ytInitialPlayerResponse` マーカーなし + player POST `playability ERROR`(reason 未記録)。→ **第 2 回待ち**: `verification/v1b-gas-test.gs`(マーカー級联 + 4 client 比較 + reason 記録) |
-| V2 | ブラウザ直接取得(CORS/Range/有効期限/codec) | 同上 | 進行中 | **第 1 回(2026-09-13・ユーザーの Android 実行)**: `<video>` 再生 **OK** / fetch(B・C・D)全て **Failed to fetch** → **CORS(ACAO 欠如)が最有力**。expire ≈5.9h 確認 / O3(他 IP 再生)解決。**第 2 回待ち(PC Chrome)**: `verification/v2b-browser-test.html`(no-cors 切り分け + proxy relay 実証) |
+| V1-b | GAS 実環境でのストリーム解決(1080p 確認) | 同上 | 進行中 | **第 1 回(2026-09-13)失敗**: /embed/ に `ytInitialPlayerResponse` マーカーなし + player POST `playability ERROR`(reason 未記録)。→ **第 2 回待ち(ユーザー: あとで実行)**: `verification/v1b-gas-test.gs`(マーカー級联 + 4 client 比較 + reason 記録、setMimeType は enum 修正済み) |
+| V2 | ブラウザ直接取得(CORS/Range/有効期限/codec) | 同上 | 進行中 | **第 1 回(2026-09-13・ユーザーの Android 実行)**: `<video>` 再生 **OK** / fetch(B・C・D)全て **Failed to fetch** → **CORS(ACAO 欠如)が最有力**。expire ≈5.9h 確認 / O3(他 IP 再生)解決。**第 2 回(v2b)はユーザー判断でスキップ**(DL をサーバー側パイプラインとするため; v2b ファイルは任意の残置物) |
 | V3-a | GAS `?_sw=` ディスパッチの HTTP 契約検証 | 同上 | 完了 | 2026-09-12 / ローカル模倣で HTML・JS MIME 同居確認 |
-| V3-b | script.google.com での SW 登録(StreamSaver 経路) | 同上 | 進行中 | **第 1 回(2026-09-13)未実行**: ページが **text/plain として配信**され描画されず(リモートヘッダ確認済み)。→ **第 2 回待ち(最重要)**: `verification/v3b-gas-test.gs`(MIME 文字列リテラル + `?probe=` ping + コンソールフォールバック) |
+| V3-b | script.google.com での SW 登録(StreamSaver 経路) | 同上 | 進行中 | **第 1 回**: ページが **text/plain として配信**され描画されず(リモートヘッダ確認済み) / **第 2 回**: v3b の `setMimeType(String)` が例外 — **GAS は `MimeType` 列挙型のみ受け付け**(O7)。enum 修正済み。→ **第 3 回待ち(最重要)**: 修正版 `verification/v3b-gas-test.gs` を**新しいプロジェクト**で実行(まず `?probe=1`) |
 | V4 | iOS Safari 挙動 | 同上 | 進行中 | ユーザー実行待ち(任意): `verification/v2b-browser-test.html` |
 
-> **未確定の設計判断(第 2 回結果待ち)**: DL 経路の CORS 結論(仮: 本格 DL = Phase B 集約、GAS 期は 720p 以下直リンク)と、GAS 期リゾラ戦略(siatube.com 依存 vs セルフ解決)。**判断時は P2 / P4 の内容が書き変わる**可能性がある。詳細: [VERIFICATION_P0.md §設計への影響](research/VERIFICATION_P0.md)
+> **設計判断の現状(2026-09-13)**: DL 経路は**ユーザー判断で確定** — 自宅サーバーは siatube 型の動画全面プロキシにはしない(高負荷のため)、DL = **サーバー側バッチパイプライン**(yt-dlp ダウンロード+mux(再エンコードなし) → 完成ファイル配信 → クライアントが自社サーバーから StreamSaver/保存)。サーバーは再生経路(googlevideo 直)には関与しない。**残る未確定**: (1) v1b 後の GAS 期リゾラ戦略(siatube.com 依存 vs セルフ解決) (2) v3b 後の GAS からの SW 配信(StreamSaver 成立可否)。**P2 / P4 の内容はこの 2 点で確定する**。詳細: [VERIFICATION_P0.md §設計への影響](research/VERIFICATION_P0.md)
 
 ## Phase 0: 基盤構築
 
