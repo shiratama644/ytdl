@@ -159,5 +159,6 @@
   - **A(主)**: DL 専用オンデマンド relay(`/dl`) + クライアント側 mux(mp4-muxer/webm-muxer・Web Worker・再エンコードなし) + StreamSaver(SW は自ドメイン) + 進捗UI(% / 速度 / ETA / キャンセル / レジューム)
   - **B(フォールバック)**: A が不安定になった場合(bot チェック / PO token 等)→ yt-dlp バッチ(ダウンロード+mux) + 完成ファイル配信(Nginx・Range)
   - **C(全環境共通フォールバック)**: 720p 以下 muxed 直リンク = **GAS 期の DL 方式** + iOS / Firefox(StreamSaver 非対応)
-  - **再生経路**: 全フェーズで googlevideo 直(サーバー関与ゼロ)
+  - **再生経路**: 全フェーズで googlevideo 直(サーバー関与ゼロ)。**relay はダウンロード時のみに限定(再生には一切使用しない)= ユーザーの常設制約(2026-09-13 再確認)**
+  - **リゾラ**: siatube.com API は使用せず **youtubei.js で自前実装**(同日のユーザー判断。GAS 期 = 本調査の方式 A/C と独立して成立する解決経路)
   → `PHASE0_PLAN.md` §10.2 / §10.6(`/dl` エンドポイント) / §10.8 / §10.10 と `task-list.md` に反映済み。

@@ -202,15 +202,15 @@ iOS 固有(FSA なし / SW / 再生)の最終確認は `verification/v2-browser-
 
 ---
 
-## 設計への影響(暫定結論 — v1b / v2b / v3b の確定を待つ)
+## 設計への影響(2026-09-13 に確定した判断を含む)
 
-| # | 事項 | 暫定結論 | 確定の条件 |
+| # | 事項 | 結論 | 状態 |
 |---|---|---|---|
 | 1 | **再生経路**(dual `<video>` DASH 直読み) | **成立を確認**(ユーザー環境 Android で playing) | 確定済み(V2 第 1 回 A) |
-| 2 | **クライアント fetch DL 経路**(fetch → muxer → StreamSaver) | googlevideo 直接 fetch は **CORS で不可の可能性が高い**。→ **ユーザー判断(2026-09-13)**: v2b(確定テスト)はスキップ、自宅サーバー期で解決する前提とする。**ただし制約: 自宅サーバーは siatube 型の「動画バイト全面プロキシ」にはしない(高負荷になるため、ユーザー事前調査)** → DL は**ダウンロード時のみサーバーが関与**する方式とする(再生は googlevideo 直 = 負荷ゼロ)。**方式の確定調査実施済み**: [DOWNLOAD_MECHANISM_RESEARCH.md](DOWNLOAD_MECHANISM_RESEARCH.md) — 「直リンク + StreamSaver + 進捗」の同時成立は技術的に不可能(StreamSaver は fetch 必須)。実現可能: **A: ダウンロード専用 relay + クライアント mux(= 当初設計。Invidious/Piped と同じ仕組み)** / **B: サーバー側 mux バッチ + 完成ファイル配信** / **C: 直リンクのみ(GAS 期 + iOS/FF フォールバック)**。主方式の選択はユーザー未確定(§6) | v1b と v3b の結果 + ユーザーの主方式選択 |
-| 3 | **GAS 期セルフ解決**(youtubei.js / raw InnerTube) | 現時点で失敗(playability ERROR、原因未特定)。bot チェック壁なら早期に自宅サーバー(yt-dlp)へ | v1b(4 client 比較 + reason 記録) |
-| 4 | **GAS 期リゾルの代替戦略**(3 が NG 場合の意思決定) | (a) siatube.com API 依存(= しあTube 元アーキ、V2 で動作確認済み。リスク: 第三者依存・O1 の可用性) (b) セルフ解決のみ(自宅サーバー期まで DL/解決なし) (c) 併用 failover | v1b 後、ユーザー判断 |
-| 5 | **GAS からの SW 配信**(StreamSaver 主経路の成立) | 未確認(第 1 回は text/plain 配信でテスト未実行) | v3b |
+| 2 | **DL 経路**(fetch → muxer → StreamSaver) | googlevideo 直接 fetch は **CORS で不可**(V2 実測 + 第三者的証拠)。**ユーザー決定(2026-09-13)**: 自宅サーバーは siatube 型の動画全面プロキシにはしない(高負荷のため)。→ **A(DL 専用 relay + クライアント mux + StreamSaver + 進捗UI)主 + B(yt-dlp バッチ + 完成ファイル)フォールバック**(主方式はユーザー選択済み・[DOWNLOAD_MECHANISM_RESEARCH.md §6](DOWNLOAD_MECHANISM_RESEARCH.md))。**relay はダウンロード時のみに限定(再生には一切使用しない=ユーザーの常設制約)**。GAS 期は C(720p 以下直リンク) | 確定済み |
+| 3 | **GAS 期セルフ解決**(youtubei.js / raw InnerTube) | **ユーザー決定(2026-09-13): youtubei.js による自前実装(siatube.com API は使用しない)**。第 1 回で playability ERROR(原因未特定)→ v1b が**実装の可行性ゲート**になる。NG だった場合の対策は**自前解決の範囲内**(4 client 比較の結果に応じた client 選択 / version 更新 / PO token 生成等)で対応 | v1b 実行待ち |
+| 4 | ~~GAS 期リゾルの代替戦略~~ | **決定(2026-09-13): (b) セルフ解決のみ**。siatube.com API 依存は不採用(第三者依存・O1 の可用性リスクを排除)。shiatube の実測 API 形状は**参考資料**としては残す(応答正規化・PO token の知見) | 確定済み |
+| 5 | **GAS からの SW 配信** | DL 設計確定により **GAS 期は StreamSaver 不使用(直リンク)** → V3-b は**参考**(PWA/オフライン機能の判断材料)に降格 | v3b は任意 |
 
 ---
 
