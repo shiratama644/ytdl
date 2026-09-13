@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V2b: CORS 確定テスト (googlevideo 直接 fetch)</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 880px; margin: 2rem auto; padding: 0 1rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 14px; }
+  th, td { border: 1px solid #ccc; padding: .45rem .6rem; text-align: left; vertical-align: top; }
+  th { background: #f0f0f0; }
+  td.ok { background: #e6f6e6; } td.ng { background: #fde8e8; } td.wait { background: #fff8e0; }
+  video { width: 100%; max-height: 320px; background: #000; margin: .5rem 0; }
+  button { font-size: 15px; padding: .5rem 1rem; }
+  pre { background: #f5f5f5; padding: .8rem; overflow: auto; font-size: 12px; }
+  .muted { color: #777; font-size: 12px; }
+  .banner { font-size: 16px; font-weight: bold; padding: .6rem; margin: .6rem 0; }
+  .banner.ok { background: #d8f0d8; } .banner.ng { background: #f8d8d8; }
+</style>
+</head>
+<body>
+<h3>V2b: CORS 確定テスト(前回の V2 で B/C/D が "Failed to fetch" だった原因の切り分け)</h3>
+<p class="muted">
+  動画ID: <input id="vid" value="dQw4w9WgXcQ" size="14">
+  <button onclick="runAll()">実行</button>
+  <button onclick="copyResults()">結果をコピー</button>
+  — <b>PC の Chrome</b> で実行してください(ファイルをダブルクリックして file:// で開いても可)。
+  Android/iOS の結果は前回取得済みなので、<b>1 ラン = 1 環境</b>でお願いします。
+</p>
+<video id="player" controls muted></video>
+<div id="banner"></div>
+<table id="tbl"><thead><tr><th>項目</th><th>結果</th><th>判定</th></tr></thead><tbody></tbody></table>
+<pre id="raw"></pre>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const results = [];
+function row(name, value, verdict) {
+  const tr = document.createElement('tr');
+  const cls = verdict === 'OK' ? 'ok' : verdict === 'NG' ? 'ng' : 'wait';
+  tr.innerHTML = `<td>${name}</td><td class="${cls}"></td><td class="${cls}">${verdict || '…'}</td>`;
+  tr.children[1].textContent = value;
+  $('#tbl tbody').appendChild(tr);
+  results.push(`${name} | ${verdict || '?'} | ${value}`);
+}
+function banner(msg, cls) {
+  const b = $('#banner');
+  b.textContent = msg;
+  b.className = 'banner ' + (cls || '');
+}
+
+async function runAll() {
+  const body = $('#tbl tbody'); body.innerHTML = '';
+  results.length = 0;
+  banner('');
+  const id = $('#vid').value.trim();
+
+  // 環境ヘッダ(混合 past の防止)
+  row('--- 環境 ---', '', '');
+  row('protocol', location.protocol || '(none)', '');
+  row('origin', location.origin || '(none)', '');
+  row('UA', navigator.userAgent, '');
+  row('UA-Platform', navigator.platform || '(none)', '');
+
+  // API 取得
+  const api = `https://siatube.com/api/stream/${id}`;
+  let d;
+  try {
+    const r = await fetch(api);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    d = await r.json();
+    row('API取得(siatube.com)', `ok, ACAO=${r.headers.get('access-control-allow-origin') || '(none)'}`, 'OK');
+  } catch (e) {
+    row('API取得(siatube.com)', String(e), 'NG');
+    $('#raw').textContent = results.join('\n');
+    return;
+  }
+  // null エントリを除外して先頭取得(前回の audioOnly[0]=null 対策)
+  const firstWithUrl = (arr) => (arr || []).find(x => x && (x.streamUrl || x.url)) || null;
+  const muxed = firstWithUrl(d.streams && d.streams.muxed);
+  const vOnly = firstWithUrl(d.streams && d.streams.videoOnly);
+  const aOnly = firstWithUrl(d.streams && d.streams.audioOnly);
+  const muxedUrl = muxed && (muxed.streamUrl || muxed.url);
+  const vUrl = vOnly && (vOnly.streamUrl || vOnly.url);
+  const aUrl = aOnly && (aOnly.streamUrl || aOnly.url);
+  row('codec/container(muxed)', muxed ? `${muxed.formatId}/${muxed.vcodec}+${muxed.acodec}/${muxed.container || muxed.ext}` : 'none', muxedUrl ? 'OK' : 'NG');
+  row('codec/container(videoOnly)', vOnly ? `${vOnly.formatId}/${vOnly.vcodec}/${vOnly.container || vOnly.ext}` : 'none', vUrl ? 'OK' : 'NG');
+  row('codec/container(audioOnly)', aOnly ? `${aOnly.formatId}/${aOnly.acodec}/${aOnly.container || aOnly.ext}` : 'none', aUrl ? 'OK' : 'NG');
+  if (!muxedUrl) { $('#raw').textContent = results.join('\n'); return; }
+
+  try {
+    const expire = new URL(muxedUrl).searchParams.get('expire');
+    const left = expire ? Math.round((Number(expire) * 1000 - Date.now()) / 1000) : null;
+    row('URL有効期限(expire)', left !== null ? `${left}秒残` : 'param なし', left > 60 ? 'OK' : 'NG');
+  } catch (e) { row('URL有効期限(expire)', String(e), 'NG'); }
+
+  // A: <video> 再生 (fetch 不经由)
+  row('A: <video> 再生開始', '試行中…', '');
+  try {
+    const v = $('#player');
+    v.src = muxedUrl;
+    const res = await new Promise((resolve) => {
+      const t = setTimeout(() => resolve('timeout-6s'), 6000);
+      v.onplaying = () => { clearTimeout(t); resolve('playing'); };
+      v.onerror = () => { clearTimeout(t); resolve('error:' + (v.error ? v.error.code : '?')); };
+      v.play().catch(() => {});
+    });
+    v.pause();
+    row('A: <video> 再生開始', res, res === 'playing' ? 'OK' : 'NG');
+  } catch (e) { row('A: <video> 再生開始', String(e), 'NG'); }
+
+  // T1: fetch(cors mode) — 前回 B と同じ
+  row('T1: fetch(cors)', '試行中…', '');
+  let t1ok = false;
+  try {
+    const r = await fetch(muxedUrl);
+    const buf = await r.arrayBuffer();
+    row('T1: fetch(cors)', `status=${r.status} type=${r.type} ACAO=${r.headers.get('access-control-allow-origin') || '(なし)'} bytes=${Math.round(buf.byteLength / 1024)}KB`, r.status === 200 ? 'OK' : 'NG');
+    t1ok = r.status === 200;
+  } catch (e) { row('T1: fetch(cors)', String(e), 'NG'); }
+
+  // T2: fetch(no-cors) — 決定的切り分け:
+  //   解決(opaque)  → ネットワーク到達 OK、T1 の失敗は CORS(ACAO 欠如)
+  //   例外          → ネットワークレベルの遮断(IP 拒否等)
+  row('T2: fetch(no-cors)', '試行中…', '');
+  let t2ok = false;
+  try {
+    const r = await fetch(muxedUrl, { mode: 'no-cors' });
+    t2ok = true;
+    row('T2: fetch(no-cors)', `解決: type=${r.type} status=${r.status}(opaque=0 は正常)`, 'OK');
+  } catch (e) { row('T2: fetch(no-cors)', String(e), 'NG'); }
+
+  // T3: 公開 CORS プロキシ経由 — 「サーバー側 relay が付ければ通る」の確認(Phase B の事前検証)
+  for (const [pname, purl] of [
+    ['T3a: corsproxy.io 経由', 'https://corsproxy.io/?url=' + encodeURIComponent(muxedUrl)],
+    ['T3b: allorigins 経由', 'https://api.allorigins.win/raw?url=' + encodeURIComponent(muxedUrl)]
+  ]) {
+    row(pname, '試行中…', '');
+    try {
+      const r = await fetch(purl);
+      const buf = await r.arrayBuffer();
+      row(pname, `status=${r.status} bytes=${Math.round(buf.byteLength / 1024)}KB (全体取得)`, r.status === 200 && buf.byteLength > 1000 ? 'OK' : 'NG');
+    } catch (e) { row(pname, String(e), 'NG'); }
+  }
+
+  // C: Range (cors mode)
+  row('C: fetch(Range 0-1023, cors)', '試行中…', '');
+  try {
+    const r = await fetch(muxedUrl, { headers: { Range: 'bytes=0-1023' } });
+    const buf = await r.arrayBuffer();
+    row('C: fetch(Range 0-1023, cors)', `status=${r.status} content-range=${r.headers.get('content-range') || '(なし)'} bytes=${buf.byteLength}`, r.status === 206 ? 'OK' : 'NG');
+  } catch (e) { row('C: fetch(Range 0-1023, cors)', String(e), 'NG'); }
+
+  // F: ブラウザ能力
+  row('F1: File System Access API', 'showSaveFilePicker' in window ? 'あり' : 'なし', '');
+  row('F2: Service Worker', 'serviceWorker' in navigator ? 'あり' : 'なし', '');
+  row('F3: MediaSource(MSE)', 'MediaSource' in window ? 'あり' : 'なし', '');
+  row('F4: ネイティブHLS', $('#player').canPlayType('application/vnd.apple.mpegurl') ? 'あり' : 'なし', '');
+  row('F5: mp4 再生', $('#player').canPlayType('video/mp4; codecs="avc1.42E01E,mp4a.40.2"') ? 'あり' : 'なし', '');
+
+  // 自動結論
+  if (t1ok) {
+    banner('結論: CORS なし(googlevideo が ACAO 付き) → クライアント直接 fetch 可能', 'ok');
+  } else if (t2ok) {
+    banner('結論: CORS が原因(ACAO 欠如)。ネットワークは到達可能 → クライアント直接 fetch の DL は不可、サーバー relay が必要', 'ng');
+  } else {
+    banner('結論: ネットワークレベルの遮断(またはブラウザの file:// 制限)。別環境・別経路で再確認が必要', 'ng');
+  }
+  $('#raw').textContent = results.join('\n');
+}
+
+async function copyResults() {
+  const text = results.join('\n');
+  try { await navigator.clipboard.writeText(text); alert('コピーしました'); }
+  catch { $('#raw').textContent = text; alert('クリップボード不可 → 下のテキストを手動選択してください'); }
+}
+</script>
+</body>
+</html>

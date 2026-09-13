@@ -8,11 +8,13 @@
 | ID | タスク | 証跡 | 状態 | 進捗 / 証拠 |
 |---|---|---|---|---|
 | V1-a | youtubei.js バンドル + Node 初期化(WEB_EMBEDDED_PLAYER 受入) | [VERIFICATION_P0.md](research/VERIFICATION_P0.md) | 完了 | 2026-09-12 / v18.0.0・1.3MB バンドル・create() 到達(通信はサンドボックス遮断) |
-| V1-b | GAS 実環境でのストリーム解決(1080p 確認) | 同上 | 進行中 | ユーザー実行待ち: `verification/v1-gas-test.gs` |
-| V2 | ブラウザ直接取得(CORS/Range/有効期限/codec) | 同上 | 進行中 | ユーザー実行待ち: `verification/v2-browser-test.html` |
+| V1-b | GAS 実環境でのストリーム解決(1080p 確認) | 同上 | 進行中 | **第 1 回(2026-09-13)失敗**: /embed/ に `ytInitialPlayerResponse` マーカーなし + player POST `playability ERROR`(reason 未記録)。→ **第 2 回待ち**: `verification/v1b-gas-test.gs`(マーカー級联 + 4 client 比較 + reason 記録) |
+| V2 | ブラウザ直接取得(CORS/Range/有効期限/codec) | 同上 | 進行中 | **第 1 回(2026-09-13・ユーザーの Android 実行)**: `<video>` 再生 **OK** / fetch(B・C・D)全て **Failed to fetch** → **CORS(ACAO 欠如)が最有力**。expire ≈5.9h 確認 / O3(他 IP 再生)解決。**第 2 回待ち(PC Chrome)**: `verification/v2b-browser-test.html`(no-cors 切り分け + proxy relay 実証) |
 | V3-a | GAS `?_sw=` ディスパッチの HTTP 契約検証 | 同上 | 完了 | 2026-09-12 / ローカル模倣で HTML・JS MIME 同居確認 |
-| V3-b | script.google.com での SW 登録(StreamSaver 経路) | 同上 | 進行中 | ユーザー実行待ち(最重要): `verification/v3-gas-test.gs` |
-| V4 | iOS Safari 挙動 | 同上 | 進行中 | ユーザー実行待ち(任意): 同一 HTML |
+| V3-b | script.google.com での SW 登録(StreamSaver 経路) | 同上 | 進行中 | **第 1 回(2026-09-13)未実行**: ページが **text/plain として配信**され描画されず(リモートヘッダ確認済み)。→ **第 2 回待ち(最重要)**: `verification/v3b-gas-test.gs`(MIME 文字列リテラル + `?probe=` ping + コンソールフォールバック) |
+| V4 | iOS Safari 挙動 | 同上 | 進行中 | ユーザー実行待ち(任意): `verification/v2b-browser-test.html` |
+
+> **未確定の設計判断(第 2 回結果待ち)**: DL 経路の CORS 結論(仮: 本格 DL = Phase B 集約、GAS 期は 720p 以下直リンク)と、GAS 期リゾラ戦略(siatube.com 依存 vs セルフ解決)。**判断時は P2 / P4 の内容が書き変わる**可能性がある。詳細: [VERIFICATION_P0.md §設計への影響](research/VERIFICATION_P0.md)
 
 ## Phase 0: 基盤構築
 
