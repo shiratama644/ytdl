@@ -84,6 +84,46 @@ Exception: パラメータ（String）が ContentService.TextOutput.setMimeType 
 https://raw.githubusercontent.com/shiratama644/ytdl/arena/01a094ec-ytdl/verification/v1b-gas-test.gs)。
 実行データは未取得 = V1-b 第 2 回はまだ未実施。
 
+### V1-b(第 2 回・試行 2) — ❌ 全 client 失敗(データ取得・分析済み)
+
+実行: ユーザー / 2026-09-13T21:55:16Z / 結果は `verification/Verification-Results.md`
+(コミット `c53eddb`)に記録済み。
+
+**embedPage**: HTTP 200 / 131,516 B / **実ページ**(consent ではない)だが
+**`ytInitialPlayerResponse` も `ytInitialPlayerConfig` も不在**。
+`INNERTUBE_API_KEY` 抽出 OK(`AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8`)+
+**`versionExtracted = 2.20260911.01.00`**(実行 3 日前の最新 build = version 陳腐化ではない)。
+
+| client | clientVersion | 結果 |
+|---|---|---|
+| C1 WEB_EMBEDDED_PLAYER(旧ハードコード) | 1.20240701.00.00 | **ERROR** / reason「この動画は再生できません」/ formats 0 |
+| C2 WEB_EMBEDDED_PLAYER(ページ最新 ver) | 2.20260911.01.00 | **ERROR** / 同上 / formats 0 |
+| C3 WEB(ページ最新 ver) | 2.20260911.01.00 | **UNPLAYABLE** /「動画を再生できません」/ formats 0 |
+| C4 ANDROID | 19.09.37 | **HTTP 400**(playability 応答自体なし=リクエスト形状の拒否) |
+
+**解釈:**
+1. **version 陳腐化は排除**(C2 が最新 2.20260911.01.00 でも ERROR)。
+2. reason は**汎用メッセージ**で「Sign in to confirm you're not a bot」ではない
+   → 典型的な**ソフトな制限パターン**: GAS の出口 = **Google データセンター IP** への
+   InnerTube `/player` への制限(PO token / visitorData / playbackContext 等の欠如が
+   トリガーとなり得る)。
+3. **重要な陽性シグナル**: embed ページ自体は 200/131KB の実 HTML を返している
+   → GAS の IP は youtube.com に到達可能。**制限は `/player` エンドポイント単位**。
+4. **embed ページは player response をインラインしない**(= キーと version のだけある
+   「シェル」)→ 解決経路は `/player` POST か、**`/watch/` ページの
+   `ytInitialPlayerResponse`(インラインで入るのが通常)**のどちらか。
+5. C4 の 400 = ANDROID リクエストの形状問題(別の修正が必要)。
+
+**判定: GAS での自社解決は現時点で未成立(全 client)。**
+次の一手 = **v1c キット**(① **`/watch/` ページからの `ytInitialPlayerResponse` 抽出を主経路に**
+= PO token 不要の可能性が高い / ② `/player` POST を visitorData + playbackContext 付きで改善 /
+③ playabilityStatus 全体(errorScreen・messages)を記録 / ④ bot チェックページの検知)。
+- **watch ページが streamingData を返せば** → GAS 解決は成立(PO token 不要)。
+- **watch ページも bot-check/ERROR なら** → データセンター IP 壁と判定。
+  → **アーキテクチャ分岐: リゾラの置き場を再検討**(GAS 期にリゾラを持たせない =
+  初期から自宅サーバー(yt-dlp・residential IP)が解決源 / Phase A のスコープ変更)。
+  これは D2(自前解決)は維持したまま「どこで実行するか」の変更なので、ユーザーと合意する。
+
 ---
 
 ## V2: ブラウザからの直接取得(CORS / Range / 有効期限 / codec)
@@ -224,7 +264,7 @@ iOS 固有(FSA なし / SW / 再生)の最終確認は `verification/v2-browser-
 |---|---|---|---|
 | 1 | **再生経路**(dual `<video>` DASH 直読み) | **成立を確認**(ユーザー環境 Android で playing) | 確定済み(V2 第 1 回 A) |
 | 2 | **DL 経路**(fetch → muxer → StreamSaver) | googlevideo 直接 fetch は **CORS で不可**(V2 実測 + 第三者的証拠)。**ユーザー決定(2026-09-13)**: 自宅サーバーは siatube 型の動画全面プロキシにはしない(高負荷のため)。→ **A(DL 専用 relay + クライアント mux + StreamSaver + 進捗UI)主 + B(yt-dlp バッチ + 完成ファイル)フォールバック**(主方式はユーザー選択済み・[DOWNLOAD_MECHANISM_RESEARCH.md §6](DOWNLOAD_MECHANISM_RESEARCH.md))。**relay はダウンロード時のみに限定(再生には一切使用しない=ユーザーの常設制約)**。GAS 期は C(720p 以下直リンク) | 確定済み |
-| 3 | **GAS 期セルフ解決**(youtubei.js / raw InnerTube) | **ユーザー決定(2026-09-13): youtubei.js による自前実装(siatube.com API は使用しない)**。第 1 回で playability ERROR(原因未特定)→ v1b が**実装の可行性ゲート**になる。NG だった場合の対策は**自前解決の範囲内**(4 client 比較の結果に応じた client 選択 / version 更新 / PO token 生成等)で対応 | v1b 実行待ち |
+| 3 | **GAS 期セルフ解決**(youtubei.js / raw InnerTube) | **ユーザー決定(2026-09-13): youtubei.js による自前実装(siatube.com API は使用しない)**。**v1b 完了(2026-09-14): 全 client 失敗**(ERROR / UNPLAYABLE / ANDROID 400。version 陳腐化は排除。embed ページは実取得可 = 制限は `/player` 単位 → データセンター IP + PO token/visitorData 欠如の疑い)。**次 = v1c**(`/watch/` ページの `ytInitialPlayerResponse` 抽出が主経路)。watch も NG なら**アーキテクチャ分岐**(リゾラを初期から自宅サーバーへ = Phase A のスコープ変更、ユーザーと合意要) | **v1c 実行待ち** |
 | 4 | ~~GAS 期リゾルの代替戦略~~ | **決定(2026-09-13): (b) セルフ解決のみ**。siatube.com API 依存は不採用(第三者依存・O1 の可用性リスクを排除)。shiatube の実測 API 形状は**参考資料**としては残す(応答正規化・PO token の知見) | 確定済み |
 | 5 | **GAS からの SW 配信** | DL 設計確定により **GAS 期は StreamSaver 不使用(直リンク)** → V3-b は**参考**(PWA/オフライン機能の判断材料)に降格 | v3b は任意 |
 

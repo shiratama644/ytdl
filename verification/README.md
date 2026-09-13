@@ -25,24 +25,42 @@
    さらに **v3b 初回実行(ユーザー)で GAS の制約を発見**: `setMimeType` は **`MimeType` 列挙型のみ**
    受け付け、String は例外(O7)。v3b/v1b は enum 使用に**修正済み**。
 
-## 第 2 回: ユーザー側で実行していただくもの(合計 ~5 分)
+## 第 2 回結果(2026-09-13/14)と第 3 回キットの由来
 
-> **前回と違う点: すべて「新しい GAS プロジェクト」でお願いします。**
-> 旧プロジェクトのデプロイは旧バージョンを配信し続けるためです。
+1. **V1 / v1b(実行済み・コミット `c53eddb`)**: **全 client 失敗** —
+   C1/C2(WEB_EMBEDDED_PLAYER、最新 version 2.20260911.01.00)= `ERROR「この動画は再生できません」` /
+   C3(WEB)= `UNPLAYABLE` / C4(ANDROID)= `HTTP 400`。
+   version 陳腐化は排除。embed ページ自体は 200/131KB で実取得可(制限は `/player` 単位)
+   → **データセンター IP + PO token/visitorData 欠如の疑い**。
+   → **第 3 回 `v1c`**: **`/watch/` ページの `ytInitialPlayerResponse` 抽出を主経路に**
+   (PO token 不要の可能性)+ `/player` 改善(visitorData+playbackContext)+
+   playabilityStatus 詳細(messages)記録 + bot チェック自動検知。
+2. **V3 / v3b**: 実行未了。DL 設計確定(GAS 期 = 直リンク)により**参考レベルに降格**
+   (PWA/オフライン機能の判断材料)。任意。
 
-### 1. V1 再検証: `v1b-gas-test.gs`(2 分)
+## 第 3 回: ユーザー側で実行していただくもの(合計 ~2 分)
 
-1. [script.google.com](https://script.google.com) で「新しいプロジェクト」
-2. `v1b-gas-test.gs` を**全て貼付**
+> **すべて「新しい GAS プロジェクト」でお願いします**(旧プロジェクトのデプロイは
+> 旧バージョンを配信し続けるため)。ファイルは**必ず下記の raw URL から取得**してください
+> (手元の古いコピーは setMimeType 例外で失敗します: 過去に 2 回発生)。
+
+### 1. V1 再検証(第 3 回): `v1c-gas-test.gs`(2 分)— **最重要・これだけやってください**
+
+1. [v1c-gas-test.gs (raw)](https://raw.githubusercontent.com/shiratama644/ytdl/arena/01a094ec-ytdl/verification/v1c-gas-test.gs)
+   を開いて中身を**全てコピー**
+2. [script.google.com](https://script.google.com) で「新しいプロジェクト」→ 貼付
+   **自己チェック**: `doGet()` の最後の行が
+   `.setMimeType(ContentService.MimeType.JSON);`(**列挙型**)になっていること
+   (文字列 `'application/json...'` が出ていたら古い版=使わないで)
 3. **デプロイ → 新しいデプロイ → Web アプリ** / 実行: **自分** / アクセス: **全員**
 4. WebアプリURL をブラウザで開く
-5. 表示される **JSON を丸ごとコピー**して送ってください
+5. 表示される **JSON を丸ごとコピー**して送ってください(チャット貼付 or リポジトリへコミット)
 
-→ 確認できること: embed ページの正しい構造(`ytInitialPlayerConfig`)で解決できるか /
-どの client(WEB_EMBEDDED_PLAYER 新旧版 / WEB / ANDROID)で playability OK になるか /
-ERROR の reason(bot チェックか version 問題かの切り分け)
+→ 確認できること: **`/watch/` ページから streamingData を直接取得できるか**(= PO token 不要で
+GAS 解決が成立するか)。watch も bot-check/ERROR なら = データセンター IP 壁と判定し、
+**リゾラの置き場(初期から自宅サーバーへ)の設計判断**に持ち上がる。
 
-### 2. V3 再検証: `v3b-gas-test.gs`(2 分) — **最重要・最初にやってください**
+### 2. V3 再検証: `v3b-gas-test.gs`(2 分)— **参考(任意・時間がある時)**
 
 > **(2026-09-13 修正)** v3b 初回実行で `setMimeType(String)` が例外になったため、
 > MIME 指定を `ContentService.MimeType` 列挙型に**全て修正済み**。
@@ -72,6 +90,10 @@ DL フォールバック方針の確定に必要です。
 
 ## 結果の使い道
 
-第 2 回結果を受領次第、`docs/research/VERIFICATION_P0.md` に証跡として追記し、
-設計(再生経路 / DL 経路 / GAS 期と自宅サーバー期の機能分割 / リゾラ戦略)を確定し、
-P00(サイト構築)着手へと進みます。
+- **v1c の結果**が届いたら: `docs/research/VERIFICATION_P0.md` に証跡として追記し、
+  GAS 期リゾラの可行性を判定する:
+  - **watch ページで streamingData OK** → 主経路 = watch 抽出で確定。P00-D(GAS 後端)着手。
+  - **全経路 bot-check/ERROR** → データセンター IP 壁 = **設計分岐**(リゾラを初期から
+    自宅サーバー(yt-dlp)へ = Phase A のスコープ変更)をユーザーと合意して決定。
+- **P00-B/C/E/F**(Next.js スキャフォールド・shared・単一 HTML ビルド・M3 基線)は v1c に
+  依存しない = ユーザーの GO 次第で着手可能。
