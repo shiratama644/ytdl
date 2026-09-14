@@ -11,14 +11,20 @@
  *    - `signatureCipher` / `ciphertext` → 復号(= youtubei.js の decipherer / PO token 系)
  *      が必要になる = P00-D の設計が変わる
  *
- * 1 回だけ fetch する最小キット(所要 ~30 秒)。
+ * **第 5 回 試行 1(2026-09-14)は HTTP 429(レート制限)で未取得** =
+ * キット群の累計 fetch(~13 回/時・同じ Google DC IP)による一時的制限。
+ * → 本版(試行 2 用)は **3 回まで自動リトライ(30s / 60s のバックオフ)を組み込み**。
  *
  * 運用方法:
- * 1. https://script.google.com で「新しいプロジェクト」を作成(旧プロジェクトの更新NG)
- * 2. このファイルを全て貼付
- * 3. デプロイ → 新しいデプロイ → Web アプリ / 実行: 自分 / アクセス: 全員
- * 4. WebアプリURL をブラウザで開く → JSON が表示される
- * 5. 表示された JSON を丸ごとコピーして送る(チャット貼付 or リポジトリコミット)
+ * 1. **前回のキット実行から 10 分以上空けてから**実行すること(429 回避)
+ * 2. https://script.google.com で「新しいプロジェクト」を作成(旧プロジェクトの更新NG)
+ * 3. このファイルを全て貼付
+ * 4. デプロイ → 新しいデプロイ → Web アプリ / 実行: 自分 / アクセス: 全員
+ * 5. WebアプリURL をブラウザで開く
+ *    **リロードしない**(リロード 1 回 = YouTube への fetch 1 回 = レート制限の原因)。
+ *    429 ならキット自体が最大 3 回・合計 90 秒かけてリトライする。
+ *    完了まで(数十秒)URL を開いたまま待つ。
+ * 6. 表示される **JSON を丸ごとコピー**して送る(チャット貼付 or リポジトリコミット)
  */
 
 var VIDEO_ID = 'dQw4w9WgXcQ';
@@ -60,19 +66,53 @@ function extractPlayerResponse(html) {
   return { obj: null, attempts: attempts };
 }
 
+/**
+ * レート制限対応: 200 以外(特に 429/503)は 30s / 60s のバックオフで最大 3 回リトライ。
+ * 戻り値: { ok: bool, status: number, html: string|null, tries: [{attempt, status}] }
+ */
+function fetchWithRetry(url) {
+  var waits = [30000, 60000]; // 1 回目→2 回目: 30 秒, 2 回目→3 回目: 60 秒
+  var tries = [];
+  for (var i = 0; i <= waits.length; i++) {
+    if (i > 0) Utilities.sleep(waits[i - 1]);
+    var res;
+    var status;
+    try {
+      res = UrlFetchApp.fetch(url, {
+        muteHttpExceptions: true,
+        headers: { 'User-Agent': UA_DESKTOP, 'Accept-Language': 'ja-JP,ja;q=0.9' }
+      });
+      status = res.getResponseCode();
+    } catch (e) {
+      tries.push({ attempt: i + 1, status: -1, error: String(e) });
+      res = null; status = -1;
+    }
+    tries.push({ attempt: i + 1, status: status });
+    if (res && status === 200) {
+      return { ok: true, status: status, html: res.getContentText(), tries: tries };
+    }
+  }
+  // 3 回とも失敗: 最終レスポンスの冒頭を記録(レート制限ページの確認用)
+  return { ok: false, status: status, html: (res ? res.getContentText() : null), tries: tries };
+}
+
 function doGet() {
-  var out = { test: 'V1e', video: VIDEO_ID, ts: new Date().toISOString() };
+  var out = { test: 'V1e', video: VIDEO_ID, ts: new Date().toISOString(), round: '試行 2(リトライ内蔵)' };
+  var url = 'https://www.youtube.com/watch?v=' + VIDEO_ID + '&hl=ja&gl=JP';
   try {
-    var res = UrlFetchApp.fetch('https://www.youtube.com/watch?v=' + VIDEO_ID + '&hl=ja&gl=JP', {
-      muteHttpExceptions: true,
-      headers: { 'User-Agent': UA_DESKTOP, 'Accept-Language': 'ja-JP,ja;q=0.9' }
-    });
-    out.httpStatus = res.getResponseCode();
-    var html = res.getContentText();
+    var r = fetchWithRetry(url);
+    out.tries = r.tries;
+    if (!r.ok) {
+      out.error = 'fetch 失敗(最終 status=' + r.status + ')';
+      if (r.html) out.errorPageHead = r.html.slice(0, 300);
+      return finish(out);
+    }
+    out.httpStatus = r.status;
+    var html = r.html;
     out.htmlLen = html.length;
     var x = extractPlayerResponse(html);
     out.extractAttempts = x.attempts;
-    if (!x.obj) { out.error = 'player response 抽出失敗'; return finish(out); }
+    if (!x.obj) { out.error = 'player response 抽出失敗(429 の誤検知でない確認: 429 ページなら上 errorPageHead を参照)'; return finish(out); }
     var obj = x.obj;
     out.playability = (obj.playabilityStatus || {}).status || null;
     var sd = obj.streamingData || {};

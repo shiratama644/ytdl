@@ -101,7 +101,7 @@ Dexie.js 4 / TypeScript / biome / vitest / pnpm workspaces。GAS 後端 = youtub
 | ID | 内容 | 状態 | 要点 |
 |---|---|---|---|
 | V1-a | youtubei.js バンドル + Node 初期化 | ✅ 完了 | v18.0.0・1.3MB バンドル・create() 到達(通信はサンドボックス遮断のため未実測) |
-| **V1-b** | **GAS 実環境でのストリーム解決** | **✅ 成立(残確認 v1e のみ)** | 第 1 回失敗 / 第 2 回(v1b・`c53eddb`)= 全 client 失敗(version 陳腐化は排除)/ 第 3 回(v1c・`bf513ab`)= キット側の抽出バグ 2 点で未了(ただし **watch ページは 200/718KB で取得成功 + マーカー存在 + botCheck なし** = IP 壁は確定せず)/**第 4 回(v1d・`37b3b94`・生データ `verification/Verification-Results.md`)= ✅ 成功: `/watch/` ページの `ytInitialPlayerResponse` 抽出で **playability OK / formats 30 種 / 1080p(137)+ audio(140) 取得成功**(desktop・mobile UA 両方・抽出 1 回目成功)。**本番リゾラ = watch ページ抽出(Invidious 同型)で確定**。**`/player` エンドポイントは 3 ラウンド連続 dead**(ERROR / UNPLAYABLE / ANDROID 400)→ 使わない。**アーキ分岐(リゾラを初期から自宅サーバーへ)= 不採用**。itags 注意: **itag 22/37(mp4 muxed)なし** → D4(DL・GAS 期)の muxed 直リンクは **itag 18(360p)のみ**(D4 の「720p 以下」上限内=仕様違反ではない、高画質 DL は Phase B)。**残る唯一の未確認: formats に `url` フィールドが無い**(sampleUrl=null)→ **次 = `v1e-gas-test.gs`**(§8.1・最小キット)= `url`/`signatureCipher`/`ciphertext`/`streamingUrl` の存在を確認(= P00-D に復号機構がいるかの判定) |
+| **V1-b** | **GAS 実環境でのストリーム解決** | **✅ 成立(残確認 v1e のみ)** | 第 1 回失敗 / 第 2 回(v1b・`c53eddb`)= 全 client 失敗(version 陳腐化は排除)/ 第 3 回(v1c・`bf513ab`)= キット側の抽出バグ 2 点で未了(ただし **watch ページは 200/718KB で取得成功 + マーカー存在 + botCheck なし** = IP 壁は確定せず)/**第 4 回(v1d・`37b3b94`・生データ `verification/Verification-Results.md`)= ✅ 成功: `/watch/` ページの `ytInitialPlayerResponse` 抽出で **playability OK / formats 30 種 / 1080p(137)+ audio(140) 取得成功**(desktop・mobile UA 両方・抽出 1 回目成功)。**本番リゾラ = watch ページ抽出(Invidious 同型)で確定**。**`/player` エンドポイントは 3 ラウンド連続 dead**(ERROR / UNPLAYABLE / ANDROID 400)→ 使わない。**アーキ分岐(リゾラを初期から自宅サーバーへ)= 不採用**。itags 注意: **itag 22/37(mp4 muxed)なし** → D4(DL・GAS 期)の muxed 直リンクは **itag 18(360p)のみ**(D4 の「720p 以下」上限内=仕様違反ではない、高画質 DL は Phase B)。**残る唯一の未確認: formats に `url` フィールドが無い**(sampleUrl=null)→ **次 = `v1e-gas-test.gs`**(§8.1・最小キット)= `url`/`signatureCipher`/`ciphertext`/`streamingUrl` の存在を確認(= P00-D に復号機構がいるかの判定)。**v1e 試行 1(2026-09-14・`3dcfce9`)= HTTP 429(累計 fetch ~13 回/時による一時的レート制限・壁ではない)** → 試行 2 = **リトライ内蔵版キット + 10 分間隔 + リロード禁止**で再実行待ち |
 | V2 | ブラウザ直接取得 | ✅ 部分判定で確定 | 第 1 回(ユーザー Android): `<video>` 再生 **OK** / fetch 全 **Failed to fetch** → **CORS(ACAO 欠如)成立**。expire ≈5.9h / 他 IP 再生 OK(ip= 縛りなし)。v2b は D8 でスキップ |
 | V3-a | GAS `?_sw=` の HTTP 契約 | ✅ 完了 | ローカル模倣で HTML/JS MIME 同居確認 |
 | V3-b | GAS からの SW 登録 | ⏳ 任意(参考) | DL 設計確定で **GAS 期は StreamSaver 不使用** → 「最重要」から**降格**。PWA/オフライン判断用のみ。第 1 回 = text/plain 配信(旧デプロイ)、第 2 回 = setMimeType 例外(私のバグ、修正済み) |
@@ -114,6 +114,10 @@ Dexie.js 4 / TypeScript / biome / vitest / pnpm workspaces。GAS 後端 = youtub
 - **GAS のデプロイは古いバージョンを配信し続ける**(コード更新後に新しいデプロイを作らないと
   旧版のまま)→ ユーザーには常に「新しいプロジェクト」で実行させる運用にしている。
   本番コードにも `?probe=` 型の自己診断 ping を組み込むべき(VERIFICATION_P0.md O5)。
+- **O9: YouTube 側レート制限(HTTP 429)**: v1e 試行 1 で発生(累計 ~13 回/1 時間・同じ
+  Google DC IP)。一時的だが、**本番リゾラは ① 429/5xx リトライ+バックオフ ② 解決結果の
+  キャッシュ(CacheService・TTL)③ 同一動画 single-flight が必須**(ユーザーの毎リクエストで
+  watch ページを再 fetch しない)。
 
 ## 7. 技術的事実(調査済み・再調査・再議論不要)
 
@@ -184,15 +188,23 @@ Dexie.js 4 / TypeScript / biome / vitest / pnpm workspaces。GAS 後端 = youtub
   - `url` あり → P00-D はそのまま googlevideo 直リンクを返す(最良)。
   - `signatureCipher`/`ciphertext` → youtubei.js の decipherer / PO token 系の機構を P00-D に
     組み込む必要がある(= 実装コスト増 + bot チェック耐性の懸念 = D7 ラダーの③)。
-- キット: **`verification/v1e-gas-test.gs`**(最小 = watch 1 回 fetch のみ・構文+モックスモーク
-  検証済み)。記録内容: `streamingData` のキー / `expireInSeconds` / **`url`・`signatureCipher`・
-  `ciphertext`・`streamingUrl` の各フィールドの存在数 + 先頭サンプル値** / 先頭 1 形式の全キー +
-  600 文字サンプル。
+- **試行 1(2026-09-14)= HTTP 429(レート制限)で未取得**(累計 ~13 回/1 時間の fetch が
+  一時的に制限された = 壁ではない、v1d が 50 分前に同環境で成功)。→ **O9 として記録**
+  (本番リゾラはリトライ+バックオフ / キャッシュ / single-flight が必須)。
+- キット(試行 2 版): **`verification/v1e-gas-test.gs`**(最小 = watch 1 回のみ + **429/5xx で
+  30s・60s バックオフの最大 3 回自動リトライ**内蔵・構文+モックスモーク検証済み: 429→200
+  復旧 / 429×3 の正常失敗の両シナリオ検証済み)。記録内容: 各試行の status(`tries`) /
+  `streamingData` のキー / `expireInSeconds` / **`url`・`signatureCipher`・`ciphertext`・
+  `streamingUrl` の各フィールドの存在数 + 先頭サンプル値** / 先頭 1 形式の全キー +
+  600 文字サンプル / 最終失敗時のエラーページ冒頭 300 文字。
 - **注意: ユーザーに渡すファイルは必ずブランチ先端のもの**(raw URL):
   `https://raw.githubusercontent.com/shiratama644/ytdl/arena/01a094ec-ytdl/verification/v1e-gas-test.gs`
   自己チェック: `doGet()` の最後の行が `.setMimeType(ContentService.MimeType.JSON);`(enum)。
-- 手順: 新しい GAS プロジェクト → 貼付 → デプロイ(Web アプリ / 自分 / 全員)→
-  URL を開く → **JSON を丸ごと送付**(チャット貼付 or リポジトリコミット)。
+- 手順: **前回実行から 10 分以上空ける** → 新しい GAS プロジェクト → 貼付 →
+  デプロイ(Web アプリ / 自分 / 全員)→ URL を開く → **数十秒待つ(リトライ中・最大 ~90 秒)
+  / リロード禁止**(リロード 1 回 = fetch 1 回 = 制限の自己招致)→
+  **JSON を丸ごと送付**(チャット貼付 or リポジトリコミット。429 で終わっても
+  `tries` + `errorPageHead` 付きで送付)。
 - **JSON 到着時の判定フロー**:
   1. `fieldPresence` を見る:
      - **`url.count > 0`** → P00-D = watch 抽出 + URL 直接返却。→ **P00-D 着手(着手 GO があれば)**。
@@ -275,7 +287,9 @@ ytdl/
 - **`origin` に `arena/01a0778c-ytdl` という別ブランチがある** = ユーザーの別セッション由来。
   **触らない**(本セッションの作業は `arena/01a094ec-ytdl` のみ)。
 - 主要コミット(新しい順):
-  - (先端) v1d 結果分析(= **GAS 解決成立**)+ v1e キット追加 + 証跡群更新
+  - (先端) v1e 試行 1 = 429 の分析 + O9 記録 + v1e リトライ内蔵版 + 証跡群更新
+  - `3dcfce9` ユーザー: **V1e 試行 1 結果**(= HTTP 429・レート制限で未取得)
+  - (617d378) v1d 結果分析(= **GAS 解決成立**)+ v1e キット追加 + 証跡群更新
   - `37b3b94` ユーザー: **V1d 実行結果**(`Verification-Results.md` = ✅ watch 抽出成功)
   - `0c65cb4` ユーザー: `v1c-res.md` 削除(結果ファイル統合)
   - (e79d9f7) v1d キット追加 + v1c 結果分析(抽出バグ・watch ページ取得は OK)
@@ -340,14 +354,17 @@ ytdl/
 
 ## 13. 次の一手(引き継いだらこれ)
 
-1. **ユーザーに確認**: 「v1e(第 5 回・最小キット ~30 秒)は実行できましたか?」
+1. **ユーザーに確認**: 「v1e 試行 2(リトライ内蔵版)は実行できましたか?」
    - **背景: v1d で GAS 解決は成立済み**(watch 抽出で playability OK / 30 形式 / 1080p)。
      v1e は formats のストリーム URL 提供形式(`url` か `signatureCipher` か)の確定のみ。
+     **試行 1 は HTTP 429(累計 fetch の一時的レート制限)で未取得** = 再実行が必要。
    - 結果(JSON)が来ている場合 → §8.1 の判定フロー:
      - `url` あり → **P00-D 着手(GAS 後端 = watch 抽出 + URL 直接返却)**。
      - `signatureCipher`/`ciphertext` → **P00-D 着手(復号機構込み・冒頭に decipherer 動作確認スパイク)**。
-     - どちらにせよ **P00-D は着手可になる**(= 唯一の gating が解消)。
-   - 未実行の場合 → raw URL + 自己チェック行を再提示(§8.1)。
+     - `tries` が全て 429 の場合 → **10 分以上の間隔(30 分推奨)で再度実行を依頼**。
+     - 成功なら **P00-D は着手可**(= 唯一の gating が解消)。P00-D には **O9(リトライ+バックオフ /
+       キャッシュ / single-flight)を必ず実装**。
+   - 未実行の場合 → raw URL + 自己チェック行 + **10 分間隔・リロード禁止**を再提示(§8.1)。
 2. **P00-B/C/E/F は v1e に依存しない** = ユーザーの GO 次第で着手可。前職 AI は 2 回
    「着手してよいですか」と確認したが、まだ明示的な GO は無い = 引き継いだら最初に確認すること:
    - P00-B: `apps/web` スキャフォールド(Next.js App Router + `output:'export'` + Tailwind v4 +
@@ -386,10 +403,12 @@ P0(基盤構築)前の検証フェーズを完了し、設計判断が全部確�
   `/watch/` ページの `ytInitialPlayerResponse` 抽出で **playability OK / formats 30 種 /
   1080p+140 取得成功**。**本番リゾラ = watch ページ抽出(Invidious 同型)で確定**。
   `/player` エンドポイントは dead(使わない)。**アーキ分岐(リゾラを初期から自宅サーバーへ)=
-  不採用**。唯一の未完了 = ユーザー実行の最小キット **`v1e`**(watch 1 回 fetch のみ・~30 秒):
+  不採用**。唯一の未完了 = ユーザー実行の最小キット **`v1e`**(watch 1 回 fetch のみ・リトライ内蔵):
   **formats のストリーム URL 提供形式(`url` か `signatureCipher` か)の確定** =
-  P00-D に復号機構がいるかの判定。結果が来たら HANDOVER §8.1 の判定フローに従う
-  (どちらにせよ **P00-D 着手可**になる)。
+  P00-D に復号機構がいるかの判定。**試行 1 は HTTP 429(一時的レート制限)で未取得** =
+  10 分以上の間隔で再実行待ち(試行 2 用キットは 429 自動リトライ 3 回内蔵・
+  ページのリロード禁止)。結果が来たら HANDOVER §8.1 の判定フローに従う
+  (成功なら **P00-D 着手可**・P00-D には O9=リトライ/キャッシュ/single-flight を実装)。
 - ユーザーから「P00 開始の GO」が来たら P00-B(Next.js スキャフォールド)から着手
   (P00-B/C/E/F は v1e 非依存、P00-D のみ v1e 待ち)。まだ GO が無いなら最初に確認すること。
 
@@ -410,7 +429,7 @@ P00 開始の GO)を日本語で答えてください。
 
 | # | 項目 | 誰が | 状態 |
 |---|---|---|---|
-| 1 | **v1e** の実行 + JSON 送付 | ユーザー | **実行待ち**(最小キット ~30 秒 = formats の URL 提供形式の確認。V1 解決自体は v1d で成立済み) |
+| 1 | **v1e 試行 2** の実行 + JSON 送付 | ユーザー | **実行待ち**(試行 1 = HTTP 429 一時的レート制限。試行 2 = リトライ内蔵版 + 10 分間隔 + リロード禁止) |
 | 2 | P00-B/C/E/F の開始 GO | ユーザー | 前職 AI が 2 回確認済み・GO 未回答 |
 | 3 | P00-B ~ P00-F の実装 | AI(P00-D は v1e 後) | 未着手 |
 | 4 | **アーキテクチャ分岐の判断** | ユーザー + AI | **不要になった**(v1d で GAS 解決成立 = IP 壁ではなかった) |

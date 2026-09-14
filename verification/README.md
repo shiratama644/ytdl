@@ -66,28 +66,38 @@
 > 旧バージョンを配信し続けるため)。ファイルは**必ず下記の raw URL から取得**してください
 > (手元の古いコピーは v1c の抽出バグ or setMimeType 例外になります: 過去に複数回発生)。
 
-### 1. V1 残確認(第 5 回): `v1e-gas-test.gs`(30 秒)— **最重要・これだけやってください**
+### 1. V1 残確認(第 5 回・試行 2): `v1e-gas-test.gs`(1 分)— **最重要・これだけやってください**
 
 > **v1d で GAS 解決は成立しました**(watch ページから playability OK / 30 形式 / 1080p 取得成功)。
 > 残るは **ストリーム URL の提供形式**の確認 1 点です: v1d の 30 形式すべてに `url` フィールドが
 > 無く、`signatureCipher`(復号が必要な形式)かもしれない。これだけで P00-D(GAS 後端)の
-> 設計が変わるため、最小キット(v1e)で確認します。**watch ページの fetch は 1 回のみ**。
+> 設計が変わるため、最小キット(v1e)で確認します。
+>
+> **⚠️ 試行 1 は HTTP 429(レート制限)で未取得でした** = これまでのキットの累計アクセス
+> (~13 回/1 時間・同じ Google IP)が一時的に制限されたもの(壁ではない = v1d が直前に成功)。
+> 試行 2 のキットは **429 なら 30s / 60s 待って最大 3 回自動リトライ**するように更新済み。
 
-1. [v1e-gas-test.gs (raw)](https://raw.githubusercontent.com/shiratama644/ytdl/arena/01a094ec-ytdl/verification/v1e-gas-test.gs)
-   を開いて中身を**全てコピー**
-2. [script.google.com](https://script.google.com) で「新しいプロジェクト」→ 貼付
+1. **前回の実行(試行 1)から 10 分以上空けてから**実行してください
+2. [v1e-gas-test.gs (raw)](https://raw.githubusercontent.com/shiratama644/ytdl/arena/01a094ec-ytdl/verification/v1e-gas-test.gs)
+   を開いて中身を**全てコピー**(試行 2 版 = リトライ内蔵)
+3. [script.google.com](https://script.google.com) で「新しいプロジェクト」→ 貼付
    **自己チェック**: `doGet()` の最後の行が
    `.setMimeType(ContentService.MimeType.JSON);`(**列挙型**)になっていること
    (文字列 `'application/json...'` が出ていたら古い版=使わないで)
-3. **デプロイ → 新しいデプロイ → Web アプリ** / 実行: **自分** / アクセス: **全員**
-4. WebアプリURL をブラウザで開く
-5. 表示される **JSON を丸ごとコピー**して送ってください(チャット貼付 or リポジトリへコミット)
+4. **デプロイ → 新しいデプロイ → Web アプリ** / 実行: **自分** / アクセス: **全員**
+5. WebアプリURL をブラウザで開く → **数十秒待つ(リトライ中の場合、最大 ~90 秒)**
+   **⚠️ リロードしないでください**(リロード 1 回 = YouTube への fetch 1 回 = 制限の自己招致)。
+   JSON が表示されるまで、そのページを開いたまま待つ。
+6. 表示される **JSON を丸ごとコピー**して送ってください(チャット貼付 or リポジトリへコミット)
+   (429 で終わったら `tries` 配列と `errorPageHead` が含まれているので、それもそのまま送ってください)
 
 → 確認できること: formats 各形式が **`url` / `signatureCipher` / `ciphertext` / `streamingUrl`
 のどれを持っているか**(存在数 + 先頭のサンプル値 + 先頭 1 形式の全キー構成)。
 - `url` あり → P00-D はそのまま利用(最良)。
 - `signatureCipher`/`ciphertext` → P00-D に復号機構(youtubei.js の decipherer / PO token)を
   組み込む設計にする。
+- (副産物: この 429 体験は **O9** として記録済み = 本番リゾラはリトライ+バックオフ・
+  キャッシュ・single-flight が必須。)
 
 ### 2. V3 再検証: `v3b-gas-test.gs`(2 分)— **参考(任意・時間がある時)**
 
