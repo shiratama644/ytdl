@@ -159,6 +159,44 @@ https://raw.githubusercontent.com/shiratama644/ytdl/arena/01a094ec-ytdl/verifica
 
 **判定: 未了(キット再実行へ)。P00-D ゲートは v1d の結果に。**
 
+### V1-d(第 4 回) — ✅ **成功: GAS 解決が成立(主経路 = `/watch/` ページ抽出)**
+
+実行: ユーザー / 2026-09-14T12:11Z / 生データ: `verification/Verification-Results.md`(コミット `37b3b94`)
+
+| 経路 | 結果 |
+|---|---|
+| **watchPage(desktop)** | **playability=OK** / 200・676,330B・ja-JP / 抽出 1 回目で成功(blob 48,406B)/ **formats 30 種** / **has1080(137)= true / has140 = true** / videoTitle 正しい |
+| **watchPageMobile** | **playability=OK** / 200・720,412B / 抽出 1 回目成功(blob 93,445B)/ formats 30 種・同上 |
+| players C2b(embedded+ctx) | **ERROR**「この動画は再生できません」(=/player は依然 dead) |
+| players C3b(WEB+ctx) | **UNPLAYABLE**「動画を再生できません」 |
+| players C4b(ANDROID+アプリ UA) | **HTTP 400**「Precondition check failed.」 |
+
+**取得した itags(30)**: 18(360p muxed MP4)/ 133〜137(H.264 DASH 240p〜1080p)/ 160・140・249〜251
+(audio)/ 394〜399(VP9)/ 400・401・242〜248・271・278・313・598〜600(AV1 系)/
+**注意: itag 22・37(mp4 720p/1080p muxed)= なし** → muxed 直リンクは **itag 18(360p)のみ**。
+version = 2.20260911.00.00 / API キーはページから抽出に成功(ページは `"INNERTUBE_API_KEY":"..."`
+クォート付きコロンの形 = v1c の非マッチ原因も確定: 旧正規表現はキー名の直後の `:` を必須だった)。
+
+**解釈:**
+1. **GAS 解決 = 成立**。Google データセンター IP からも **watch ページの HTML スクレイピング経路は
+   完全に開いている**(playability OK + 完全な形式リスト + 正しいタイトル)。
+   一方 `/player` エンドポイントは 3 ラウンド連続で dead → **本番リゾラ = `/watch/` ページの
+   `ytInitialPlayerResponse` 抽出**(Invidious と同型)で確定。
+2. **アーキテクチャ分岐(リゾラを初期から自宅サーバーへ)= 不採用**。Phase A(GAS 期)の
+   設計は有効のまま。
+3. **D1(再生)は成立**: H.264 DASH(133〜137)+ audio(140/160/251)で 2 要素 DASH シンクロ再生が
+   1080p まで可能(VP9/AV1 もあり)。
+4. **D4(DL・GAS 期)の実効範囲 = この動画では muxed 360p(itag 18)のみ**
+   (itag 22/37 がレスポンスに無い)。仕様は「720p **以下**」の上限指定なので違反ではないが、
+   GAS 期 DL の画質は動画ごとの形式セットに依存 = **高画質 DL(144p〜4K)は Phase B
+   (自宅サーバー・yt-dlp)の機能**であることをユーザーに周知する。
+5. **残る唯一の未確認事項**: 30 形式すべてに **`url` フィールドが無い**(sampleUrl=null)。
+   → ストリーム URL が `signatureCipher` / `ciphertext` として提供されている可能性 =
+   その場合 P00-D に**復号機構**(youtubei.js decipherer / PO token 系)が必要になり設計が変わる。
+   → **v1e キット**(最小・watch 1 回 fetch で formats のフィールド構成を記録)で確定させる。
+
+**判定: V1-b = ✅ 成立(watch 抽出)。P00-D 着手ゲート = v1e(ストリーム URL 形式の確定)のみ。**
+
 ---
 
 ## V2: ブラウザからの直接取得(CORS / Range / 有効期限 / codec)
@@ -299,7 +337,7 @@ iOS 固有(FSA なし / SW / 再生)の最終確認は `verification/v2-browser-
 |---|---|---|---|
 | 1 | **再生経路**(dual `<video>` DASH 直読み) | **成立を確認**(ユーザー環境 Android で playing) | 確定済み(V2 第 1 回 A) |
 | 2 | **DL 経路**(fetch → muxer → StreamSaver) | googlevideo 直接 fetch は **CORS で不可**(V2 実測 + 第三者的証拠)。**ユーザー決定(2026-09-13)**: 自宅サーバーは siatube 型の動画全面プロキシにはしない(高負荷のため)。→ **A(DL 専用 relay + クライアント mux + StreamSaver + 進捗UI)主 + B(yt-dlp バッチ + 完成ファイル)フォールバック**(主方式はユーザー選択済み・[DOWNLOAD_MECHANISM_RESEARCH.md §6](DOWNLOAD_MECHANISM_RESEARCH.md))。**relay はダウンロード時のみに限定(再生には一切使用しない=ユーザーの常設制約)**。GAS 期は C(720p 以下直リンク) | 確定済み |
-| 3 | **GAS 期セルフ解決**(youtubei.js / raw InnerTube) | **ユーザー決定(2026-09-13): youtubei.js による自前実装(siatube.com API は使用しない)**。**v1b 完了(2026-09-14): 全 client 失敗**(ERROR / UNPLAYABLE / ANDROID 400。version 陳腐化は排除。embed ページは実取得可 = 制限は `/player` 単位 → データセンター IP + PO token/visitorData 欠如の疑い)。**v1c(第 3 回)= キット側の抽出バグで未了**(ただし **watch ページは 200/718KB で取得成功 + マーカー存在 + botCheck なし** = IP 壁は確定せず)。**次 = v1d**(抽出修正版)。全経路が dead とならなければアーキ分岐(IP 壁 → リゾラを初期から自宅サーバーへ)は**保留** | **v1d 実行待ち** |
+| 3 | **GAS 期セルフ解決**(youtubei.js / raw InnerTube) | **ユーザー決定(2026-09-13): youtubei.js による自前実装(siatube.com API は使用しない)**。**v1d(第 4 回)= ✅ 成立**:`/watch/` ページの `ytInitialPlayerResponse` 抽出で **playability OK / formats 30 種 / 1080p+140 取得成功**(desktop・mobile 両方)。**`/player` エンドポイントは 3 ラウンド連続 dead** → 本番リゾラ = **watch ページ抽出**(Invidious 同型)で確定。**アーキ分岐(リゾラを初期から自宅サーバーへ)= 不採用**。**残る未確認事項**: formats に `url` フィールドが無い(sampleUrl=null)→ `signatureCipher`/`ciphertext` 提供の可能性 = P00-D に復号機構要の場合がある → **次 = v1e**(最小キット・フィールド構成の確定) | **v1e 実行待ち** |
 | 4 | ~~GAS 期リゾルの代替戦略~~ | **決定(2026-09-13): (b) セルフ解決のみ**。siatube.com API 依存は不採用(第三者依存・O1 の可用性リスクを排除)。shiatube の実測 API 形状は**参考資料**としては残す(応答正規化・PO token の知見) | 確定済み |
 | 5 | **GAS からの SW 配信** | DL 設計確定により **GAS 期は StreamSaver 不使用(直リンク)** → V3-b は**参考**(PWA/オフライン機能の判断材料)に降格 | v3b は任意 |
 

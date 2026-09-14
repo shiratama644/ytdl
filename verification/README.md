@@ -47,22 +47,33 @@
    → **第 4 回 `v1d`**: 抽出のみ修正。代入文 `ytInitialPlayerResponse = {` を正規表現で**全候補列挙**
    → バランス切片 → JSON.parse → 実レスポンス判定(偽出現は自動スキップ・敵対的モック検証済み)+
    API キー/バージョンの新形式対応(3 段 fallback)+ 他は v1c と同じ測定。
-3. **V3 / v3b**: 実行未了。DL 設計確定(GAS 期 = 直リンク)により**参考レベルに降格**
+3. **V1 / v1d(第 4 回・実行済み・コミット `37b3b94`)**: **✅ 成功 = GAS 解決が成立** —
+   - **watchPage(desktop & mobile)**: playability=OK / formats 30 種 / 1080p(137)+ audio(140) /
+     videoTitle 正しい** → 本番リゾラ = **`/watch/` ページの `ytInitialPlayerResponse` 抽出**
+     (Invidious 同型)で確定。**アーキ分岐(リゾラを初期から自宅サーバーへ)= 不採用**。
+   - `/player` エンドポイントは依然 dead(ERROR / UNPLAYABLE / ANDROID 400)= 使わない。
+   - **残る未確認事項**: 30 形式すべてに **`url` フィールドが無い**(sampleUrl=null)
+     → ストリーム URL が `signatureCipher`/`ciphertext` として提供されている場合
+     P00-D に復号機構が必要になる = 設計が変わる。
+   → **第 5 回 `v1e`**(最小キット・~30 秒): watch 1 回 fetch で **formats のフィールド構成**
+     (`url` / `signatureCipher` / `ciphertext` / `streamingUrl` の存在 + 先頭 1 形式のサンプル)を記録。
+4. **V3 / v3b**: 実行未了。DL 設計確定(GAS 期 = 直リンク)により**参考レベルに降格**
    (PWA/オフライン機能の判断材料)。任意。
 
-## 第 4 回: ユーザー側で実行していただくもの(合計 ~2 分)
+## 第 5 回: ユーザー側で実行していただくもの(合計 ~30 秒)
 
 > **すべて「新しい GAS プロジェクト」でお願いします**(旧プロジェクトのデプロイは
 > 旧バージョンを配信し続けるため)。ファイルは**必ず下記の raw URL から取得**してください
 > (手元の古いコピーは v1c の抽出バグ or setMimeType 例外になります: 過去に複数回発生)。
 
-### 1. V1 再検証(第 4 回): `v1d-gas-test.gs`(2 分)— **最重要・これだけやってください**
+### 1. V1 残確認(第 5 回): `v1e-gas-test.gs`(30 秒)— **最重要・これだけやってください**
 
-> v1c は **watch ページの取得は成功**(200/718KB・マーカーあり・botCheck なし)でしたが、
-> **私の抽出ロジックのバグ 2 点**でデータを取得できませんでした。
-> v1d は**抽出の修正のみ**で、測定内容は v1c と同じです。
+> **v1d で GAS 解決は成立しました**(watch ページから playability OK / 30 形式 / 1080p 取得成功)。
+> 残るは **ストリーム URL の提供形式**の確認 1 点です: v1d の 30 形式すべてに `url` フィールドが
+> 無く、`signatureCipher`(復号が必要な形式)かもしれない。これだけで P00-D(GAS 後端)の
+> 設計が変わるため、最小キット(v1e)で確認します。**watch ページの fetch は 1 回のみ**。
 
-1. [v1d-gas-test.gs (raw)](https://raw.githubusercontent.com/shiratama644/ytdl/arena/01a094ec-ytdl/verification/v1d-gas-test.gs)
+1. [v1e-gas-test.gs (raw)](https://raw.githubusercontent.com/shiratama644/ytdl/arena/01a094ec-ytdl/verification/v1e-gas-test.gs)
    を開いて中身を**全てコピー**
 2. [script.google.com](https://script.google.com) で「新しいプロジェクト」→ 貼付
    **自己チェック**: `doGet()` の最後の行が
@@ -72,9 +83,11 @@
 4. WebアプリURL をブラウザで開く
 5. 表示される **JSON を丸ごとコピー**して送ってください(チャット貼付 or リポジトリへコミット)
 
-→ 確認できること: **`/watch/` ページから streamingData を直接取得できるか**(= PO token 不要で
-GAS 解決が成立するか)。watch も bot-check/ERROR なら = データセンター IP 壁と判定し、
-**リゾラの置き場(初期から自宅サーバーへ)の設計判断**に持ち上がる。
+→ 確認できること: formats 各形式が **`url` / `signatureCipher` / `ciphertext` / `streamingUrl`
+のどれを持っているか**(存在数 + 先頭のサンプル値 + 先頭 1 形式の全キー構成)。
+- `url` あり → P00-D はそのまま利用(最良)。
+- `signatureCipher`/`ciphertext` → P00-D に復号機構(youtubei.js の decipherer / PO token)を
+  組み込む設計にする。
 
 ### 2. V3 再検証: `v3b-gas-test.gs`(2 分)— **参考(任意・時間がある時)**
 
@@ -106,12 +119,13 @@ DL フォールバック方針の確定に必要です。
 
 ## 結果の使い道
 
-- **v1d の結果**が届いたら: `docs/research/VERIFICATION_P0.md` に証跡として追記し、
-  GAS 期リゾラの可行性を判定する:
-  - **watch ページで streamingData OK** → 主経路 = watch 抽出で確定。P00-D(GAS 後端)着手。
-  - **全経路 bot-check/ERROR** → データセンター IP 壁 = **設計分岐**(リゾラを初期から
-    自宅サーバー(yt-dlp)へ = Phase A のスコープ変更)をユーザーと合意して決定。
-  - (参考: v1c で watch ページの取得自体は成功済み = IP 壁ではない見込みが高い。
-    v1d は抽出バグ修正のみ。)
-- **P00-B/C/E/F**(Next.js スキャフォールド・shared・単一 HTML ビルド・M3 基線)は v1d に
+- **V1(GAS 解決)は v1d で成立済み**: 主経路 = **`/watch/` ページの `ytInitialPlayerResponse`
+  抽出**(Invidious 同型)で確定。アーキ分岐(リゾラを初期から自宅サーバーへ)= **不採用**。
+- **v1e の結果**が届いたら: `docs/research/VERIFICATION_P0.md` V1-d セクションに証跡として追記し、
+  **P00-D(GAS 後端)の設計を確定**:
+  - **`url` あり** → P00-D = watch 抽出 + googlevideo 直リンクを直接返す(最良)。
+  - **`signatureCipher` / `ciphertext`** → P00-D に**復号機構**(youtubei.js の decipherer /
+    PO token 系)を追加。P00-D 冒頭で「GAS 環境での復号動作」のスパイク検証を最初に実施。
+  - どちらにせよ **P00-D 着手が可能になる**(唯一の gating が解消)。
+- **P00-B/C/E/F**(Next.js スキャフォールド・shared・単一 HTML ビルド・M3 基線)は v1e に
   依存しない = ユーザーの GO 次第で着手可能。
