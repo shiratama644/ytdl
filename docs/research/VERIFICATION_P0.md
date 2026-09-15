@@ -232,6 +232,40 @@ version = 2.20260911.00.00 / API キーはページから抽出に成功(ペー�
 
 **判定: 未了(試行 3 = v1f 実行待ち)。解決経路・O9 への影響は変更なし。**
 
+### V1-f(第 6 回・試行 3) — ✅ **完了: ストリーム URL = 全 30 形式 `signatureCipher`(復号が必要)**
+
+実行: ユーザー / 2026-09-15T22:00Z(試行 1 の 429 から約 13 時間後 = レート制限解消済み)/
+生データ: `verification/Verification-Results.md`(コミット `6143012`)
+
+- `httpStatus = 200` / **`fetchMs = 1,273`(1.3 秒)** / playability **OK** / formats **30**
+  (v1d と同一セット)/ 抽出 1 回目成功。
+- **fieldPresence: `url` = 0 / `signatureCipher` = 30(全形式)/ `ciphertext` = 0 / `streamingUrl` = 0**。
+  → **ストリーム URL はすべて `signatureCipher` として提供される**(= 復号が必須)。
+- **`signatureCipher` の構造**(実測サンプル):
+  `s=<暗号化シグネチャ(NE0OE0AE...)> & sp=sig & url=<URL エンコード済みの googlevideo videoplayback URL>`
+  - `url` 部分には **`expire` / `ei` / `ip=<GAS 出口 IP>`** が已含む(= 署名パラメータのみ欠落)
+  - 復号 = **youtube-dlp と同型の signature transform 逆変換**:
+    1. watch ページの player JS から transform 関数群(a/b/c 系)を抽出
+    2. `s` の先頭バイト列から適用リストを読み、逆順に逆変換 → 本来の `sig`
+    3. 最終 URL = `decode(url)` + `&sig=<復号値>`
+- 付: `streamingData` のキー = **`expiresInSeconds`**(実キー名。v1f の推測キー
+  `expireInSeconds` では `expire: null` になっていた = 実装時は `expiresInSeconds` を使う)+
+  `serverAbrStreamingUrl`(内部利用の ABR URL と推測・クライアント直接用は想定しない)。
+
+**解釈 / 設計の最終確定:**
+1. **V1(GAS 実環境でのストリーム解決)= ✅ 全項目完了**。最終設計:
+   **Phase A リゾラ = `/watch/` ページ抽出 + signature decipherer + O9(リトライ+バックオフ /
+   キャッシュ / single-flight)**。D2(自前実装・第三者 API 非依存)は維持(= D7 ラダーの
+   「raw InnerTube / watch 経路」が検証により採用された形)。
+2. **P00-D 冒頭 = スパイク「復号済み URL が GAS から実際に取得できるか」**(googlevideo への
+   Range 1 チャンク取得で 200 を確認)。ここが通れば P00-D 全体は確定設計どおり進める。
+3. **R1 リスク更新**: decipherer は YouTube の player JS 更新で壊れ得る(変更要因の移転:
+   「GAS で youtubei.js が動くか」→「decipherer の鮮度維持」)。対策 = 小規模分離実装 +
+   Phase B(yt-dlp・組込み済み)への移行トリガー。
+4. **ユーザー実行の検証キットはこれで完了**(v3b / V4 = 任意・後回し)。
+
+**判定: V1 = ✅ 完了。P00-D 着手可(ユーザー GO 待ち)。**
+
 ---
 
 ## V2: ブラウザからの直接取得(CORS / Range / 有効期限 / codec)
@@ -372,7 +406,7 @@ iOS 固有(FSA なし / SW / 再生)の最終確認は `verification/v2-browser-
 |---|---|---|---|
 | 1 | **再生経路**(dual `<video>` DASH 直読み) | **成立を確認**(ユーザー環境 Android で playing) | 確定済み(V2 第 1 回 A) |
 | 2 | **DL 経路**(fetch → muxer → StreamSaver) | googlevideo 直接 fetch は **CORS で不可**(V2 実測 + 第三者的証拠)。**ユーザー決定(2026-09-13)**: 自宅サーバーは siatube 型の動画全面プロキシにはしない(高負荷のため)。→ **A(DL 専用 relay + クライアント mux + StreamSaver + 進捗UI)主 + B(yt-dlp バッチ + 完成ファイル)フォールバック**(主方式はユーザー選択済み・[DOWNLOAD_MECHANISM_RESEARCH.md §6](DOWNLOAD_MECHANISM_RESEARCH.md))。**relay はダウンロード時のみに限定(再生には一切使用しない=ユーザーの常設制約)**。GAS 期は C(720p 以下直リンク) | 確定済み |
-| 3 | **GAS 期セルフ解決**(youtubei.js / raw InnerTube) | **ユーザー決定(2026-09-13): youtubei.js による自前実装(siatube.com API は使用しない)**。**v1d(第 4 回)= ✅ 成立**:`/watch/` ページの `ytInitialPlayerResponse` 抽出で **playability OK / formats 30 種 / 1080p+140 取得成功**(desktop・mobile 両方)。**`/player` エンドポイントは 3 ラウンド連続 dead** → 本番リゾラ = **watch ページ抽出**(Invidious 同型)で確定。**アーキ分岐(リゾラを初期から自宅サーバーへ)= 不採用**。**残る未確認事項**: formats に `url` フィールドが無い(sampleUrl=null)→ `signatureCipher`/`ciphertext` 提供の可能性 = P00-D に復号機構要の場合がある → **次 = v1e**(最小キット・フィールド構成の確定)。**v1e 試行 1 = HTTP 429(累計 fetch による一時的レート制限)** → 試行 2(リトライ内蔵版)= **長待ち化でユーザーに「表示されない」と報告** = キット設計ミス → **v1f(再設計: `?probe=1` 即返り自己チェック + 1 回実行 = 1 fetch 数秒 + リトライは外部で 10〜30 分間隔)**。**O9 追加: 本番リゾラはリトライ+バックオフ + キャッシュ + single-flight が必須** | **v1f 実行待ち** |
+| 3 | **GAS 期セルフ解決**(youtubei.js / raw InnerTube) | **ユーザー決定(2026-09-13): youtubei.js による自前実装(siatube.com API は使用しない)**。**v1d(第 4 回)= ✅ 成立**:`/watch/` ページの `ytInitialPlayerResponse` 抽出で **playability OK / formats 30 種 / 1080p+140 取得成功**(desktop・mobile 両方)。**`/player` エンドポイントは 3 ラウンド連続 dead** → 本番リゾラ = **watch ページ抽出**(Invidious 同型)で確定。**アーキ分岐(リゾラを初期から自宅サーバーへ)= 不採用**。**残る未確認事項**: formats に `url` フィールドが無い(sampleUrl=null)→ `signatureCipher`/`ciphertext` 提供の可能性 = P00-D に復号機構要の場合がある → **次 = v1e**(最小キット・フィールド構成の確定)。**v1e 試行 1 = HTTP 429(累計 fetch による一時的レート制限)** → 試行 2(リトライ内蔵版)= **長待ち化でユーザーに「表示されない」と報告** = キット設計ミス → **v1f(再設計: `?probe=1` 即返り自己チェック + 1 回実行 = 1 fetch 数秒)= ✅ 完了: ストリーム URL = 全 30 形式 `signatureCipher`(復号必須・youtube-dlp 型 transform 逆変換)。**Phase A リゾラ = watch 抽出 + decipherer + O9(リトライ/キャッシュ/single-flight)で確定。P00-D 冒頭 = 復号済み URL の fetch 実動作スパイク** | **✅ V1 全項目完了** |
 | 4 | ~~GAS 期リゾルの代替戦略~~ | **決定(2026-09-13): (b) セルフ解決のみ**。siatube.com API 依存は不採用(第三者依存・O1 の可用性リスクを排除)。shiatube の実測 API 形状は**参考資料**としては残す(応答正規化・PO token の知見) | 確定済み |
 | 5 | **GAS からの SW 配信** | DL 設計確定により **GAS 期は StreamSaver 不使用(直リンク)** → V3-b は**参考**(PWA/オフライン機能の判断材料)に降格 | v3b は任意 |
 
@@ -397,8 +431,8 @@ iOS 固有(FSA なし / SW / 再生)の最終確認は `verification/v2-browser-
 | ID | 状態 | 次アクション |
 |---|---|---|
 | V1-a | ✅ 完了(サンドボックス) | - |
-| V1-b | ❌ 第 1 回失敗 → 再検証 | **`verification/v1b-gas-test.gs`** を GAS で実行し JSON を送付(※ setMimeType は enum 修正済み) |
-| V2 | ⚠️ 第 1 回(Android)部分判定(再生 OK / fetch 全 NG → CORS 最有力) | **ユーザー判断(2026-09-13): v2b 未実施** — DL をサーバー側パイプラインとする設計では、CORS はクライアントが googlevideo 直接 fetch しない限り無関係のため |
+| **V1-b** | **✅ 完了(第 1〜6 回 2026-09-13〜15)**: `/player` = GAS IP から不可(×3 ラウンド)/ **`/watch/` 抽出 = 可行**(30 形式・1080p+140)/**ストリーム URL = 全 signatureCipher(復号要)**/ 429 = O9 | **Phase A リゾラ = watch 抽出 + decipherer + O9 で確定 → P00-D 着手可(冒頭 = 復号済み URL の fetch 実動作スパイク)** |
+| V2 | ✅ 部分判定で確定(第 1 回 Android): 再生 OK / fetch 全 NG = **CORS 成立** / expire ≈5.9h / 他 IP 再生 OK | v2b はユーザー判断でスキップ(D8) |
 | V3-a | ✅ 完了(サンドボックス) | - |
-| V3-b | ❌ 第 1 回: text/plain 配信で未実行 / 第 2 回: setMimeType 例外で未実行 | **`verification/v3b-gas-test.gs`(enum 修正版)** を**新しいプロジェクト**で実行(まず `?probe=1` を確認)し結果を送付(**最重要**) |
-| V4 | ⏳ 待ち(任意) | 同一 HTML を iOS で実行 |
+| V3-b | ⏳ 任意(参考 = DL には不要): 第 1 回 text/plain(旧デプロイ)/ 第 2 回 setMimeType 例外(私のバグ・修正済み) | PWA/オフライン判断用。時間がある時 |
+| V4 | ⏳ 待ち(任意) | 同一 HTML を iOS で実行(DL fallback の UX 裏取り) |

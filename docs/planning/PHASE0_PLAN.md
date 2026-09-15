@@ -22,7 +22,7 @@
 3. **差別化機能: 動画ダウンロード機能**(拡張子 / 画質を選択して**キュー**に追加し、ブラウザ内でバッファリングせずにディスクへ書き出す)
 4. **運用: 最初は GAS で動かし、CORS / 制限にぶつかったら自宅サーバー(Proxmox/LXC)へ移行**
 
-本フェーズ(P0)では、リポジトリ再編成とスキャフォールドを完了し、**GAS 上のバックエンド可行性(youtubei.js バンドル + embedded client 解決)を検証**する。
+本フェーズ(P0)では、リポジトリ再編成とスキャフォールドを完了する。GAS 上のバックエンド可行性は**検証済み(V1・第 1〜6 回 2026-09-13〜15)**: `/player` エンドポイントは GAS IP から不可 / **`/watch/` ページ抽出は可行(playability OK / 30 形式 / 1080p+140)・ストリーム URL は全形式 `signatureCipher`(復号要)** → **P00-D = watch ページ抽出 + signature decipherer + O9(リトライ/キャッシュ/single-flight)**(証跡: `docs/research/VERIFICATION_P0.md`)。
 
 ## 3. 変更範囲 (Scope)
 
@@ -48,7 +48,7 @@
 - [ ] `apps/web` が build 成功(`output: 'export'`)+ `scripts/` が単一 HTML を生成(inline 済み)
 - [ ] `backend/gas` が GAS Webアプリとしてデプロイでき、`/`(単一 HTML)と `/api/health`・`/api/search?q=...`(doGet クエリディスパッチ)が動作することを実測で確認
 - [ ] **V3(参考・DL には不要)**: GAS ページからの SW スクリプト配信・登録可行性の確認(GAS 期の DL は直リンクのため StreamSaver 不使用 = 2026-09-13 設計確定。V3 は将来の PWA/オフライン機能の判断材料)
-- [ ] **GAS 検証(最重要)**: youtubei.js(esbuild バンドル)が GAS V8 で動き、`WEB_EMBEDDED_PLAYER` client で search / video meta / stream format を取得できる(取得できなければ §10.9 のフォールバック「raw InnerTube + UrlFetchApp」に切替を判断し ADR 化)
+- [x] **GAS 検証(2026-09-15 完了・V1 第 1〜6 回)**: `/player` = GAS IP から不可(3 ラウンド連続 ERROR/UNPLAYABLE/400)/ **`/watch/` ページ抽出 = 可行**(playability OK / 30 形式 / 1080p(137)+audio(140)・desktop+mobile UA)/**ストリーム URL = 全 30 形式 `signatureCipher`**(`s=` + `sp=sig` + URL 埋め込み base URL)→ 復号(youtube-dlp 型 transform 逆変換)が必要 = **P00-D 冒頭のスパイクで「復号済み URL の fetch 実動作」を最初に検証**。**429 レート制限 = O9**(リトライ+バックオフ / CacheService キャッシュ / single-flight を実装)
 - [ ] `packages/shared` の API client が GAS 輸送(クエリ / google.script.run)と fetch 輸送の両モードを持つ(vitest でユニットテスト)
 - [ ] M3 Design Expressive のテーマトークン(Tailwind `@theme`)と 2 画面(ホーム / watch スケルトン)が整う
 - [ ] `docs/task-list.md` の状態・証拠を更新
@@ -88,7 +88,7 @@
 | P00-A | リポジトリ再編成 | `.archive/cod-web-docs/` 退避、新 `docs/README.md`・`docs/task-list.md`、トップ README 更新 | - |
 | P00-B | web スキャフォールド | `apps/web`(Next.js App Router, `output:'export'`, Tailwind v4, GSAP 導入, M3 トークン, ルータ骨格) | A |
 | P00-C | shared パッケージ | `packages/shared`(API client 双方向輸送、types、定数、エラー分類)+ vitest | A |
-| P00-D | GAS 後端 | `backend/gas`(doGet ディスパッチ、/api/health・search・video・stream、youtubei.js embedded client、bridge) | A,C |
+| P00-D | GAS 後端 | `backend/gas`(doGet ディスパッチ、/api/health・search・video・stream、**watch ページ抽出リゾラ + signature decipherer**、**O9: リトライ+バックオフ / キャッシュ / single-flight**。冒頭 = 復号済み URL の fetch 実動作スパイク) | A,C |
 | P00-E | 単一 HTML ビルド + GAS デプロイ | `scripts/build-single-file.ts`(Next export → inline → 単一 HTML)、GAS デプロイ手順書。SW ディスパッチは任意(V3 参考 = PWA/オフライン用。DL には不要) | B,D |
 | P00-F | M3 Expressive 基線 | テーマ(色/形状/タイポ)、ホーム + watch スケルトン、GSAP トランジション 1 種 | B |
 
@@ -147,7 +147,7 @@
 | C1 | 再生は MSE / dash.js / shaka-player | **DASH 再生は MSE 不要**。ネイティブ `<video>`(映像)+ `<audio>`(音声)の**2 要素シンクロ**で再生する(しあTube StreamType2 が実証済み)。fetch を経由しない経路でメモリ負荷が最小。MSE 系(dash.js/shaka)は後日の拡張候補のみ。**m3u8(ライブ)のみ hls.js**。いずれの経路もブラウザ直接取得可否は V2 で検証した上で利用 | しあTube 調査 §5.6(実コード読了) |
 | C2 | 「GAS で動かし CORS が出たら移行」 | **V2 実測で確定(2026-09-13)**: googlevideo への `fetch()` は全 NG / `<video>` 再生は OK = CORS(ACAO 欠如)が成立。Piped 運用 issue(#3211)の同種実証・Invidious/Piped のサーバー中継実務も佐证。→ ブラウザ直接 fetch の DL は全フェーズで不可。**DL = 自社サーバーからの取得**(Phase B: 方式 A の DL 専用 relay / 方式 B の完成ファイル。GAS 期: 直リンクのみ) | V2 実測(VERIFICATION_P0.md) + Piped issue #3211 + Invidious/Piped 実務 |
 | C3 | 「バックエンド(GAS / Next.js API)が JSON を返す」(fetch 前提) | **GAS は CORS ヘッダを設定できない + POST に対応しない(doGet のみ)**。よって GAS フェーズの API は**同一オリジン**(doGet のクエリ引数ディスパッチ / google.script.run RPC)で必須。`fetch('/api/...')` は Phase B 専用。API client は**双方向輸送**を先に抽象化する | GAS 仕様(公式ドキュメントの既知制限) |
-| C4 | 「YouTubei.js 等のライブラリ」 | 方向は正しい。**GAS では yt-dlp(子プロセス)は実行不可** → GAS フェーズは youtubei.js(または raw InnerTube)のみ。**yt-dlp は Phase B(自宅サーバー)専用**(PO token 対応・堅牢性のため)。しあTube 生産版(v2.x)は yt-dlp ベース | しあTube 調査 §5.4/5.5 |
+| C4 | 「YouTubei.js 等のライブラリ」 | **V1 検証済み(2026-09-15)**: GAS フェーズ = **`/watch/` ページ抽出 + signature deciphering**(raw InnerTube / UrlFetchApp 経路・第三者 API 依存なし = D2 の自前実装方針を維持)。GAS 後端に youtubei.js ランタイムは不要(`player` InnerTube 経路は GAS IP から不可 = 3 ラウンド検証)。**yt-dlp は Phase B(自宅サーバー)専用**(復号・PO token 対応・堅牢性のため)。しあTube 生産版(v2.x)は yt-dlp ベース | しあTube 調査 §5.4/5.5 + V1 証跡(VERIFICATION_P0.md) |
 | C5 | (未言及) | API が返す `httpHeaders`(カスタム UA 等)は**ブラウザの fetch では上書き不可**。高画質 DASH の fetch(ダウンロード)が UA を要求されれば失敗し得る。対処: 実測で確認、失敗時は Phase B の relay がヘッダを付与 | しあTube 調査 §5.5(実測レスポンスに httpHeaders 存在) |
 | C6 | StreamSaver.js を採用(**ダウンロードの主経路**) | 指示どおり主経路に据える(= 方式 A / B での保存機構)。**SW の配信は Phase B(自宅サーバー・自ドメイン)= 制約なし**。GAS 期は DL が直リンクのため **StreamSaver は不使用**(2026-09-13 設計確定)→ 旧案「GAS が SW を配信」は不要になった。V3(GAS からの SW 配信)は**参考**(PWA/オフライン機能の将来判断)。**注意: StreamSaver は実質 Chromium 系のみ**(Safari/Firefox 非対応・公式)→ iOS/FF は常に直リンクフォールバック(方式 C)。フォールバック順: StreamSaver → FSA(Chromium)→ 直リンク | StreamSaver 公式(機構・対応表)・DOWNLOAD_MECHANISM_RESEARCH.md |
 | C7 | (未言及) | 署名 URL の **`ip=` 束縛**。**V2 第 1 回で解決(2026-09-13)**: 解決元 IP(118.151.x)の URL が別 IP(ユーザー Android)で `<video>` 再生 OK = 再生経路では IP 縛りなし。_expire 失効(≈6h、O2)時の再解決_チェーンは防御として維持 | V2 実測(VERIFICATION_P0.md) |
@@ -162,7 +162,7 @@
 | ローカル永続化 | **Dexie.js 4**(IndexedDB) | 指定。DL キュー・履歴・設定・レジューム状態 |
 | 再生 | ネイティブ `<video>/<audio>`(DASH) + **hls.js**(m3u8 ライブ) | C1 |
 | ダウンロード | **mp4-muxer**(h264+aac→mp4)/ **webm-muxer**(vp9・av1+opus→webm)(Web Worker・再エンコードなし)+ **StreamSaver.js**(Phase B 主経路・SW は自ドメイン)/ **FSA**(Chromium フォールバック)/ **直リンク**(GAS 期 + iOS/FF) | C2/C6, §10.8 |
-| バックエンド(GAS) | **youtubei.js**(esbuild バンドル)または raw InnerTube + UrlFetchApp | C4 |
+| バックエンド(GAS) | **`/watch/` ページ抽出 + signature deciphering**(raw InnerTube / UrlFetchApp)+ **O9**(リトライ+バックオフ / CacheService キャッシュ / single-flight) | C4, V1 検証 |
 | バックエンド(自宅) | **Bun + Hono + yt-dlp(子プロセス)** + Nginx | 堅牢性・PO token |
 | 言語・品質 | TypeScript, biome, vitest | cod-web 由来の流儀を踏襲 |
 | パッケージ管理 | pnpm(workspaces) | 単一リポジトリ内 `apps/` + `packages/` |
@@ -181,7 +181,7 @@ ytdl/
 │   ├── shared/               # API client(双方向輸送)+ types + itag/codec 定数 + エラー分類
 │   └── ui/                   # (P4 以降) 共有 M3 コンポーネント
 ├── backend/
-│   ├── gas/                  # GAS ソース: index.doGet, api/*.js, bundle/(youtubei.js bundle)
+│   ├── gas/                  # GAS ソース: index.doGet, api/*.js, resolver/(watch 抽出 + decipherer)
 │   └── home/                 # (P5) Bun/Hono + yt-dlp + /dl relay(方式A) + sw/(StreamSaver) + nginx.conf
 ├── scripts/
 │   └── build-single-file.ts  # Next export → JS/CSS inline → 単一 HTML(GAS 用)
@@ -278,13 +278,13 @@ Dexie キュー → /jobs → yt-dlp でダウンロード+mux(再エンコー�
 | UrlFetchApp: URL 長 2000 字 / 1 リクエスト 50MB / ヘッダ UA 設定可 | 長い continuation は RPC 経由。UA・Sec-* は addHeaders で再現(shiatube v1 と同じ手法) |
 | 実行時間 6 分 / CPU 10K ms / 日次クォータ(約 6 万ユニット) | 解決は軽量(JSON のみ)だが、**公開運用では日次クォータが移行トリガー**の筆頭 |
 | 静的ファイル/SW 配信ができない | **SW スクリプトを doGet ディスパッチで配信**(`?_sw=1` → `MimeType.JAVASCRIPT`)— **V3 で実測**。不通なら FSA 第一 |
-| V8 サンドボックス | youtubei.js のバンドル可行性 = **P00-D の最重要検証(V1)**。不通なら raw InnerTube(`youtubei/v1/next` + 公開 key、shiatube v1 と同型)へ |
+| V8 サンドボックス | **V1 検証済み(2026-09-15)**: watch ページ抽出 + 復号経路を採用(GAS V8 の UrlFetchApp + 文字列処理で成立・特殊依存なし) |
 
 ### 可行性検証リスト(P00-D/E と P2 冒頭で実施し §12 に結果を記録)
 
 | ID | 検証項目 | 方法 | 失敗時 |
 |---|---|---|---|
-| V1 | youtubei.js バンドルが GAS V8 で動作し、embedded client で 1080p を解決できるか | P00-D で実デプロイ + 実動画で確認 | raw InnerTube + UrlFetchApp へ切替(ADR 化) |
+| V1 | **完了(第 1〜6 回 2026-09-13〜15)**: `/player` = GAS IP から不可(×3 ラウンド)/ **`/watch/` 抽出 = 可行**(30 形式・1080p+140)/ **ストリーム URL = 全 signatureCipher**(復号要)/ 429 = **O9** | 採用経路 = watch 抽出 + decipherer。**P00-D 冒頭スパイク = 復号済み URL の fetch 実動作確認**(GAS から googlevideo を Range 取得して 200 を確認) | 復号が不安定なら: D7 ラダー(別 client / PO token)または Phase B 早期移行 |
 | V2 | googlevideo のブラウザ直接取得: **CORS(ACAO 有無)・Range・URL 有効期限・codec/container・UA 依存** | **完了(第 1 回・2026-09-13・ユーザー Android 環境)**: `<video>` 再生 **OK** / fetch 全 NG(**CORS=最有力**) / expire ≈5.9h / O3(他 IP 再生)解決 → **DL は直接 fetch ではなく自社サーバー経由(方式 A/B)**。v2b(確定テスト)はユーザー判断でスキップ | - |
 | V3 | GAS ページからの **Service Worker 登録**(doGet ディスパッチ + JAVASCRIPT MIME + scope `/macros/s/<id>/`) | **参考(DL には不要)**: GAS 期の DL が直リンクのため StreamSaver 不使用 → 重要性は PWA/オフライン機能の判断材料に降格。キットは `verification/v3b-gas-test.gs`(enum 修正版)で用意済み。GAS 制約: setMimeType は `MimeType` enum のみ(O7) | - |
 | V4 | iOS Safari の挙動(SW 経由の DL トリガ、FSA 無、新タブ動作) | P2/P3 で実機テスト | 720p muxed 直リンク方針を iOS 既定に |
@@ -320,7 +320,7 @@ Dexie キュー → /jobs → yt-dlp でダウンロード+mux(再エンコー�
 
 | ID | リスク | 影響 | 対処 |
 |---|---|---|---|
-| R1 | youtubei.js が GAS V8 で動作しない | P00-D が頓挫 | raw InnerTube + UrlFetchApp への切替(設計済み・ADR 化) |
+| R1 | **signature deciphering アルゴリズムは変更が頻発**(YouTube の player JS が更新されると transform が変わる) | Phase A の解決が断絶し得る | decipherer は小規模更新を前提に分離実装(P00-D)。**Phase B = yt-dlp が組込み済み**。Phase A が壊れたら = 移行トリガー(R8 と併記) |
 | R2 | bot チェック / PO token(Google IP でも高画質で発生し得る) | 1080p 解決失敗 | embedded client 中心、失敗時のフォールバック画質、Phase B で yt-dlp |
 | R3 | googlevideo の CORS / UA / Range が想定と異なる | ダウンロード経路が縮小 | **CORS は確定済み(V2: fetch 不可)** = DL は自社サーバー経路(方式 A/B)へ転換済み。UA / Range は `/dl` relay で対処可能(required UA 付与可・Range チャンク)。Phase B 冒頭で relay の実挙動を実測 |
 | R4 | iOS Safari(FSA 無、SW 経由の DL トリガも不安定) | iOS で高画質 DL が不可になり得る | 720p muxed 直リンク(新タブ)フォールバック(V4 実測で iOS 既定を確定) |

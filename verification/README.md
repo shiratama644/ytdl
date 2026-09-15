@@ -66,7 +66,7 @@
 > 旧バージョンを配信し続けるため)。ファイルは**必ず下記の raw URL から取得**してください
 > (手元の古いコピーは v1c の抽出バグ or setMimeType 例外になります: 過去に複数回発生)。
 
-### 1. V1 残確認(第 6 回): `v1f-gas-test.gs`(1 回 ~10 秒)— **最重要・これだけやってください**
+### 1. V1 残確認(第 6 回): `v1f-gas-test.gs` — **✅ 完了(2026-09-15)**
 
 > **v1d で GAS 解決は成立しました**(watch ページから playability OK / 30 形式 / 1080p 取得成功)。
 > 残るは **ストリーム URL の提供形式**の確認 1 点です: v1d の 30 形式すべてに `url` フィールドが
@@ -97,13 +97,15 @@
    **⚠️ 開いた後のリロード・再クリックはしないでください**(1 回 = YouTube への fetch 1 回)
 6. 表示される **JSON を丸ごとコピー**して送ってください(チャット貼付 or リポジトリへコミット)
 
-→ 確認できること: formats 各形式が **`url` / `signatureCipher` / `ciphertext` / `streamingUrl`
-のどれを持っているか**(存在数 + 先頭のサンプル値 + 先頭 1 形式の全キー構成)。
-- `url` あり → P00-D はそのまま利用(最良)。
-- `signatureCipher`/`ciphertext` → P00-D に復号機構(youtubei.js の decipherer / PO token)を
-  組み込む設計にする。
-- (副産物: 429 体験は **O9** として記録済み = 本番リゾラはリトライ+バックオフ・
-  キャッシュ・single-flight が必須。)
+**結果(コミット `6143012`)**: ✅ **全 30 形式 = `signatureCipher`**(`url`=0 / `ciphertext`=0 /
+`streamingUrl`=0)。`signatureCipher` = `s=<暗号化シグネチャ>&sp=sig&url=<URL エンコード済みの
+videoplayback URL>`(base URL には `expire`/`ei`/`ip=` が已含む)→ **復号が必要**
+(youtube-dlp 型の transform 逆変換)。
+
+→ **V1(GAS 解決)= ✅ 全項目完了**。Phase A リゾラ = **watch ページ抽出 + signature
+decipherer + O9**(リトライ+バックオフ / キャッシュ / single-flight)で確定 =
+**P00-D 着手可**(冒頭 = 復号済み URL の fetch 実動作スパイク)。
+(副産物: 429 体験は **O9** として記録済み。)
 
 ### 2. V3 再検証: `v3b-gas-test.gs`(2 分)— **参考(任意・時間がある時)**
 
@@ -135,13 +137,10 @@ DL フォールバック方針の確定に必要です。
 
 ## 結果の使い道
 
-- **V1(GAS 解決)は v1d で成立済み**: 主経路 = **`/watch/` ページの `ytInitialPlayerResponse`
-  抽出**(Invidious 同型)で確定。アーキ分岐(リゾラを初期から自宅サーバーへ)= **不採用**。
-- **v1e の結果**が届いたら: `docs/research/VERIFICATION_P0.md` V1-d セクションに証跡として追記し、
-  **P00-D(GAS 後端)の設計を確定**:
-  - **`url` あり** → P00-D = watch 抽出 + googlevideo 直リンクを直接返す(最良)。
-  - **`signatureCipher` / `ciphertext`** → P00-D に**復号機構**(youtubei.js の decipherer /
-    PO token 系)を追加。P00-D 冒頭で「GAS 環境での復号動作」のスパイク検証を最初に実施。
-  - どちらにせよ **P00-D 着手が可能になる**(唯一の gating が解消)。
-- **P00-B/C/E/F**(Next.js スキャフォールド・shared・単一 HTML ビルド・M3 基線)は v1e に
-  依存しない = ユーザーの GO 次第で着手可能。
+- **V1(GAS 解決)= ✅ 完了(第 6 回まで実施済み)**: Phase A リゾラ = **`/watch/` ページ抽出 +
+  signature decipherer + O9**(リトライ+バックオフ / キャッシュ / single-flight)で確定。
+  アーキ分岐(リゾラを初期から自宅サーバーへ)= **不採用**。
+- **次の一手 = P00(サイト構築)**: ユーザーの GO 次第で着手可能
+  (P00-B/C/F/E → P00-D の順。P00-D 冒頭 = 復号済み URL の fetch 実動作スパイク)。
+- 任意の後続検証(後回しで可): **v3b**(GAS からの SW 登録 = PWA/オフライン判断用・DL には不要)/
+  **V4**(iOS = DL fallback の UX 裏取り)。
