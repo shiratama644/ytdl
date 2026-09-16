@@ -27,6 +27,6 @@
 ```
 apps/web         Next.js (App Router, output:'export') + Tailwind v4 + GSAP + Dexie
 packages/shared  API client (GAS / fetch 双方向輸送) + types
-backend/gas      Google Apps Script バックエンド (youtubei.js, embedded client)
+backend/gas      Google Apps Script バックエンド (/watch/ ページ抽出 + signature decipherer + O9・プレーン JS)
 backend/home     自宅サーバー (Phase 4: Bun + Hono + yt-dlp)
 ```

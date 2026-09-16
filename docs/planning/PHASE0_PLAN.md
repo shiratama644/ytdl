@@ -115,8 +115,8 @@
 │                          │     クエリ引数 / google.script.run RPC)                │
 │                          │                                                        │
 │                          ▼ (UrlFetchApp, サーバー間通信 → CORS 不要)             │
-│                     youtube.com (InnerTube: WEB_EMBEDDED_PLAYER client)           │
-│                          │  → JSON(メタ + 署名済み googlevideo URL + itag/codec) │
+│          youtube.com /watch/ ページ抽出 + signature decipherer(プレーン JS)      │
+│                          │  → JSON(メタ + 復号済み googlevideo URL + itag/codec)│
 │  [ブラウザ] ◀──JSON───┘                                                        │
 │    再生: <video>/<audio> 直リンク(V2 実測で再生 OK = 成立確認済み)             │
 │    ダウンロード: 720p 以下 muxed 直リンク(ブラウザネイティブ保存)               │

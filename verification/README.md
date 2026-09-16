@@ -3,7 +3,10 @@
 設計原則「ブラウザからの直接取得可否を検証した上で利用する」の実施計画。
 計画書: [`../docs/planning/PHASE0_PLAN.md`](../docs/planning/PHASE0_PLAN.md)(§10.9 検証リスト V1〜V4)
 結果記録: [`../docs/research/VERIFICATION_P0.md`](../docs/research/VERIFICATION_P0.md)
-第 1 回実行結果(ユーザー送付): [`Verification-Results.md`](Verification-Results.md)
+生結果: [`Verification-Results.md`](Verification-Results.md)(**1 ファイル = 最新の結果のみ**運用・現在は v1f の JSON。旧ラウンドは git 履歴 + VERIFICATION_P0.md に残る)
+
+> **状態(2026-09-15): 必須の検証キットは全完了**(V1 = v1f 完了 / V2 = 判定確定・v2b は D8 でスキップ / V3-b・V4 = 任意)。
+> 以下の実行手順は記録として保持。**P00 以降は新しい検証キットは追加しない想定**(P00-D のスパイクは本番 GAS コード `backend/gas` 内で実施。デプロイはユーザーが手順書に従って実行)。
 
 ## サンドボックス側で実施済み
 

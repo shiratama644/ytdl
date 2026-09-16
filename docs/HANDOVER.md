@@ -1,8 +1,8 @@
 # AI 引き継ぎドキュメント(ytdl)
 
-> 作成: 2026-09-14 / 作成者: 前職 AI エージェント(Arena Agent Mode)
-> 対象ブランチ: `arena/01a094ec-ytdl` / 最新コミット: ブランチ先端(`6143012` = ユーザーの
-> v1f 実行結果 = **V1 検証完了** を必ず含む)
+> 作成: 2026-09-14 / **最終整理: 2026-09-16**(AGENTS.md・.agent/・全ドキュメントを ytdl 現状に同期)
+> 対象ブランチ: `arena/01a094ec-ytdl` / 最新コミット: ブランチ先端(`7761203` =
+> v1f 結果分析 = **V1 検証完了** を必ず含む)
 > **引き継ぐ AI へ: このファイルが第一のエントリポイントです。§1 → §13 の順で読み、
 >  §9 に指定したファイル群をその優先順で読んでから作業を開始してください。**
 
@@ -74,8 +74,8 @@
 │      doGet(e) が 2 役:  1) 単一 HTML 配信(Next.js export + inline)              │
 │                        2) ?api= クエリディスパッチ / google.script.run RPC        │
 │      ▼ (UrlFetchApp = サーバー間通信、CORS 不要)                                  │
-│   youtube.com InnerTube(youtubei.js bundled、client = D7 により決定)              │
-│      → JSON(メタ + 署名済み googlevideo URL + itag/codec/httpHeaders)            │
+│   youtube.com /watch/ ページ抽出(desktop UA + ja-JP) + signature decipherer      │
+│      → JSON(メタ + 復号済み googlevideo URL 群 + itag/codec/contentLength/期限)  │
 │  [ブラウザ] 再生: <video>/<audio> 直リンク(googlevideo 直)                        │
 │           DL:   720p 以下 muxed 直リンク(D4)                                     │
 └──────────────────────────────────────────────────────────────────────────────────┘
@@ -92,8 +92,9 @@
 ```
 
 **技術スタック(確定)**: Next.js(App Router, `output:'export'`)+ Tailwind CSS v4 + GSAP 3.13 +
-Dexie.js 4 / TypeScript / biome / vitest / pnpm workspaces。GAS 後端 = youtubei.js(esbuild バンドル)
-または raw InnerTube。自宅サーバー = Bun + Hono + yt-dlp + Nginx。
+Dexie.js 4 / TypeScript / biome / vitest / pnpm workspaces。GAS 後端 = **`/watch/` ページ抽出
++ signature decipherer + O9(プレーン JS・youtubei.js ランタイム不使用 = V1 で確定)**。
+自宅サーバー = Bun + Hono + yt-dlp + Nginx。
 (詳細: `docs/planning/PHASE0_PLAN.md` §10.4〜§10.6)
 
 ## 6. 検証の現状(証跡の正本: `docs/research/VERIFICATION_P0.md`)
@@ -239,7 +240,7 @@ Dexie.js 4 / TypeScript / biome / vitest / pnpm workspaces。GAS 後端 = youtub
 ```
 ytdl/
 ├── AGENTS.md / README.md           # エージェント規約・リポジトリ説明
-├── .agent/                          # cod-web 由来の AI エージェント scaffold(ユーザーは .agents/ と呼ぶ)
+├── .agent/                          # Agent 記憶システム(hooks/skills/logs。※ logs に cod-web 由来の過去ログ = 参照のみ)
 ├── .archive/cod-web-docs/           # cod-web(別プロジェクト=FPS ゲーム)由来文書。**変更禁止**
 ├── docs/
 │   ├── task-list.md                 # ★ 進捗の唯一の正本(検証 + P00 各タスクのステータス)
@@ -255,9 +256,9 @@ ytdl/
 │   └── HANDOVER.md                  # 本ファイル
 ├── verification/
 │   ├── README.md                    # ★ 検証キットの実行手順(ユーザー向け)
-│   ├── Verification-Results.md      # ユーザー管理の生データファイル(= 現在 **V1d の JSON**)
+│   ├── Verification-Results.md      # ユーザー管理の生データファイル(= 現在 **v1f の JSON**・1 ファイル = 最新の結果のみ)
 │   │                                #   第 1〜3 回の生データは git 履歴 + VERIFICATION_P0.md の証跡に残る
-│   ├── v1〜v1e の .gs               # V1 キット系(旧→新 / **最新 = v1e = 実行待ち**)
+│   ├── v1〜v1f の .gs               # V1 キット系(旧→新 / **最新 = v1f = 実行済み・完了**)
 │   ├── v2-browser-test.html / v2b-browser-test.html  # V2 キット(旧 / 最新・v2b はスキップ)
 │   ├── v3-gas-test.gs / v3b-gas-test.gs      # V3 キット(旧 / 最新)
 └── (P00-B 以降で) apps/web, packages/shared, backend/gas, backend/home, scripts/
@@ -273,11 +274,11 @@ ytdl/
 ## 10. git / ブランチ状況(2026-09-14 時点)
 
 - リポジトリ: `shiratama644/ytdl`(GitHub。認証はこの環境で設定済み)
-- **全作業はブランチ `arena/01a094ec-ytdl` にある(先端 = v1d キット追加 commit)。`main`
+- **全作業はブランチ `arena/01a094ec-ytdl` にある(先端 = `7761203` 以降)。`main`
   は `69db5af`(Initial commit)のまま**。→ 引き継いだセッションでは、作業開始前に
-  `git fetch origin` してこのブランチを起点にすること(新しい Arena セッションは
-  別の `arena/<id>` ブランチを main から作られる場合がある = その場合は
-  `origin/arena/01a094ec-ytdl` をマージ/リベースしてから作業)。
+  `git fetch origin '+refs/heads/*:refs/remotes/origin/*'` してこのブランチを起点にすること
+  (新しい Arena セッションは別の `arena/<id>` ブランチを main から作られる場合がある
+  = その場合は `origin/arena/01a094ec-ytdl` をマージしてから作業)。
 - **ユーザーは GitHub Web UI で直接コミットする**(`c53eddb` / `bf513ab` / `0c65cb4` /
   `37b3b94` …)。
   **worktree にユーザーが変更したファイルの古いコピーが残っていることがある** →
@@ -292,7 +293,8 @@ ytdl/
 - **`origin` に `arena/01a0778c-ytdl` という別ブランチがある** = ユーザーの別セッション由来。
   **触らない**(本セッションの作業は `arena/01a094ec-ytdl` のみ)。
 - 主要コミット(新しい順):
-  - (先端) **v1f 結果分析 = V1 検証完了**(signatureCipher 確定 → P00-D 仕様確定)+ 設計正本(PHASE0_PLAN)更新
+  - (2026-09-16) ドキュメント全面整理 + AGENTS.md / .agent/ を ytdl 用に全面書き換え(セッション移行準備)
+  - `7761203` **v1f 結果分析 = V1 検証完了**(signatureCipher 確定 → P00-D 仕様確定)+ 設計正本更新
   - `6143012` ユーザー: **V1f 実行結果**(= ✅ 全 30 形式 signatureCipher) = **V1 完了の証跡**
   - (8d4bc6b) v1e 試行 2 = 長待ち化の分析 + **v1f 再設計**(probe + 1 fetch/実行)+ 証跡群更新
   - (b520d89) v1e 試行 1 = 429 の分析 + O9 記録
@@ -368,16 +370,17 @@ ytdl/
    - GO が来たら: **P00-B → P00-C → P00-F → P00-E → P00-D** の順で進める
      (P00-D 冒頭 = **復号済み URL の fetch 実動作スパイク** = §8.1 の手順 2)。
    - GO がまだなら → 最初に確認すること(前職 AI は複数回確認済み・未回答)。
-2. **P00-B/C/E/F は v1e に依存しない** = ユーザーの GO 次第で着手可。前職 AI は 2 回
-   「着手してよいですか」と確認したが、まだ明示的な GO は無い = 引き継いだら最初に確認すること:
+2. **P00-B/C/E/F は V1 残作業に依存しない(検証は全完了)** = ユーザーの GO 次第で着手可。
+   前職 AI は複数回「着手してよいですか」と確認したが、まだ明示的な GO は無い
+   = 引き継いだら最初に確認すること:
    - P00-B: `apps/web` スキャフォールド(Next.js App Router + `output:'export'` + Tailwind v4 +
      GSAP 導入 + M3 トークン + ルータ骨格)
    - P00-C: `packages/shared`(API client 双方向輸送: GAS の `?api=`/google.script.run と
      Phase B の fetch。types・itag/codec 定数・エラー分類)+ vitest
    - P00-F: M3 Expressive 基線(テーマ + ホーム/watch スケルトン + GSAP 1 種)
    - P00-E: 単一 HTML ビルド(`scripts/build-single-file.ts`)+ GAS デプロイ手順書
-   - P00-D: GAS 後端(主経路 = **watch ページ抽出**(v1d で確定)+ v1e で判明する URL 形式に応じた
-     復号機構の要否)+ doGet ディスパッチ + `/api/*`
+   - P00-D: GAS 後端(主経路 = **watch ページ抽出**(v1d で確定)+ **signature decipherer**
+     (必須 = v1f で全形式 signatureCipher を確認)+ O9)+ doGet ディスパッチ + `/api/*`
    - 各タスクの DoD は `docs/planning/PHASE0_PLAN.md` §5、作業手順は §8(完了時に行うこと)。
 3. **作業のたびに commit+push**(§11)。タスク ID をコミットメッセージに含める。
 4. `docs/task-list.md` は**常に最新に**(進捗の正本)。
@@ -393,23 +396,24 @@ P0(基盤構築)前の検証フェーズを完了し、設計判断が全部確�
 1. リポジトリの `docs/HANDOVER.md` を全部読む(これがコンテキストの唯一の入口)。
 2. その指示に従って、docs/task-list.md → docs/planning/PHASE0_PLAN.md →
    docs/research/VERIFICATION_P0.md の順に読む。
-3. 作業ブランチの確認: 全作業は GitHub のブランチ `arena/01a094ec-ytdl`(先端 = v1d キット追加
-   commit、`bf513ab` ユーザーの v1c 結果を含む)にある。main は古い。自分のセッションブランチに
-   `origin/arena/01a094ec-ytdl` を取り込むことを最初にやる(HANDOVER §10・§11 の手順)。
+3. 作業ブランチの確認: 全作業は GitHub のブランチ `arena/01a094ec-ytdl`(先端 = 2026-09-16 の
+   ドキュメント整理 commit 以降。`6143012` ユーザーの v1f 結果 + `7761203` 分析を含む)にある。
+   main は古い。自分のセッションブランチに `origin/arena/01a094ec-ytdl` を取り込むことを
+   最初にやる(HANDOVER §10・§11 の手順)。
 
 現状の要約:
-- 設計は全部確定済み(再生=googlevideo 直読み / リゾラ=youtubei.js 自前(siatube API 不使用)/
-  DL=自宅サーバー期は「DL 専用 relay + クライアント側 mux + StreamSaver」主経路、GAS 期は 720p 以下
-  直リンク)。HANDOVER §4 を再議論せず踏襲すること。
+- 設計は全部確定済み(再生=googlevideo 直読み / リゾラ=自前実装(siatube API 不使用)= Phase A:
+  `/watch/` ページ抽出 + signature decipherer + O9(V1 検証済み)/ DL=自宅サーバー期は
+  「DL 専用 relay + クライアント側 mux + StreamSaver」主経路、GAS 期は 720p 以下直リンク)。
+  HANDOVER §4 を再議論せず踏襲すること。
 - ユーザーの 4 設計原則(HANDOVER §3)と禁止表現を守ること。
-- 検証の現状: V2(CORS)= 確定 / **V1(GAS 解決)= ✅ 成立(v1d・第 4 回)**:
-  `/watch/` ページの `ytInitialPlayerResponse` 抽出で **playability OK / formats 30 種 /
-  1080p+140 取得成功**。**本番リゾラ = watch ページ抽出(Invidious 同型)で確定**。
+- 検証の現状: V2(CORS)= 確定 / **V1(GAS 解決)= ✅ 全項目完了**(第 1〜6 回・2026-09-13〜15、
+  最終 = v1f): `/watch/` ページの `ytInitialPlayerResponse` 抽出で **playability OK /
+  formats 30 種 / 1080p+140 取得成功**(第 4 回・v1d)→ ストリーム URL = **全 30 形式
+  signatureCipher**(v1f)→ **本番リゾラ = watch ページ抽出 + signature decipherer + O9
+  (リトライ/キャッシュ/single-flight)で確定**(HANDOVER §7.7/§8.1)。
   `/player` エンドポイントは dead(使わない)。**アーキ分岐(リゾラを初期から自宅サーバーへ)=
-  不採用**。**V1(GAS 解決)= ✅ 全項目完了**(2026-09-15・v1f): Phase A リゾラ =
-  **`/watch/` ページ抽出 + signature decipherer + O9**(リトライ/キャッシュ/single-flight)
-  で確定(ストリーム URL = 全形式 signatureCipher = 復号必須・HANDOVER §7.7/§8.1)。
-  **ユーザーに実行していただく検証キットは残っていない**(v3b/V4 = 任意)。
+  不採用**。**ユーザーに実行していただく検証キットは残っていない**(v3b/V4 = 任意)。
 - ユーザーから「P00 開始の GO」が来たら P00-B(Next.js スキャフォールド)から着手
   (P00-B → C → F → E → **D**(冒頭 = 復号済み URL の fetch 実動作スパイク))。
   検証は完了しているので GO 次第で全部着手可。まだ GO が無いなら最初に確認すること。

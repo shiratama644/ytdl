@@ -1,104 +1,91 @@
 ---
 name: tech-stack
-description: 理想スタックと移行元コードの使いどころ・ハマりどころ。実装時に参照。仕様の正本は docs/arch。
+description: ytdl のスタック（pnpm / Next.js export / Tailwind v4 / GSAP / Dexie / GAS プレーンJS / StreamSaver）の使いどころと実測ハマり。実装時に参照。仕様の正本は docs/。
 ---
 
-# Tech Stack Skill — 技術構成を使いこなす
+# Tech Stack Skill — ytdl の技術構成を使いこなす
 
-> **スキル**: 「どのライブラリをどこでどう使うか」と、このリポジトリで既に踏んだ地雷。
-> 設計の正本は [`../../../docs/arch/`](../../../docs/arch/README.md)（特に protocol / client / sim-profiles / engineering / adr）。
-> 欠ファイル `docs/arch/tech-stack.md`・`networking.md` は参照しない。
+> **スキル**: 「どのライブラリをどこでどう使うか」と、このリポジトリで**実測で踏んだ地雷**。
+> 設計の正本は [`../../../docs/planning/PHASE0_PLAN.md`](../../../docs/planning/PHASE0_PLAN.md)（§10.4 スタック）。
+> 古い cod-web（bun/Vite/R3F/Babylon）のスタック知識は**本プロジェクトでは使わない**（`.archive/cod-web-docs/` 参照のみ）。
 
-新規コードは **理想列**に従う。移行元の穴埋め（フェーズ 0）だけ現行ツリーを直す。新規 3D を R3F で足さない。WT / geckos / 生 UDP を実装しない。
+## スタック（確定・PHASE0_PLAN §10.4）
 
-## 理想（これから）
-
-| 層 | 使うもの | 使わない |
+| 層 | 使うもの | 使わない / 注意 |
 | :--- | :--- | :--- |
-| ランタイム | bun（`Bun.serve` ネイティブ WS） | Node `ws`、`uWebSockets.js` パッケージ（bun では動かない） |
-| 3D | `@babylonjs/core`。FPS/voxel エディタも Babylon.js。GLB 読み込みは `@babylonjs/loaders`。voxel は `noa-engine` | 新規の Three / R3F / drei。apps/web の 3D へ Three を戻さない |
-| UI | React はハブ・HUD・設定・メニュー | ゲームループを React State で回すこと。Context API 新規 |
-| シム | `SimProfile` 純粋 `step`。L1 に `if (type)` を書かない | `Math.random` / `Date.now` を step 内 |
-| ネット | 手書きバイナリ。Input **16 バイト固定**（不一致は切断）。制御は JSON | 高頻度の msgpack。ゲームコードから `WebSocket` 直接参照 |
-| ボイス | 理想に含む。ゲーム同期とは別系統 | ゲームデータに WebRTC DataChannel |
+| パッケージ管理 | **pnpm (workspaces)** | bun / npm 単体（ロックは `pnpm-lock.yaml`） |
+| フロントエンド | **Next.js（App Router、`output:'export'`）** | サーバー依存の機能（API routes / SSR 実行時）= 静的 export と相性悪い |
+| スタイリング | **Tailwind CSS v4**（`@theme` で M3 トークン） | M3 ロール名でトークンを写像（PHASE0_PLAN §10.11） |
+| モーション | **GSAP 3.13**（ScrollTrigger 任意） | `prefers-reduced-motion` 無効化トグルは必須 |
+| 永続化 | **Dexie.js 4**（IndexedDB） | localStorage 主体でなく DL キュー等は IndexedDB |
+| 再生 | ネイティブ `<video>`+`<audio>` 2 要素 DASH（muxed 360p 既定）/ m3u8 ライブのみ **hls.js** | **MSE / dash.js / shaka は使わない**（設計 C1・D1） |
+| DL muxer | **mp4-muxer**（h264+aac→mp4）/ **webm-muxer**（vp9・av1+opus→webm）= **Web Worker 内・再エンコードなし** | FFmpeg.wasm 等（再エンコード系は原則 3 の精神に反する） |
+| DL 保存 | **StreamSaver.js**（Phase B 主経路・SW は自ドメイン配信）→ FSA（Chromium フォールバック）→ 直リンク（GAS 期 + iOS/FF） | FSA 主経路（D9 で禁止） |
+| バックエンド(GAS) | **プレーン JS**（GAS V8。npm パッケージ不可）: UrlFetchApp + 文字列処理 + CacheService | GAS への youtubei.js バンドル（不要 = V1 確定）/ 外部サービス呼び出し（GAS クォータを食う） |
+| バックエンド(自宅・P5) | **Bun + Hono + yt-dlp（子プロセス）+ Nginx** | 全面プロキシ（D6 で禁止・DL 専用 relay のみ） |
+| 品質 | TypeScript（strict）/ **biome** / **vitest** | ESLint/Prettier / `bun test` |
 
-レートは `TYPE_SPECS`（[`protocol.md`](../../../docs/arch/protocol.md)）: fps シム60 / 入力60 / スナップ30。voxel 30 / 30 / 15。描画は可変 rAF。
+## GAS バックエンド（Phase A・P00-D の核心・全て実測済み）
 
-`ws.send()` は **-1 バックプレッシャ / 0 ドロップ / 1+ バイト**。存在しない `bufferedAmount` に頼らない。`perMessageDeflate: false`。
+### リゾラの確定実装（V1 検証で確定・参照実装 = `verification/v1f-gas-test.gs`）
 
-PH1-C 以降の高頻度バイナリは **Channel 1B + payload**。Input payload は 16B のまま、WS frame は 17B。ブラウザ送信は payload view の 1B 前に余白を持たせ、transport が Channel を書くと payload コピーを避けられる。
+1. **取得**: `https://www.youtube.com/watch?v=<id>&hl=ja&gl=JP` を desktop UA +
+   `Accept-Language: ja-JP` で `UrlFetchApp.fetch`（`muteHttpExceptions: true`）。
+2. **抽出**: 代入文 `ytInitialPlayerResponse\s*=\s*\{` を正規表現で**全候補列挙**（初回出現は
+   `WIZ_global_data` 内の偽構文に当ることが実測あり）→ 括弧バランス切片（`balancedSlice`）→
+   `JSON.parse` → `playabilityStatus`/`streamingData`/`videoDetails` を持つ実レスポンスを採用。
+   キー抽出は `"INNERTUBE_API_KEY":"..."` の引用符+コロン形式にも対応する（3 段 fallback）。
+3. **decipherer**: formats は**全形式 `signatureCipher`**（`url` フィールドなし = 実測 v1f）。
+   形式 = `s=<cipher>&sp=sig&url=<URL エンコード済みの videoplayback URL>`（base URL には
+   `expire`/`ei`/`ip=` が已含む = 欠落するのは署名のみ）。
+   復号 = **youtube-dlp 型 signature transform 逆変換**: watch ページの player JS から transform
+   関数群を抽出 → `s` に逆順適用 → `decode(url) + &sig=<復号値>`。
+4. **O9（必須）**: 429/5xx のリトライ+バックオフ / **CacheService キャッシュ**
+   （TTL = `streamingData.expiresInSeconds` × 安全係数例 0.5）/ 同一動画の single-flight。
+   （429 は ~13 回/時で実発生 = O9 記録）
 
-## ツールチェーン（現行も同じ）
+### GAS 平台制約（実測・AGENTS.md §6.3）
 
-| 用途 | 技術 |
-| :--- | :--- |
-| ビルド/Dev | Vite（`bun run dev` / `build` / `preview`） |
-| Lint | Biome（ESLint/Prettier 不使用） |
-| Unit | Vitest。`bun test` は使わない。配置は `_tests_/` ミラー。Phase 1.5 では coverage を `vitest run --coverage` で導入する |
-| Coverage | Vitest coverage。まず `@vitest/coverage-v8` + `provider: 'v8'` を候補にするが、Bun runtime 制約に当たる場合は停止して fallback を判断する |
-| E2E | Playwright は Phase 1.5 で導入予定。Sandbox では browser 実行を捏造せず CI / 実環境検証待ちにする |
-| パッケージ | bun。Sandbox では npm 経由で導入（下記） |
+- **doGet のみ**（POST 不可）+ CORS ヘッダ不可 → API は**同一オリジン** `?api=<path&query>`
+  ディスパッチ（URL 長上限 ~1.8KB。超える continuation は `google.script.run` RPC）。
+- `UrlFetchApp`: URL 長 2000 字 / 1 リクエスト 50MB / UA は `addHeaders` で設定可。
+- **`setMimeType` は `ContentService.MimeType` 列挙型のみ**（String は例外を投げる = O7・実測 2 回）。
+- 実行時間 6 分 / CPU 10K ms / 日次クォータ（公開運用の移行トリガー筆頭 = R8）。
+- **デプロイは旧バージョンを配信し続ける** → ユーザー検証は常に**新しいプロジェクト**で。
+- **`/player` InnerTube エンドポイントは GAS IP から dead**（3 ラウンド連続・ERROR/UNPLAYABLE/400）
+  → **使わない・再テストしない**。
+- 静的ファイル/SW 配信は不可 → 必要なら doGet で配信（`?_sw=1` → `MimeType.JAVASCRIPT`、V3 参考）。
 
-## 移行元コードで確認済み（フェーズ 0 で直す穴・残す資産）
+## フロントエンド / 単一 HTML
 
-> 描画（R3F / WebGPU / drei Sky）は破棄対象。ネット・バイナリ・ bun WS・テスト配置は移植する。
+- **`output:'export'`** = 完全静的（GAS / 任意の静的ホストで配信可）。`next build` → `out/`。
+- **単一 HTML ビルド（P00-E）**: `scripts/build-single-file.ts` で `out/` の JS/CSS を inline →
+  1 ファイル（CDN 依存なし）。GAS の `doGet` がその HTML を `MimeType.HTML` で返す。
+  生成物は毎回「1 ファイル・サイズ」を確認・記録。
+- **ライブプレビュー（e2b.app）**: dev server は `0.0.0.0` バインド +
+  `allowedDevOrigins`/`allowedHosts` にプレビューホストを許可しないと 403 / HMR 切断。
+  ブラウザ向けコードは localhost 直叩きせず**相対 URL** で。
+- **DASH 2 要素再生（P1）**: `<video>`（映像）+ `<audio>`（音声）を同一タイムラインでシグナル同期。
+  シーク時は両要素の `currentTime` を合わせる要。`<video>` は CORS 対象外 = googlevideo 直読みで成立（V2 実測）。
 
-### bun / Vite / TS / Biome
+## DL パイプライン（P2・設計確定）
 
-- bun はプリインストールされない。`bun.sh` は SSL で到達不可。**npm registry 経由**（`restore-sandbox-env.sh`）。バージョンは devDependency で exact 固定。
-- **TypeScript 7**: `baseUrl` 廃止。`paths` は相対（`"@/*": ["./src/*"]`）。
-- **Biome 2**: `rules: { preset: "recommended" }`。`vcs.useIgnoreFile: true` で `files.includes` を書かない。import 制限は `linter.rules.style.noRestrictedImports`。scope package の深い subpath は `@cod/profile-fps/**` のように `**` で捕捉する（`*` は 1 階層だけ）。DOM global の `WebSocket` 直接参照禁止は import rule ではなく `linter.rules.style.noRestrictedGlobals` を使う。
-- ESM の `vite.config.ts` では `__dirname` 未定義。`path.dirname(fileURLToPath(import.meta.url))`。
-- ライブプレビュー（e2b.app）では `server.allowedHosts: true`（preview も）+ `host: true`。未設定は 403。
-- **tsconfig は 2 構成**: `tsconfig.json`（client+shared、DOM）と `tsconfig.server.json`（server+shared、`types: ["bun"]`、DOM なし）。エイリアス `@/` `@shared/` `@server/` は tsconfig・vite・vitest の 3 箇所。
-- テストは `_tests_/` にソース構造をミラー。ソース横に `*.test.ts` を置かない。shared/server はファイル先頭 `// @vitest-environment node`。
-- jest-dom の型: `src/vite-env.d.ts` に `/// <reference types="@testing-library/jest-dom" />`、setup を tsconfig include に入れる。
-- `bun run start`（`scripts/execute.ts`）: `vite build` 成功後に server :8080 と preview :4173 を並列。クライアントは `/ws` を同一オリジンで叩き、Vite proxy が bun へ中継。ブラウザから localhost 直叩きをしない。
-
-
-### Coverage / Playwright（Phase 1.5）
-
-- coverage は **baseline → meaningful tests → threshold ratchet** の順。PH1.5-A baseline は Statements 66.82% (725/1085), Branches 57.10% (225/394), Functions 64.43% (125/194), Lines 68.97% (696/1009)。PH1.5-B after は Statements 79.17% (859/1085), Branches 73.85% (291/394), Functions 79.38% (154/194), Lines 80.77% (815/1009)。threshold は statements 79 / branches 73 / functions 79 / lines 80 へ ratchet 済み。
-- `coverage.include` は production source を明示する。PH1.5-A では package barrel、browser entrypoint、type-only transport、ambient d.ts だけを理由付き exclude。難しいファイルを除外して数字を作らない。
-- meaningful tests は protocol 境界、Input 16B / Channel 1B、prediction/reconcile、interpolation、server backpressure / rate-limit、GameClient transport 経路を優先する。PH1.5-B では `WebSocketTransport` の mock WebSocket、`GameClient` の mock transport、`StartOverlay` の mock screenfull、`TouchControls` の mock nipplejs が有効だった。
-- Playwright は `webServer` で `bun run start` を起動し、`baseURL` は Vite preview `http://127.0.0.1:4173` を基本にする。PH1.5-C では `@playwright/test@1.63.0`、`playwright.config.ts`、`e2e/game-shell.spec.ts`、`test:e2e` を追加済み。CI/preview では `PLAYWRIGHT_BASE_URL=<url> bun run test:e2e` とし、webServer を起動しない。app code は `/ws` 相対 URL を維持し、browser-facing code が backend localhost を直叩きしない。
-- Sandbox では `bun run test:e2e -- --list` による spec discovery まで確認し、browser 実行は捏造しない。`.github/workflows/` は書けない。CI YAML が必要なら `docs/ops/` に提案を置く。
-
-### bun WebSocket（移植する）
-
-- Bun WebSocket の `ws.data` 型付けは最新 docs では serve call の generic 型引数 ではなく、`websocket: { data: {} as SocketData, ... }` に置く。`server.upgrade(req, { data })` の data は本プロジェクトでは必須。
-- **uWebSockets.js を追加しない**（bun 内部で uWS。別パッケージは動かない）。
-- 入力は「最新 1 つ上書き」ではなく **playerId ごとの FIFO**。空 tick は重力のみ、yaw/pitch は維持。
-- クライアント予測・送信は **wall-clock の setInterval**。rAF は描画サンプリングのみ（タブ非表示で rAF が止まる）。
-- リモートエンティティは 1 フレーム欠測で消さない（grace）。補間の外挿はクランプ。
-
-### 描画（破棄。新規に真似しない）
-
-- PH1-D で apps/web の R3F scene / renderer / loop は削除済み。`GameCanvas.tsx` は `<canvas>` を置き、`BabylonGame` が `new Engine(canvas, false, options, false)` で命令型に所有する。PH1-F で `GameCanvas` は runtime factory seam を持ち、React lifecycle が imperative runtime の `start()` / `dispose()` を呼ぶだけであることを jsdom unit で検証できる。
-- PH1-F 以降、低頻度 HUD 値は Zustand（renderer / connectionStatus）に置けるが、座標・回転・リモート player map は React state に入れず `GameClient` / Babylon mesh が直接持つ。`GameClient` は mock transport unit で Channel.Unreliable Input 16B 送信と Snapshot→`remotes` 公開を検証する。
-- PH1-E で `InputController` は `requestPointerLock({ unadjustedMovement: true })` を first try し、Promise rejection の `NotSupportedError` 時だけ通常 `requestPointerLock()` へ fallback する。旧ブラウザが void を返す場合に備え、戻り値は Promise-like 判定して扱う。
-- PH1-E 以降、`pointermove` / PointerLock 中の mouse movement はイベント中に yaw/pitch を直接変えず、delta を蓄積して `BabylonGame` render loop 先頭の `input.consumeLookDelta()` で消費する。
-- `EngineOptions` は `@babylonjs/core@9.25.0` の installed `.d.ts` で `Engines/thinEngine.pure` から import できることを確認済み。`desynchronized` / `preserveDrawingBuffer` は PH1-D では渡していない。
-- three-mesh-bvh は bun ヘッドレスで動く（server/profile-fps の衝突用に残す）。apps/web の 3D 描画へ Three / R3F / drei を戻さない。FPS マップ/voxel ワールドの official/UGC 階層とエディタは [`editor.md`](../../../docs/arch/editor.md)。
-
-### Zustand（ハブ UI には残してよい）
-
-- 毎フレーム値はストアに入れない。React 外は `getState()` / `subscribe`。フックをゲームループから呼ばない。
-
-### PLAT-1R 公式 API 確認（2026-09-06）
-
-- Bun workspaces は root `package.json` の `workspaces` 配列と workspace 側 `package.json`、内部依存の `workspace:*` で組む。最新 docs には catalog / self-contained workspaces もあるが、PH1-A では単純な workspaces だけ使う。
-- Biome の import 制限は `linter.rules.style.noRestrictedImports`（diagnostic `lint/style/noRestrictedImports`）。recommended ではないため PH1-B で明示有効化する。
-- Babylon `Engine` は `new Engine(canvasOrContext, antialias?, options?, adaptToDeviceRatio?)`。`setHardwareScalingLevel` は typedoc で確認済み。
-- 2026-09-06 時点の Babylon typedoc `EngineOptions` 取得結果では `desynchronized` / `preserveDrawingBuffer` が property 一覧に出ていない。一方 Chrome は Canvas context attributes として両 key を公式に示す。PH1-D では installed `.d.ts` を見て、型に無い key を invent しない。
-- `@babylonjs/core` npm latest は `type: module`, `types: index.d.ts`, license Apache-2.0。`@babylonjs/loaders` は GLB/glTF エディタ用候補。`noa-engine@0.33.0` は `@babylonjs/core ^6.1.0` peer のため、voxel 導入時に Babylon major を再確認する。
+- **方式 A（Phase B 主経路）**: `fetch(/dl?src=<googlevideo URL>)` ×2（video+audio）→
+  Worker 内で mp4-muxer/webm-muxer（**再エンコードなし**）→
+  `res.body.pipeTo(createWriteStream(filename, size))`（StreamSaver）。
+  - `size` = 各ストリームの `clen` 合計 → Content-Length → 進捗UI（%/速度/ETA）+ `writer.abort()`（キャンセル）。
+  - relay（`/dl`）の実装注意（先行 OSS の知見・DOWNLOAD_MECHANISM_RESEARCH.md）:
+    **upstream は Range チャンク付き取得**（なしだと googlevideo スロットリング = Invidious #3302）/
+    **host を googlevideo 系に whitelist 限定**（オープンプロキシ化防止 = Invidious #1605）/
+    `required.httpHeaders` の UA は relay 側で付与可 / 返却は ACAO・Content-Length・
+    Content-Disposition・Accept-Ranges。
+- **StreamSaver は実質 Chromium 系のみ**（Safari/Firefox 非対応・公式）→
+  `supported` フラグで検出してフォールバック（FSA → 直リンク）。
+- **URL 有効期限 ≈6h**（`expiresInSeconds`・実測 5.9h）→ キューは失効前に処理 / 失効したら再解決。
+- **`ip=` パラメータは再生経路で縛りを実効しない**（別 IP 再生 OK = V2 実測）。
+  googlevideo URL のパスに `clen/<bytes>` が入る（進捗の総量算出に使う）。
 
 ## API を記憶で書かない
 
-Babylon / noa / Bun WS は公式ドキュメントを検索する（AGENTS.md §7.5）。存在しないメソッドを発明しない。
-
-### DOC-5 official / UGC 階層（2026-09-06）
-
-- Game Type は `fps` / `voxel` の 2 種類。`official` / `ugc` は type ではなく Content Source。URL は `/fps/official/pvp`, `/fps/ugc/athletic`, `/voxel/official/survival`, `/voxel/ugc/athletic` の形。
-- FPS/voxel のエディタは Babylon.js。FPS エディタは GLB 読み込み対応。Babylon 公式は glTF loader に `@babylonjs/loaders` と module-level loader functions を推奨。
-- voxel 公式は Minecraft 風 terrain generation を独自実装し、Noa 系（`noa-engine`, `voxel-physics-engine`, `ent-comp`, `micro-game-shell`, `game-inputs`, `nipplejs`）を候補として扱う。
+GAS / Next.js / GSAP / StreamSaver / muxer 系はメジャー更新で API が変わる。
+公式ドキュメントを検索して確認し、存在しないメソッドを発明しない（AGENTS.md §7.4）。

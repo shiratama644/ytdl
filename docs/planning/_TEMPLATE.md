@@ -3,7 +3,8 @@
 > 進捗の正本は `docs/task-list.md`。計画書は個別タスクの詳細を担う。
 > フェーズ計画は本テンプレートの §1〜§9 必須。§10〜§12 は必要に応じて。
 > 新規タスクは必ず `task-list.md` に行を追加してから本形式で詳細化する。
-> 仕様の正本は `docs/arch/`（理想形）。旧 FPS 専用仕様は `.archive/docs/`。
+> 仕様の正本 = 計画書 + 確定設計（`docs/HANDOVER.md` §4）。`docs/arch/` は P1 以降に作成予定。
+> 旧 cod-web 仕様は `.archive/cod-web-docs/`（参照のみ・変更禁止）。
 
 ```markdown
 # <Phase X or タスク名>: <タイトル>
@@ -15,7 +16,7 @@
 
 - 現在のブランチ / HEAD / `git status` を確認する（未コミット変更があれば停止）
 - `docs/task-list.md` で依存タスクの完了を確認する
-- 関連仕様（docs/arch/・AGENTS.md §6 / .agent/skills/）を読む
+- 関連仕様（計画書・`docs/arch/` が存在する場合はそれ・AGENTS.md §6 / .agent/skills/）を読む
 - 本計画書の §5（完了条件）と §7（停止条件）を再読する
 
 ## 2. 目的 (Why)
@@ -31,12 +32,13 @@
 ## 4. 禁止事項
 
 - 不明点は推測で埋めず、§7 の停止条件に従って質問する
-- `docs/arch/adr.md` に反する実装をしない
-- L1 に `if (type === 'voxel' | 'fps')` を書かない
+- 確定設計（HANDOVER §4）・4 設計原則（AGENTS.md §6.4、絶対表現禁止）に反する実装をしない
+- 変更範囲（§3）を超える変更を差分に含めない
 
 ## 5. 完了条件 (DoD)
 
-- [ ] `bun run typecheck` / `bunx biome lint .` / `bun run test:unit` / `bun run build` 全 pass
+- [ ] `package.json` に定義された検証スクリプト（pnpm 系: typecheck / lint / test / build）全 pass
+  （ドキュメントのみの変更時はリンク整合性確認で代替。コマンドは package.json 定義のものはみ・捏造禁止）
 - [ ] `docs/task-list.md` の状態・進捗・証拠を更新
 - [ ] タスク範囲外のファイル（`.archive/` を含む）に意図しない変更がない
 
