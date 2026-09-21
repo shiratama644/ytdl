@@ -37,3 +37,9 @@
 | P4 | 自宅サーバー移行(Bun + Hono + yt-dlp + SW + **`/dl` DL 専用 relay(方式 A・主) + `/jobs` バッチ(方式 B・補完)**) | 未着手 |
 
 > 注: 計画書のサブタスク番号(P00-*)とはフェーズ番号(P1〜P4)が独立する。フェーズ計画書の作成時に本表と整合させる。
+
+## docs/.agent 運用 (DOC-*)
+
+| ID | タスク | 状態 | 進捗 / 証拠 |
+|---|---|---|---|
+| DOC-1 | cod-web 期ログから ytdl 適用可能な知識の SKILL 化 + cod-web 残骸の削除（ユーザー指示・削除範囲は ask_user で確認済） | 完了(2026-09-21) | ① 新規スキル `.agent/skills/quality-toolchain/SKILL.md`（7 ログから biome 2.x / vitest / coverage / Playwright / TS7 / import 境界の知識をインポート）② `sandbox-constraints` に Git 運用の知見追加（revert -m 1 等）③ `.agent/logs/` の cod-web 由来 45 件を削除（ytdl ログ 1 件のみ残存）④ `.archive/`（cod-web 文書 34 ファイル）を削除 ⑤ AGENTS.md / HANDOVER / docs / .agent の cod-web・.archive 参照を死参照ゼロに更新（grep 検証済）⑥ コミット = 本タスクのコミット（`docs(DOC-1): ...`、push 済み `arena/01a0c3bb-ytdl`）。検証 = docs-only のため §3.1 の整合性 grep（cod-web / .archive 残存 0・相対リンク切れ 0） |

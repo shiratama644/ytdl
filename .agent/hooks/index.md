@@ -22,7 +22,7 @@
 | ファイル | 実行トリガー | 対象 / 内容 |
 | :--- | :--- | :--- |
 | [pre-task.md](./pre-task.md) | タスク開始時 | 現状把握（git status/branch/log）→ re-clone 検知 → `.agent/skills/index.md` から必要スキルをピンポイント読込 → 確定設計（HANDOVER §4）・4 設計原則の意識 |
-| [verify-before-commit.md](./verify-before-commit.md) | commit 直前 | コード有 = package.json 定義スクリプトの全検証（pnpm 系）/ コード無（docs 期）= リンク整合・旧表現残存 grep + `.archive/` 未変更確認 |
+| [verify-before-commit.md](./verify-before-commit.md) | commit 直前 | コード有 = package.json 定義スクリプトの全検証（pnpm 系）/ コード無（docs 期）= リンク整合・旧表現残存 grep |
 | [log-task.md](./log-task.md) | タスク完了時 | `.agent/logs/YYYY-MM-DD_<summary>.md` 作成（4 セクション）→ 重要知見を `.agent/skills/` へ同期 → `skills/index.md` + 本 index の「最終更新」更新 |
 | [sandbox-rebuild-recovery.md](./sandbox-rebuild-recovery.md) | Sandbox 再構築検知時 | `git fetch`（全 refspec）→ `reset --soft origin/<branch>` → `add -A` → 差分確認 →（必要なら commit）push → 健全性確認 |
 | [restore-sandbox-env.sh](./restore-sandbox-env.sh) | 上記から呼出（任意） | pnpm 導入（npm 経由）・必要なら依存インストール |
@@ -34,4 +34,4 @@
 - 新フック追加時は本 index の「対応表」「一覧」の両方、および [`settings.json`](./settings.json) へ登録する。
 - 実行スクリプト（`.sh`/`.py`）は `kebab-case` + 拡張子。手順は `kebab-case.md`。
 - フック内のコマンドは `package.json` script or 既知コマンドのみ（捏造禁止、AGENTS.md §3.1）。
-- 最終更新: 2026-09-16（ytdl への全面置換。cod-web 由来の bun/Vite 系フックを pnpm/Next 系に更新）
+- 最終更新: 2026-09-16（ytdl への全面置換。旧 bun/Vite 系フックを pnpm/Next 系に更新）/ 2026-09-21（DOC-1: .archive 参照を除去）

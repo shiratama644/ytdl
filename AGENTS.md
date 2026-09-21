@@ -133,7 +133,7 @@ git diff --cached --stat
 
 ### 4.2 コミットルール
 - **タイミング**: 検証が全て PASS した状態でのみコミット。
-- **事前チェック**: `git status` / `git diff` で意図しないファイル（特に `.archive/`）が混ざっていないことを確認。
+- **事前チェック**: `git status` / `git diff` で意図しないファイルが混ざっていないことを確認。
 - **重要変更前のチェックポイント**: 大規模リファクタリング等の前には正常状態を一旦 commit。
 - **メッセージ**: Conventional Commits（`feat/fix/refactor/docs/test/chore/build/ci`）+ **タスク ID をスコープに含める**（例: `feat(P00-B): web scaffold`）。
 
@@ -171,10 +171,10 @@ git diff --cached --stat
   古いラウンドの生データは git 履歴 + `docs/research/VERIFICATION_P0.md` の証跡に依存してよい。
   **旧ラウンドの内容をこのファイルへ再追加しない**（ユーザーが明示した運用）。
 
-### 4.6 docs/ と .agent/ と .archive/ の扱い
+### 4.6 docs/ と .agent/ の扱い
 - ドキュメント・`.agent/` は Git 追跡対象（永続化）。`.gitignore` で除外しない。
 - **`.agent/logs/` は追加のみ**（過去ログを書き換えない。§8.5）。
-- **`.archive/` は参照のみ・変更禁止**（cod-web(別プロジェクト=FPS ゲーム)由来の文書群）。
+- `.archive/`（cod-web 文書の退避先）は **2026-09-21 にユーザー指示で削除済み**（DOC-1）。過去は git 履歴で確認可能。
 
 ---
 
@@ -184,7 +184,7 @@ git diff --cached --stat
 
 - [ ] 指定された機能/修正が実装されている
 - [ ] 検証が PASS している（§3.1。コード無変更時は整合性確認で代替）
-- [ ] タスクと無関係なファイルの変更・意図しない差分がない（`.archive/` に未変更を含む）
+- [ ] タスクと無関係なファイルの変更・意図しない差分がない
 - [ ] 適切なメッセージ（タスク ID 含む）で Git Commit が完了している
 - [ ] Working tree が clean である
 - [ ] `git push origin <セッション固定ブランチ>` が完了している
@@ -201,7 +201,7 @@ git diff --cached --stat
 
 | 層 | 採用 | 注意 |
 | :--- | :--- | :--- |
-| パッケージ管理 | **pnpm (workspaces)** | `apps/` + `packages/`。bun は本プロジェクトでは使わない（cod-web 由来の流儀ではない） |
+| パッケージ管理 | **pnpm (workspaces)** | `apps/` + `packages/`。bun は本プロジェクトでは使わない（pnpm が正） |
 | フロントエンド | **Next.js（App Router、`output:'export'`）+ React** | 静的 export が GAS/単一 HTML 配布との前提 |
 | スタイリング | **Tailwind CSS v4**（`@theme` で M3 トークン） | M3 Design Expressive のトークン運用 |
 | モーション | **GSAP 3.13**（ScrollTrigger 任意） | `prefers-reduced-motion` 対応トグルは必須（§10.11） |
@@ -295,8 +295,6 @@ git diff --cached --stat
 - ファイル追加時は `docs/README.md`（必要なら `verification/README.md` / `.agent/skills/index.md`）の索引を更新する。
 - `docs/arch/` は**まだ存在しない**（P1 以降に新規作成）。現行では「設計の正本 = 計画書 + HANDOVER §4」。
   ドキュメント内で `docs/arch/` を**現存物として参照しない**（「P1 以降作成予定」として述べる場合を除く）。
-- **旧 cod-web 文書は `.archive/cod-web-docs/` に退避済み = 参照のみ・変更禁止**。
-  本リポジトリの規約・設計の根拠には使わない。
 
 ### 6.7 優先順位
 
@@ -371,7 +369,7 @@ Agent 自身の**スキル（このプロジェクトをうまく進めるノウ
 | :--- | :--- | :--- |
 | `.agent/skills/` | **Agent のスキル**: このプロジェクトで何をどうやるとうまくいくか（実践的ノウハウ・手順・パターン・実測知見） | `<kebab-case>/SKILL.md` |
 | `.agent/hooks/` | トリガー別の**定型手順/スクリプト**（pre-task, verify, log, recovery） | `kebab-case.md` / `.sh` / `settings.json` |
-| `.agent/logs/` | タスク完了毎の**実行記録**（**2026-09-03〜09 の cod-web 由来ログが存在 = 本プロジェクトの歴史ではない。参照のみ・書き換え禁止**） | `YYYY-MM-DD_kebab-case-summary.md` |
+| `.agent/logs/` | タスク完了毎の**実行記録**（ytdl のみ。cod-web 由来ログは 2026-09-21 に DOC-1 で削除済み） | `YYYY-MM-DD_kebab-case-summary.md` |
 
 各ディレクトリ直下に **`index.md`** を置き、一覧・参照条件を管理する（logs は除く）。
 
@@ -400,7 +398,7 @@ Agent 自身の**スキル（このプロジェクトをうまく進めるノウ
 - スキル/フックを更新したら対応 `index.md` も必ず更新する（腐らせない）。
 - ログは**追加のみ**（過去ログを書き換えない）。
   - ⚠️ **一括置換・リネーム系の指示が来ても、`.agent/logs/` の過去ログを置換対象に含めない。**
-    過去ログは「その時点で何が起きたか」の事実記録であり、旧ブランチ名・旧数値・旧パス・**別プロジェクト
-    （cod-web）の文脈**が書かれているのは**正しい状態**。
+    過去ログは「その時点で何が起きたか」の事実記録であり、旧ブランチ名・旧数値・旧パスが
+    書かれているのは**正しい状態**。
   - 一括置換の射程は**現用ドキュメント**（`AGENTS.md` / `.agent/skills/` / `.agent/hooks/` / `docs/` 現用）に限定。
     `.agent/logs/` を触る必要がある場合は**必ず事前にユーザーへ確認**。

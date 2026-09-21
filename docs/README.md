@@ -26,8 +26,6 @@ docs/
     └── DOWNLOAD_MECHANISM_RESEARCH.md  ★ DL 機構調査(StreamSaver/直リンク/方式 A・B・C + 決定記録)
 ```
 
-`.archive/cod-web-docs/` = 本リポジトリの雛形元(cod-web、ゲームプラットフォーム)の文書。**参照のみ・変更禁止**(詳細: [`.archive/README.md`](../.archive/README.md))。
-
 `docs/` 外に関連するディレクトリ:
 - [`../verification/`](../verification/README.md) = 検証キット + 生結果(README = 実行手順・生結果は 1 ファイル = 最新のみ)
 - [`../.agent/`](../.agent/hooks/index.md) = Agent 記憶システム(hooks = 定型手順 / skills = 実測ノウハウ / logs = 実行記録・追加のみ)

@@ -27,13 +27,12 @@
 ## 3. 変更範囲 (Scope)
 
 変更対象:
-- リポジトリ再編成(cod-web 由来のゲーム関連ドキュメントは `.archive/cod-web-docs/` へ退避済み)
+- リポジトリ再編成(cod-web 由来のゲーム関連ドキュメントは退避済み → 2026-09-21 にユーザー指示でリポジトリから削除・git 履歴にのみ残存)
 - `apps/web`(Next.js)+ `packages/shared`(API client / types)+ `backend/gas`(GAS ソース)+ `scripts/`(単一 HTML ビルド)
 - `docs/`(README 再編成、本計画書、新 task-list)
 
 変更しない(境界外):
 - 再生 UI の完成版(P2)、ダウンロード機能の実装(P3)、機能拡張(P4)、自宅サーバー実装(P5)は本フェーズの**設計のみ**含み、コードは置かない
-- `.archive/` 内容に的一切変更なし
 
 ## 4. 禁止事項
 
@@ -52,7 +51,7 @@
 - [ ] `packages/shared` の API client が GAS 輸送(クエリ / google.script.run)と fetch 輸送の両モードを持つ(vitest でユニットテスト)
 - [ ] M3 Design Expressive のテーマトークン(Tailwind `@theme`)と 2 画面(ホーム / watch スケルトン)が整う
 - [ ] `docs/task-list.md` の状態・証拠を更新
-- [ ] タスク範囲外のファイル(`.archive/` を含む)に意図しない変更がない
+- [ ] タスク範囲外のファイルに意図しない変更がない
 
 ## 6. テスト方法
 
@@ -85,7 +84,7 @@
 
 | ID | テーマ | 主要成果物 | 依存 |
 |---|---|---|---|
-| P00-A | リポジトリ再編成 | `.archive/cod-web-docs/` 退避、新 `docs/README.md`・`docs/task-list.md`、トップ README 更新 | - |
+| P00-A | リポジトリ再編成 | cod-web 文書の退避(2026-09-21 にリポジトリから削除・git 履歴にのみ残存)、新 `docs/README.md`・`docs/task-list.md`、トップ README 更新 | - |
 | P00-B | web スキャフォールド | `apps/web`(Next.js App Router, `output:'export'`, Tailwind v4, GSAP 導入, M3 トークン, ルータ骨格) | A |
 | P00-C | shared パッケージ | `packages/shared`(API client 双方向輸送、types、定数、エラー分類)+ vitest | A |
 | P00-D | GAS 後端 | `backend/gas`(doGet ディスパッチ、/api/health・search・video・stream、**watch ページ抽出リゾラ + signature decipherer**、**O9: リトライ+バックオフ / キャッシュ / single-flight**。冒頭 = 復号済み URL の fetch 実動作スパイク) | A,C |
@@ -164,7 +163,7 @@
 | ダウンロード | **mp4-muxer**(h264+aac→mp4)/ **webm-muxer**(vp9・av1+opus→webm)(Web Worker・再エンコードなし)+ **StreamSaver.js**(Phase B 主経路・SW は自ドメイン)/ **FSA**(Chromium フォールバック)/ **直リンク**(GAS 期 + iOS/FF) | C2/C6, §10.8 |
 | バックエンド(GAS) | **`/watch/` ページ抽出 + signature deciphering**(raw InnerTube / UrlFetchApp)+ **O9**(リトライ+バックオフ / CacheService キャッシュ / single-flight) | C4, V1 検証 |
 | バックエンド(自宅) | **Bun + Hono + yt-dlp(子プロセス)** + Nginx | 堅牢性・PO token |
-| 言語・品質 | TypeScript, biome, vitest | cod-web 由来の流儀を踏襲 |
+| 言語・品質 | TypeScript, biome, vitest | 元リポジトリ由来の流儀(AGENTS.md §6.1 で固定) |
 | パッケージ管理 | pnpm(workspaces) | 単一リポジトリ内 `apps/` + `packages/` |
 
 ### 10.5 リポジトリ構成
@@ -185,8 +184,7 @@ ytdl/
 │   └── home/                 # (P5) Bun/Hono + yt-dlp + /dl relay(方式A) + sw/(StreamSaver) + nginx.conf
 ├── scripts/
 │   └── build-single-file.ts  # Next export → JS/CSS inline → 単一 HTML(GAS 用)
-├── docs/                     # arch(後日新規) / planning / research / task-list
-└── .archive/cod-web-docs/    # cod-web 由来ゲーム文書(参照のみ・変更禁止)
+└── docs/                     # arch(後日新規) / planning / research / task-list
 ```
 
 ### 10.6 API v1(エンドポイント設計)

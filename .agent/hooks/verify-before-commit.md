@@ -35,6 +35,8 @@ pnpm run build              # next build（output:'export' → out/ 生成）
 grep -rn "docs/arch/" docs/ verification/ README.md AGENTS.md .agent/ | grep -v "作成\|予定\|P1 以降\|arch(/)\|作成後"
 # 旧表現の残存（検証済み設計に反する記述）
 grep -rn "youtubei.js bundled\|InnerTube: WEB_EMBEDDED_PLAYER\|v1e = 実行待ち\|V1d の JSON" docs/ README.md
+# cod-web / .archive の残存（2026-09-21 DOC-1 で削除済み = 死参照禁止）
+grep -rn "cod-web\|\.archive" docs/ README.md AGENTS.md .agent/skills .agent/hooks | grep -v "削除済み\|DOC-1\|元リポジトリ"
 # ユーザーの結果ファイルに旧ラウンドの再追加がないか（1 ファイル = 最新の生結果のみ）
 head -1 verification/Verification-Results.md
 ```
@@ -46,7 +48,6 @@ git status
 git diff                       # 意図しないファイル/差分が無いか
 ```
 - タスク範囲外のファイルが混ざっていないか確認。
-- **`.archive/` に一切の変更がない**ことを確認（AGENTS.md §4.6、参照のみ・変更禁止）。
 - **ユーザーが GitHub Web UI で直接コミットする想定** → 直前に `git fetch` し、
   ユーザーが変更・削除したファイルを worktree に同期してから commit（AGENTS.md §4.5）。
 

@@ -72,8 +72,7 @@ description: ytdl（YouTube プロキシサイト）の全体像（目標・2フ
 ```
 ytdl/
 ├── AGENTS.md / README.md
-├── .agent/                 # 記憶システム（hooks / skills / logs ※ logs に cod-web 由来の過去ログ = 参照のみ）
-├── .archive/cod-web-docs/  # cod-web（別プロジェクト）由来文書 = 参照のみ・変更禁止
+├── .agent/                 # 記憶システム（hooks / skills / logs）
 ├── docs/                   # planning(設計正本) / research(証跡) / task-list(進捗正本) / HANDOVER(入口)
 ├── verification/           # 検証キット + 生結果（1 ファイル = 最新のみ）
 ├── apps/web                # (P00-B) Next.js (App Router, output:'export')

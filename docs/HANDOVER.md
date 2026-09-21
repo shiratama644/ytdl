@@ -240,8 +240,7 @@ Dexie.js 4 / TypeScript / biome / vitest / pnpm workspaces。GAS 後端 = **`/wa
 ```
 ytdl/
 ├── AGENTS.md / README.md           # エージェント規約・リポジトリ説明
-├── .agent/                          # Agent 記憶システム(hooks/skills/logs。※ logs に cod-web 由来の過去ログ = 参照のみ)
-├── .archive/cod-web-docs/           # cod-web(別プロジェクト=FPS ゲーム)由来文書。**変更禁止**
+├── .agent/                          # Agent 記憶システム(hooks/skills/logs)
 ├── docs/
 │   ├── task-list.md                 # ★ 進捗の唯一の正本(検証 + P00 各タスクのステータス)
 │   ├── README.md                    # docs 導覧

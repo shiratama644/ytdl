@@ -7,7 +7,7 @@ description: ytdl のスタック（pnpm / Next.js export / Tailwind v4 / GSAP /
 
 > **スキル**: 「どのライブラリをどこでどう使うか」と、このリポジトリで**実測で踏んだ地雷**。
 > 設計の正本は [`../../../docs/planning/PHASE0_PLAN.md`](../../../docs/planning/PHASE0_PLAN.md)（§10.4 スタック）。
-> 古い cod-web（bun/Vite/R3F/Babylon）のスタック知識は**本プロジェクトでは使わない**（`.archive/cod-web-docs/` 参照のみ）。
+> bun / Vite / R3F / Babylon のスタック知識（元リポジトリの別プロジェクト由来）は**本プロジェクトでは使わない**。
 
 ## スタック（確定・PHASE0_PLAN §10.4）
 

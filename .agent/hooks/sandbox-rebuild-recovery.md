@@ -48,8 +48,8 @@ git status --short      # 復旧作業後は clean（または自分の未コミ
 ## 注意
 
 - **`git reset --hard` は使わない**（上記 soft 手順で十分であり、AGENTS.md §4.3 で厳禁）。
-  （cod-web 期の旧手順は `reset --hard FETCH_HEAD` を例外許可していたが、
-  ytdl では soft + `add -A` + 差分確認 で十分安全。）
-- `.archive/` 等のファイルが「未追跡」に見える場合も、`reset --soft` + `add -A` で追跡状態に戻る。
-  新規にファイルを触らないこと（AGENTS.md §4.6）。
+  （旧手順は `reset --hard FETCH_HEAD` を例外許可していたが、それは廃止済み。
+  soft + `add -A` + 差分確認 は 2026-09-16 に再検証済みで十分安全。）
+- ファイルが「未追跡」に見える場合も、`reset --soft` + `add -A` で追跡状態に戻る。
+  タスク範囲外のファイルは触らないこと。
 - **push が rejected になったら**: fetch 後に同じ手順（差分が自分のものであった場合のみ commit → push）。
