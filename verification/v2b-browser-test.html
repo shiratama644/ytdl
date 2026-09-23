@@ -94,7 +94,7 @@ async function runAll() {
     row('URL有効期限(expire)', left !== null ? `${left}秒残` : 'param なし', left > 60 ? 'OK' : 'NG');
   } catch (e) { row('URL有効期限(expire)', String(e), 'NG'); }
 
-  // A: <video> 再生 (fetch 不经由)
+  // A: <video> 再生 (fetch を経由しない)
   row('A: <video> 再生開始', '試行中…', '');
   try {
     const v = $('#player');

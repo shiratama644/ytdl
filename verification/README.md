@@ -1,16 +1,16 @@
 # 検証キット(Phase 0 着手前)
 
 設計原則「ブラウザからの直接取得可否を検証した上で利用する」の実施計画。
-計画書: [`../docs/planning/PHASE0_PLAN.md`](../docs/planning/PHASE0_PLAN.md)(§10.8 検証リスト V1〜V5。2026-09-23 更新)
+計画書: [`../docs/planning/PHASE0_PLAN.md`](../docs/planning/PHASE0_PLAN.md)(§10.9.1 検証リスト。現行 = V5・V6。2026-09-23 更新)
 結果記録: [`../docs/research/VERIFICATION_P0.md`](../docs/research/VERIFICATION_P0.md)
 生結果: [`Verification-Results.md`](Verification-Results.md)(**1 ファイル = 最新の結果のみ**運用・現在は v1f の JSON。旧ラウンドは git 履歴 + VERIFICATION_P0.md に残る)
 
-> **状態(2026-09-23 更新)**: **方針転換(再生 = iframe 一本 / 動画 DL = 保留・実装対象外)** により、旧スコープの検証キット(V1〜V4)は**完了または保留の確定**となり、**新しく V5 を実行していただきます**(下記・現行スコープで必須)。
-> V1〜V4 の実行手順は**記録として保持**(V3-b / V4 = 保留項目の参考。V1 = 完了した証跡 = `/watch/` ページ抽出は現行のメタデータ解決で使用)。旧スコープの検証項目を新規に増やす予定はありません。
+> **状態(2026-09-23 更新・server-first)**: **方針転換(再生 = iframe 一本 / 動画 DL = 保留・実装対象外 / GAS を使わず最初からサーバー)** により、
+> 旧スコープの検証キット(V1〜V4)は**完了または保留の確定**となり、**新しく V5(ブラウザ側)と V6(サーバー側)を実行していただきます**(下記・現行スコープで必須)。
 
-## ⏭ 次に実行するもの(2026-09-23 追加・現行スコープで必須): V5
+## ⏭ 次に実行するもの(2026-09-23 追加・現行スコープで必須): V5(ブラウザ)と V6(サーバー)
 
-> 仕様 = [`../docs/HANDOVER.md`](../docs/HANDOVER.md) §8.1 / 結果の記録先 = [`Verification-Results.md`](Verification-Results.md)(1 ファイル = 最新のみ)。
+> 仕様 = [`../docs/HANDOVER.md`](../docs/HANDOVER.md) §8.1(V5)・§8.2(V6) / 結果の記録先
 > 判定結果は [VERIFICATION_P0.md §V5](../docs/research/VERIFICATION_P0.md) と計画書 §10.8 に反映します。
 
 ### 1. キット①(ブラウザで開く): [`v5-browser-iframe-test.html`](v5-browser-iframe-test.html) — 3〜5 分
@@ -30,19 +30,42 @@
 > **可能であれば**: 学校・職場の**フィルタが有効なネットワーク**で実行してください(到達性の確認が目的のため、
 > その環境の結果が最も重要です)。自宅回線では「正常に再生できる」ことの確認になります。
 
-### 2. キット②(GAS): [`v5b-gas-test.gs`](v5b-gas-test.gs) — 1 回 ~10 秒
+### 2. キット②(V6・サーバー側): [`v6-metadata-check.mjs`](v6-metadata-check.mjs) — 1〜2 分
 
-1. [script.google.com](https://script.google.com) で「**新しいプロジェクト**」→ `v5b-gas-test.gs` の中身を**全て貼付**
-2. **デプロイ → 新しいデプロイ → Web アプリ** / 実行: **自分** / アクセス: **全員**
-3. **まず** URL の末尾に `?probe=1` を付けて開く → `{"test":"V5b","probe":true,...}` が出れば**最新版**
-4. `?test=trend` を**1 回だけ**開く → トレンド抽出(V5-4 の前半)の JSON が返る
-5. **10〜30 分空けてから** `?test=search&q=<任意のキーワード>` を**1 回だけ**開く → 検索結果抽出(V5-4 の後半)の JSON
-   (`q` を省略した場合は既定キーワードを使用。日本語キーワードを URL エンコードして渡しても構いません)
-   - **1 回の実行 = YouTube への fetch 1 回**(数秒で返ります)。**リロード・再クリックはしないでください**(429 = O9 の原因)
-   - `429` の JSON が出た場合は、その JSON を送った上で **10〜30 分待ってからもう 1 回だけ**開き直してください
-6. 表示された **JSON を丸ごとコピー**して送付
+> **なぜサーバー側でやるか**: server-first の方針(D10)で、メタデータは **サーバー(自宅 Proxmox LXC/VM)の
+> yt-dlp 主経路 + ページ抽出フォールバック** が担います。**実行するネットワーク(自宅回線)から**
+> ① yt-dlp が使えるか ② `--dump-single-json` で必要な項目が取れるか ③ ページ抽出(フォールバック)
+> ④ 検索結果ページ ⑤ トレンド が取得できるかを、このキット 1 つで確認します。
+> **依存パッケージ不要**(Node 18+ / Bun のどちらでも動きます)。
 
-→ 結果が届き次第 **V5-4 の可否を判定**します(NG の場合は検索・トレンド機能を保留 = 計画書 R11、ユーザーに確認)。
+1. キットをダウンロード(または clone 済みのリポジトリから開く): [`v6-metadata-check.mjs`](v6-metadata-check.mjs)
+2. **プロジェクトを配備する予定のマシン**(Proxmox の LXC/VM、または普段使う PC)で、まず **probe**(ネットワーク 0 回)を実行:
+   ```bash
+   node v6-metadata-check.mjs
+   ```
+   → `ytdlp.found` / `ytdlp.version` と環境情報が JSON で表示されます。
+   **`ytdlp.found = false` の場合**は yt-dlp を入れてから進めてください(例: `winget install yt-dlp` / `pipx install yt-dlp` / 公式バイナリ)。
+3. yt-dlp が入ったら、**まとめて 1 回**実行(**推奨**):
+   ```bash
+   node v6-metadata-check.mjs --mode=all
+   ```
+   → 2〜5 を順に実行し、**数秒〜1〜2 分**で JSON を出力して `verification/v6-result.json` に保存します。
+   - 外部へのリクエストは**この 1 回で 3〜4 件**(ページ 3 件 + yt-dlp 1 件)です。リクエスト間には待ちを入れています。
+   - **429(レート制限)の JSON/エラーが出た場合**は、その出力を送った上で **10〜30 分待ってから**同じコマンドをもう 1 回だけ実行してください。
+4. 個別に再確認したい場合(**必ず 10〜30 分空けて 1 つずつ**):
+   ```bash
+   node v6-metadata-check.mjs --mode=video        # yt-dlp の主経路
+   node v6-metadata-check.mjs --mode=page         # ページ抽出フォールバック
+   node v6-metadata-check.mjs --mode=search --q=料理
+   node v6-metadata-check.mjs --mode=trend
+   node v6-metadata-check.mjs --mode=ytsearch --q=料理   # yt-dlp の検索が使えるか
+   ```
+   - 前回の実行から **10 分未満**の場合はキット側が中断します(意図的な再実行のみ `--force`)。
+5. 出力された **JSON(または `verification/v6-result.json`)をそのまま送付**してください
+   (チャット貼付 or [`Verification-Results.md`](Verification-Results.md) へコミット)。
+
+> **補足**: 旧 `v5b-gas-test.gs` の検索・トレンド確認(V5-4)は **GAS を採用しない決定(D10)により実行不要**です
+> (参考として保存)。同じ確認はこの V6 の ④⑤ が担います。
 
 ## サンドボックス側で実施済み
 
@@ -58,7 +81,7 @@
    → CORS(ACAO 欠如)が最有力。→ **ユーザー判断: `v2b` はスキップ**(DL をサーバー側パイプラインとすれば
    クライアントは googlevideo を直接 fetch しないため。`v2b-browser-test.html` は任意の残置物)。
 2. **V1(GAS)**: /embed/ ページに `ytInitialPlayerResponse` マーカーなし + player POST が
-   **playability ERROR**(reason 未記録)→ マーカー級联 + 複数 client 比較の**診断キット**が必要(`v1b`)。
+   **playability ERROR**(reason 未記録)→ マーカー連鎖 + 複数 client 比較の**診断キット**が必要(`v1b`)。
 3. **V3(GAS)**: ページが **`text/plain` として配信され描画されず**(リモートヘッダ確認済み)、
    スクリプト未実行 → `?probe=` ピング + コンソールフォールバック付き(`v3b`)。
    さらに **v3b 初回実行(ユーザー)で GAS の制約を発見**: `setMimeType` は **`MimeType` 列挙型のみ**
@@ -109,7 +132,7 @@
 
 > **v1d で GAS 解決は成立しました**(watch ページから playability OK / 30 形式 / 1080p 取得成功)。
 > 残るは **ストリーム URL の提供形式**の確認 1 点です: v1d の 30 形式すべてに `url` フィールドが
-> 無く、`signatureCipher`(復号が必要な形式)かもしれない。これだけで P00-D(GAS 後端)の
+> 無く、`signatureCipher`(復号が必要な形式)かもしれない。これだけで当時の P00-D(GAS 後端 = 現在の `apps/api`)の
 > 設計が変わるため、最小キットで確認します。
 >
 > **⚠️ 試行 1 = HTTP 429 / 試行 2(リトライ内蔵版) = 「どれだけ待っても表示されない」でした**
@@ -139,7 +162,7 @@
 
 **結果(コミット `6143012`)**: ✅ **全 30 形式 = `signatureCipher`**(`url`=0 / `ciphertext`=0 /
 `streamingUrl`=0)。`signatureCipher` = `s=<暗号化シグネチャ>&sp=sig&url=<URL エンコード済みの
-videoplayback URL>`(base URL には `expire`/`ei`/`ip=` が已含む)→ **復号が必要**
+videoplayback URL>`(base URL には `expire`/`ei`/`ip=` が既に含まれる)→ **復号が必要**
 (youtube-dlp 型の transform 逆変換)。
 
 → **V1(GAS 解決)= ✅ 全項目完了**。Phase A リゾラ = **watch ページ抽出 + signature
@@ -177,7 +200,8 @@ DL フォールバック方針の確定に必要です。
 
 ## 結果の使い道
 
-- **次 = V5(2026-09-23 追加・現行スコープで必須)**: V5-1/V5-2 で**既定プレイヤーの提供元を決定**(`youtubeeducation.com` を第一候補とし、不可なら公式 embed)/
+- **次 = V5(ブラウザ側)/ V6(サーバー側)(2026-09-23 追加・現行スコープで必須)**: V5-1/V5-2 で**既定プレイヤーの提供元を決定**
+- **V6 の使い道**: ②(yt-dlp の項目)で**メタデータの供給元を確定** / ③ で**フォールバックの成否** / ④⑤ で**検索・トレンド機能の可否**(不可の場合は該当機能を保留 = 計画書 §11 の R11)。
   V5-3 で**再生制御(位置・終了検知)の実装可否** / V5-4 で**検索・トレンド機能の可否** / V5-5 で **UI の注意書き**を確定。
 - **旧スコープの整備状況**(参考): **V1 = 完了**(`/watch/` ページ抽出 = **メタデータ解決として現行でも使用**。signature decipherer / ストリーム URL 解決は**保留**) /
   **V2 = 完了・判定確定**(直リンク再生の保留に伴い参照情報) / **V3-b・V4 = 保留項目の参考**(DL 再開時に参照)。

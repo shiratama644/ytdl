@@ -1,12 +1,12 @@
 # P0 検証証跡(Phase 0 着手前)
 
 > 目的: 設計原則 §10.2-4「ブラウザからの直接取得可否(CORS、Range、URL 有効期限、codec/container 対応等)を検証した上で利用する」を実施する。
-> 計画書(§10.8〜§10.9 付近)の「可行性検証リスト」V1〜V5 に対応(2026-09-23 に V5 を追加)。
+> 計画書(§10.9.1)の「実行可否の検証リスト」V1〜V6 に対応(2026-09-23 に V5 を追加、server-first 方針で V6 を追加)。
 > 実施日: 2026-09-12(ユーザー名: shiratama644 / 分岐: 当時のセッション固定ブランチ。**過去セッションのブランチ名は記録しない** = HANDOVER §10)
 > 第 1 回ユーザー実行結果の記録: 2026-09-13
 >
 > **⚠️ 方針転換(2026-09-23)**: 再生方式を **iframe 一本**(既定 `youtubeeducation.com/embed`・公式 embed へ差し替え可)へ転換し、**動画ダウンロードは目標から外して「保留(実装対象外)」** とした。これに伴い:
-> - **V1〜V4 の記録は証跡として保持**する(過去に実施した事実のため書き換えない)。ただし「設計への影響」表の**確定判断は [../planning/PHASE0_PLAN.md](../planning/PHASE0_PLAN.md) §10.7・§10.8・§11 の改訂版が正**となり、直リンク再生・DL 経路は**保留**。
+> - **V1〜V4 の記録は証跡として保持**する(過去に実施した事実のため書き換えない)。ただし「設計への影響」表の**確定判断は [../planning/PHASE0_PLAN.md](../planning/PHASE0_PLAN.md) §10.7(再生)・§11(リスク)の改訂版が正**となり、直リンク再生・DL 経路は**保留**。
 > - 新規の検証項目 = **V5**(iframe 到達性 / GAS IP からの検索・トレンド抽出)。キット = [`verification/v5-browser-iframe-test.html`](../../verification/v5-browser-iframe-test.html) / [`verification/v5b-gas-test.gs`](../../verification/v5b-gas-test.gs)、手順 = [`verification/README.md`](../../verification/README.md)、仕様 = [../HANDOVER.md](../HANDOVER.md) §8.1。
 > - 実コード根拠(しあTube の iframe 実装 = 既定 Type1) = [SIATUBE_CODE_VERIFICATION.md](SIATUBE_CODE_VERIFICATION.md)。
 
@@ -56,7 +56,7 @@ $ git clone https://github.com/...        → 正常(比較)
 1. **A: /embed/ ページは取得できている(200 / 131,971 bytes)が `ytInitialPlayerResponse` マーカー不在。**
    ページ長から consent 中間ページではなく実ページと推定。/embed/ ページの player response は
    **`ytInitialPlayerConfig` の `args.player_response`** に入る構造(=/watch/ ページの
-   `ytInitialPlayerResponse` とは別物)が有力。→ v1b キットでマーカー級联(両方試行)にして再確認。
+   `ytInitialPlayerResponse` とは別物)が有力。→ v1b キットでマーカー連鎖(両方試行)にして再確認。
 2. **B: `INNERTUBE_API_KEY` は embed ページから抽出成功**(`AIzaSyAO…` = WEB 系標準キー)、
    `/youtubei/v1/player` への POST は 200 で応答するが **`playabilityStatus = ERROR` / formats 0**。
    reason は記録していなかった(キットの不足)。
@@ -66,7 +66,7 @@ $ git clone https://github.com/...        → 正常(比較)
    - (c) context フィールド不足(hl/gl のみで contentCheckOk 等なし)
 
 **v1b(修正版)キット**: `verification/v1b-gas-test.gs`
-- A: マーカー級联(`ytInitialPlayerResponse` → `ytInitialPlayerConfig.args.player_response`)+ consent 検知 + htmlHead 記録
+- A: マーカー連鎖(`ytInitialPlayerResponse` → `ytInitialPlayerConfig.args.player_response`)+ consent 検知 + htmlHead 記録
 - B: 4 client 比較 — `C1_embedded_old`(前回再現) / `C2_embedded_pageVer`(ページから clientVersion 抽出) / `C3_web_pageVer`(WEB client) / `C4_android`(ANDROID 19.09.37、bot チェックに寛容な client として)
 - 各 client: `playability` / `reason` / `errorScreen` / `formatCount` / `has1080` / `has140` を記録
 
@@ -249,7 +249,7 @@ version = 2.20260911.00.00 / API キーはページから抽出に成功(ペー�
   → **ストリーム URL はすべて `signatureCipher` として提供される**(= 復号が必須)。
 - **`signatureCipher` の構造**(実測サンプル):
   `s=<暗号化シグネチャ(NE0OE0AE...)> & sp=sig & url=<URL エンコード済みの googlevideo videoplayback URL>`
-  - `url` 部分には **`expire` / `ei` / `ip=<GAS 出口 IP>`** が已含む(= 署名パラメータのみ欠落)
+  - `url` 部分には **`expire` / `ei` / `ip=<GAS 出口 IP>`** が既に含まれる(= 署名パラメータのみ欠落)
   - 復号 = **youtube-dlp と同型の signature transform 逆変換**:
     1. watch ページの player JS から transform 関数群(a/b/c 系)を抽出
     2. `s` の先頭バイト列から適用リストを読み、逆順に逆変換 → 本来の `sig`
@@ -416,11 +416,26 @@ V1〜V4 の証跡は上記のとおり保持する(V1-d の `/watch/` ページ�
 | V5-1 | `youtubeeducation.com/embed/{id}?{params}` の**描画・再生**(しあTube 既定 = Type1 の再現) | [`verification/v5-browser-iframe-test.html`](../../verification/v5-browser-iframe-test.html)(`?probe=1` 内蔵) | ⏳ 未実施 |
 | V5-2 | **公式 embed**(`www.youtube-nocookie.com/embed`)の到達性(差し替え候補との比較) | 同上 | ⏳ 未実施 |
 | V5-3 | 埋め込み先からの **Player API 直接読込**(`https://www.youtube.com/iframe_api`)の可否 | 同上 | ⏳ 未実施 |
-| V5-4 | **GAS IP からの検索結果ページ抽出 / トレンド取得**(`/results?search_query=` / `/feed/trending`) | [`verification/v5b-gas-test.gs`](../../verification/v5b-gas-test.gs)(**1 実行 = 1 fetch**) | ⏳ 未実施 |
+| V5-4 | ~~GAS IP からの検索結果ページ抽出 / トレンド取得~~ = **V6 へ移管(実行不要)** | 旧 [`verification/v5b-gas-test.gs`](../../verification/v5b-gas-test.gs)(参考保存。GAS を採用しないため実行しない) | **V6-4 / V6-5 へ移管** |
 | V5-5 | **広告・画質・ログイン要求**の挙動(目視) | キット① | ⏳ 未実施 |
 
-- 判定の使い道: **V5-1/V5-2 = iframe 既定の決定**(第一候補 = `youtubeeducation.com`、不可なら公式 embed)/ **V5-3 = 再生位置制御・終了検知の実装可否**(不可でも iframe 表示自体は成立)/ **V5-4 = 検索・トレンド機能の可否**(不可なら該当機能は保留 = 計画書 R11)/ **V5-5 = UI 上の注意書き**(全画面広告・ログイン要求は iframe 提供元依存 = 計画書 R12)。
-- 結果の記録先 = [`verification/Verification-Results.md`](../../verification/Verification-Results.md)(1 ファイル = 最新のみ)。確定した判断は本文書と計画書 §10.8 に反映する。
+**V6(サーバー側・2026-09-23 追加 = server-first)** — キット = [`verification/v6-metadata-check.mjs`](../../verification/v6-metadata-check.mjs)(依存なし・1 回実行で JSON。**配備予定マシン = 自宅 Proxmox LXC/VM 等で実行**):
+
+| ID | 内容 | キットの実行モード | 状態 |
+|---|---|---|---|
+| V6-1 | **yt-dlp の有無と版**(メタデータ主経路の前提) | `node v6-metadata-check.mjs`(probe = ネットワーク 0 回) | ⏳ 未実施 |
+| V6-2 | **`--dump-single-json` で取得できる項目**(タイトル / 投稿者 / 長さ / 説明 / サムネイル / formats / 字幕 等) | `--mode=video`(または `--mode=all`) | ⏳ 未実施 |
+| V6-3 | **ページ抽出フォールバック**(`/watch/` の `ytInitialPlayerResponse`。V1-d のアルゴリズム移植) | `--mode=page` | ⏳ 未実施 |
+| V6-4 | **検索結果ページ**(`/results?search_query=` の `ytInitialData` から動画件数・タイトルが取れるか) | `--mode=search`(既定クエリ = `料理`。`--q=` で変更) | ⏳ 未実施 |
+| V6-5 | **トレンド**(`/feed/trending` の `ytInitialData`) | `--mode=trend` | ⏳ 未実施 |
+| V6-6 | (任意) **yt-dlp の検索**(`ytsearch10:`)が使えるか | `--mode=ytsearch --q=料理` | ⏳ 未実施 |
+
+- **レート制限**: 1 回の実行で外部リクエストは 3〜4 件(リクエスト間に待ち)。キットは前回実行から **10 分未満**の再実行を中断する(`--force` で回避)。**連続実行はしない**。
+- `--mode=all` の結果は `verification/v6-result.json` にも保存される(そのまま送付・コミットできる)。
+
+- 判定の使い道: **V5-1/V5-2 = iframe 既定の決定**(第一候補 = `youtubeeducation.com`、不可なら公式 embed)/ **V5-3 = 再生位置制御・終了検知の実装可否**(不可でも iframe 表示自体は成立)/ **V6-4/V6-5 = 検索・トレンド機能の可否**(不可なら該当機能は保留 = 計画書 R11)/ **V5-5 = UI 上の注意書き**(全画面広告・ログイン要求は iframe 提供元依存 = 計画書 R12)。
+- **V6 の判定の使い道**: V6-1(yt-dlp の有無)= 主経路の前提 / V6-2 = **メタデータの供給元を確定** / V6-3 = **フォールバックの成否**(片方が不可でも成立するか)/ V6-4/V6-5 = 検索・トレンド機能の可否 / V6-6 = 検索を yt-dlp で代替できるか。
+- 結果の記録先 = [`verification/Verification-Results.md`](../../verification/Verification-Results.md)(1 ファイル = 最新のみ)。確定した判断は本文書と計画書 §10.9.1 に反映する。
 
 ## 設計への影響(2026-09-13 に確定した判断を含む)
 
@@ -451,7 +466,7 @@ V1〜V4 の証跡は上記のとおり保持する(V1-d の `/watch/` ページ�
 
 ## 状態サマリ
 
-> **2026-09-23 転換後の有効範囲**: 下表は**証跡として保持**(過去の実施記録)。**現行スコープで必要なのは V1-d の `/watch/` ページ抽出(メタデータ解決)と V5(未実施)**。V2(googlevideo 直接取得 = CORS)・V3-b(StreamSaver)・V4(iOS)は **DL / 直リンク再生の保留に伴い参照情報**(O2 = URL 有効期限 ≈6h / O3 = 他 IP 再生も同様)。
+> **2026-09-23 転換後の有効範囲**: 下表は**証跡として保持**(過去の実施記録)。**現行スコープで必要なのは V1-d の `/watch/` ページ抽出(メタデータ解決 = V6-3 で再確認)と V5・V6(未実施)**。V2(googlevideo 直接取得 = CORS)・V3-b(StreamSaver)・V4(iOS)は **DL / 直リンク再生の保留に伴い参照情報**(O2 = URL 有効期限 ≈6h / O3 = 他 IP 再生も同様)。
 | ID | 状態 | 次アクション |
 |---|---|---|
 | V1-a | ✅ 完了(サンドボックス) | - |
@@ -460,4 +475,5 @@ V1〜V4 の証跡は上記のとおり保持する(V1-d の `/watch/` ページ�
 | V3-a | ✅ 完了(サンドボックス) | - |
 | V3-b | ⏳ 任意(参考 = DL には不要): 第 1 回 text/plain(旧デプロイ)/ 第 2 回 setMimeType 例外(私のバグ・修正済み) | PWA/オフライン判断用。時間がある時 **← 2026-09-23: DL 保留に伴い参照情報** |
 | V4 | ⏳ 待ち(任意) | 同一 HTML を iOS で実行(DL fallback の UX 裏取り) **← 2026-09-23: DL 保留に伴い参照情報** |
-| **V5** | ⏳ **未実施(2026-09-23 追加・ユーザー実行待ち)** | キット実行 → 結果を [`verification/Verification-Results.md`](../../verification/Verification-Results.md) へ → 判定を §V5 と計画書 §10.8 に反映 |
+| **V5** | ⏳ **未実施(2026-09-23 追加・ユーザー実行待ち)** | キット実行 → 結果を [`verification/Verification-Results.md`](../../verification/Verification-Results.md) へ → 判定を §V5 と計画書 §10.9.1 に反映 |
+| **V6** | ⏳ **未実施(2026-09-23 追加・ユーザー実行待ち)** | キット `verification/v6-metadata-check.mjs`(`--mode=all`)を**配備予定マシン**で実行 → `verification/v6-result.json` を送付 → 判定を §V6 と計画書 §10.9.1 に反映 |

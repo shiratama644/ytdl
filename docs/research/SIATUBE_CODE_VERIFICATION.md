@@ -81,7 +81,7 @@ const fallbackBase = "https://siatube.wjg.jp";
 | 1 | 学校/自宅の回線から **`www.youtubeeducation.com/embed/<id>` が描画・再生できるか** | iframe 方式の根幹。ブロックされると方式自体が成立しない | `verification/v5-browser-iframe-test.html` |
 | 2 | **公式 embed（`youtube-nocookie.com` / `youtube.com`）の到達性**（代替経路の有無） | ミラーが死んだ/ブロックされた場合の逃げ道の有無 | 同上（切替 UI 付き） |
 | 3 | **Player API を埋め込み先ホストから直接読み込めるか**（`/iframe_api` 相当） | シート方式（しあTube）を採らずに済むかの判断材料 | 同上 |
-| 4 | **GAS からの検索結果ページ抽出**（`/results?search_query=`）と**トレンド取得** | メタデータ API（検索・ホーム）の可否。V1 で実証済みなのは `/watch/` のみ | `verification/v5b-gas-test.gs` |
+| 4 | **検索結果ページ抽出**（`/results?search_query=`）と**トレンド取得** | メタデータ API（検索・ホーム）の可否。V1 で実証済みなのは `/watch/` のみ | **`verification/v6-metadata-check.mjs`（サーバー側 = V6-4 / V6-5）**。旧 `v5b-gas-test.gs`（GAS 版）は GAS 不採用のため参考保存 |
 | 5 | embed 再生時の**広告・画質・ログイン要求**の実挙動 | 体験/運用の前提（「広告なし」を断定しない） | ユーザーの目視（V5 のチェックリスト） |
 
 ## 5. 出典（GitHub・commit 固定）

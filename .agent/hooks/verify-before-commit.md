@@ -20,11 +20,17 @@ pnpm run build              # next build（output:'export' → out/ 生成）
 - **typecheck**: strict 構成。配列アクセス・nullable に注意。
 - **lint**: `0 error` まで。`biome-ignore` は対象コードの**直前の行**に置く。
 - **test**: `vitest run`（watch **ではない**）。DOM 操作は jsdom。
-- **build**: 成果物は `out/`。
-  - **単一 HTML ビルド（P00-E 以降）**: 生成物が 1 ファイル（CDN 依存なし）であることを確認 + サイズを記録。
-  - **GAS バックエンド（`backend/gas`）**: npm パッケージなしのプレーン JS。構文チェックは
+- **build**: クライアントの成果物は `out/`（**Nginx が配信** = D12）。
+  - **API（`apps/api`）**: **Bun + Hono**（D10）。型は `tsc --noEmit`（pnpm スクリプト）で確認し、
+    **実行もテストも Bun 前提**。Sandbox に Bun が無い場合（`bun --version` が失敗）は
+    「**実環境検証待ち**」として報告し、無理に別ランタイムで代用しない。
+  - **配備定義（`deploy/`）**: `docker compose config` が通ることを確認（**実起動は Proxmox = ユーザー環境**。
+    Sandbox で `up` を実行しない）。TLS/ドメインは Nginx 側の設定として確認。
+  - **メタデータ解決**: yt-dlp 呼び出しに**タイムアウトと同時実行数の上限**があること、
+    **キャッシュ → yt-dlp → ページ抽出**の順で縮退することをコードで確認（実ネットワークの可否 = **V6**）。
+  - **単一 HTML ビルド = 任意**（ミラー配布用。GAS 配布がなくなったため必須ではない）。
+  - **旧 GAS（`backend/gas`）= 採用しない**（D10）。過去の `.gs` キットを触る時の構文チェックは
     `.gs` を `/tmp/*.js` にコピーして `node --check`（`.gs` 直接は通らない）。
-    `setMimeType` は **`ContentService.MimeType` 列挙型のみ**（O7）。
 
 ## B. コードが存在しない場合（docs 期・現時点の既定）
 
@@ -35,6 +41,9 @@ pnpm run build              # next build（output:'export' → out/ 生成）
 grep -rn "docs/arch/" docs/ verification/ README.md AGENTS.md .agent/ | grep -v "作成\|予定\|P1 以降\|arch(/)\|作成後"
 # 旧表現の残存（検証済み設計に反する記述）
 grep -rn "youtubei.js bundled\|InnerTube: WEB_EMBEDDED_PLAYER\|v1e = 実行待ち\|V1d の JSON" docs/ README.md
+# 旧構成（GAS 前提・2 フェーズ）の残存（DOC-3 で server-first へ再構成済み）
+grep -rn "GAS 期を設け" docs/ README.md AGENTS.md   # 「設けない」方針の記述だけが残っていること
+grep -rn "Phase A\b" docs/ README.md AGENTS.md .agent/skills | grep -v "旧 GAS 期\|GAS 期）\|参考"
 # cod-web / .archive の残存（2026-09-21 DOC-1 で削除済み = 死参照禁止）
 grep -rn "cod-web\|\.archive" docs/ README.md AGENTS.md .agent/skills .agent/hooks | grep -v "削除済み\|DOC-1\|元リポジトリ"
 # ユーザーの結果ファイルに旧ラウンドの再追加がないか（1 ファイル = 最新の生結果のみ）

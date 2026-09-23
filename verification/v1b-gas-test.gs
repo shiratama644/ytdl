@@ -3,7 +3,7 @@
  *
  * 前回の V1 で判明した問題への対応:
  *  - A: /embed/ ページに `ytInitialPlayerResponse` が無く、`ytInitialPlayerConfig`
- *    (→ args.player_response) に入る可能性 → マーカー級联(両方試す)
+ *    (→ args.player_response) に入る可能性 → マーカー連鎖(両方試す)
  *  - B: playabilityStatus=ERROR の reason が未記録 → 記録 + 複数 client 比較
  *    (WEB_EMBEDDED_PLAYER 旧版 / ページ抽出版 / WEB / ANDROID)
  *
@@ -56,7 +56,7 @@ function fetchEmbedPage() {
     r.hasMarker_playerResponse = html.indexOf('ytInitialPlayerResponse') >= 0;
     r.hasMarker_playerConfig = html.indexOf('ytInitialPlayerConfig') >= 0;
 
-    // マーカー級联: ytInitialPlayerResponse → ytInitialPlayerConfig(args.player_response)
+    // マーカー連鎖: ytInitialPlayerResponse → ytInitialPlayerConfig(args.player_response)
     var d = null;
     if (r.hasMarker_playerResponse) {
       r.markerUsed = 'ytInitialPlayerResponse';
