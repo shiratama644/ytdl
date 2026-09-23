@@ -7,6 +7,7 @@
 > **⚠️ 本調査は「保留(実装対象外)」(2026-09-23 ユーザー決定)**: 動画ダウンロードは本プロジェクトの**目標・スコープから外した**(再生 = iframe 一本へ転換)。したがって本調査の結論(DL 方式 A 主 / B 補完 / C fallback 等)は**現行では採用しない**。
 > 本文書は**技術的制約の記録と、将来 DL を再検討する場合の出発点**として保存する(削除しない)。
 > 関連: [SIATUBE_CODE_VERIFICATION.md](SIATUBE_CODE_VERIFICATION.md)(現行の再生 = iframe)/ [../planning/PHASE0_PLAN.md](../planning/PHASE0_PLAN.md) §10.8(保留注記付き・旧設計)/ [../HANDOVER.md](../HANDOVER.md) §4(D3〜D5・D9 = 保留)。
+> **2026-09-23 追記(D13)**: DL を再開する場合のメディア取得は **yt-dlp** が担当する(現段階では導入しない = 現行のメタデータ取得は youtubei.js)。
 
 ---
 

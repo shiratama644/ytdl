@@ -16,7 +16,7 @@
    (2026-09-23 追記)。現在の必須検証 = **V5(ブラウザ側 iframe 到達性)・V6(サーバー側メタデータ取得)**。
 4. **確定した方向(2026-09-23)**: ① 再生は **iframe 埋め込み**(しあTube と同じ `youtubeeducation.com/embed`)
    ② **最初から自宅サーバーで構築**(Proxmox + Docker Compose = Nginx + Bun/Hono API。**GAS 期は設けない**)
-   ③ メタデータ解決 = **yt-dlp 主 + ページ抽出フォールバック** ④ **動画 DL は目標から除外して保留**
+  ③ メタデータ解決 = **youtubei.js(InnerTube クライアント)** ④ **動画 DL は目標から除外して保留**(将来の DL は yt-dlp が担当)
    (実装対象外・設計は docs に保存) ⑤ ストリーム URL 解決 / signature decipherer = **保留**。
 5. **このサンドボックスはターン跨ぎにリポジトリを再クローンする**。作業のたびに必ず **commit して push**
    (復旧手順は §11)。push しない作業は消える。
@@ -27,7 +27,7 @@
   1. **再生 = iframe 埋め込み**(しあTube の既定方式と同じ。`https://www.youtubeeducation.com/embed/{id}`)
   2. **最初からサーバーを立てて構築**(自宅 **Proxmox(LXC/VM)** 上に **Docker Compose** で
      **Nginx + Bun(Hono) API** を配備する。**GAS 期は設けず、GAS は実装しない**(検証資産のみ保存)
-  3. **メタデータ解決 = yt-dlp 主 + ページ抽出フォールバック**(サーバー側で実行。再生バイトは中継しない)
+  3. **メタデータ解決 = youtubei.js**(InnerTube の JavaScript クライアント。サーバー側で実行し、再生バイトは中継しない)。**yt-dlp は将来のダウンロード機能で使う**(現段階では導入しない)
   4. **差別化 = Material 3 Design Expressive の UI + GSAP モーション**
   5. ~~動画ダウンロード機能~~ → **保留**(目標から除外。実装しないが設計・調査は docs に保存)
   - 機能範囲 = **しあTube 相当フル**(トレンド / 検索+サジェスト / 視聴+関連+コメント / チャンネル /
@@ -63,7 +63,7 @@
 | # | 判断 | 内容 | 確定日 |
 |---|---|---|---|
 | D1 | **再生経路** | **【改訂 2026-09-23】iframe 埋め込み**(`https://www.youtubeeducation.com/embed/{id}` を既定、公式 embed に差し替え可能な形)。直リンク再生(2 要素 DASH・hls.js・MSE)は**保留 = 実装しない** | 2026-09-23(改訂) |
-| D2 | **バックエンド** | **自前実装**(第三者 API 不使用 = 継続)。役割は**メタデータ解決**。**2026-09-23 改訂: yt-dlp の `--dump-single-json` を主経路、自前のページ抽出(`/watch/` = V1-d で実証したアルゴリズム)をフォールバック**にする。**signature decipherer・ストリーム URL 解決は保留** | 2026-09-14(09-23 改訂) |
+| D2 | **バックエンド** | **自前実装**(第三者 API 不使用 = 継続)。役割は**メタデータ解決**。**2026-09-23 改訂(2 回目): メタデータは youtubei.js(InnerTube クライアント)で取得する**(検索 / 動画 / チャンネル / プレイリスト / 統計 / Live Chat)。**signature decipherer・ストリーム URL 解決は保留** | 2026-09-14(09-23 改訂) |
 | D3 | **DL(自宅サーバー期)= 保留** | 旧設計: 方式 A 主(`/dl` DL 専用 relay → Worker で mp4/webm-muxer → StreamSaver → 進捗UI)+ 方式 B 補完(yt-dlp バッチ)。**2026-09-23 ユーザー決定で実装対象外**(設計は docs に保存) | 2026-09-13(09-23 保留) |
 | D4 | **DL(GAS 期)= 保留** | 旧設計: 720p 以下 muxed 直リンクのみ(実測 = itag 22/37 なし → itag 18 のみ)。**実装対象外** | 2026-09-13(09-23 保留) |
 | D5 | **DL(iOS/Firefox)= 保留** | 旧設計: 直リンクフォールバック(StreamSaver は Chromium 系のみ)。**実装対象外** | 2026-09-13(09-23 保留) |
@@ -72,8 +72,9 @@
 | D8 | **v2b(CORS 確定テスト)** | **スキップ**(ユーザー判断・変更なし)。**再提案しない** | 2026-09-13 |
 | D9 | **FSA = 保留** | 旧設計: DL 主経路にしない(StreamSaver 指定)。**DL 保留に伴い対象外** | 初期(09-23 保留) |
 | **D10** | **サーバー一本(2026-09-23 新規)** | 自宅 **Proxmox(LXC/VM)** 上に **Docker Compose(Nginx + Bun/Hono API)** を**最初から**構築する。**GAS 期を設けず、GAS 版は実装しない**(GAS の検証資産 = `verification/v1*`・`v3*`・`v5b-gas-test.gs` は参考として保存) | 2026-09-23 |
-| **D11** | **メタデータ取得(2026-09-23 新規)** | **yt-dlp 主**(`--dump-single-json` を子プロセス実行・同時実行数とタイムアウトに上限)+ **ページ抽出フォールバック**(V1-d のアルゴリズムを TS へ移植)。第三者 API 不使用は維持 | 2026-09-23 |
+| **D11** | **メタデータ取得(2026-09-23 新規・09-23 改訂)** | **youtubei.js(InnerTube クライアント)で取得する**(検索 / 動画 / チャンネル / プレイリスト / 統計 / Live Chat)。第三者 API 不使用は維持。**自前のページ抽出は実装しない**(アルゴリズムは V1-d の証跡として保存) | 2026-09-23 |
 | **D12** | **クライアント配信(2026-09-23 新規)** | **Nginx による静的配信**(Next.js `output: 'export'`)。単一 HTML 化は**任意**(ミラー配布用。GAS 配布がなくなったため必須ではない) | 2026-09-23 |
+| **D13** | **yt-dlp の役割(2026-09-23 新規)** | **将来のメディア取得・ダウンロード担当**(動画/音声の DL・HLS/DASH ストリーム・複雑なフォーマット選択と結合・ライブ配信の取得など、youtubei.js だけでは扱いにくい処理)。**現段階では導入しない**(DL = 保留 = D3 のため)。DL を再開する時に導入する | 2026-09-23 |
 
 ## 5. 全体アーキテクチャ(2026-09-23 改訂 = サーバー一本)
 
@@ -82,12 +83,12 @@
 │ Docker Compose                                                                   │
 │   nginx(443/TLS) ──┬──▶ 静的配信(Next.js export のビルド成果物)                │
 │                    └──▶ /api/* を api コンテナへリバースプロキシ                 │
-│   api(Bun + Hono) ──▶ メタデータ解決                                            │
-│        ├─ 主  : yt-dlp --dump-single-json(子プロセス)                           │
-│        └─ 副  : ページ抽出(https 取得 + ytInitial* 抽出 = V1-d のアルゴリズム)  │
-│        + O9: キャッシュ(TTL)/ リトライ+バックオフ / single-flight                │
+│   api(Bun + Hono) ──▶ メタデータ解決(youtubei.js = InnerTube クライアント)     │
+│        ├─ 検索 / 動画 / チャンネル / プレイリスト / 統計 / Live Chat              │
+│        └─ + O9: キャッシュ(TTL)/ リトライ+バックオフ / single-flight              │
 │        → JSON(メタデータのみ: タイトル/投稿者/長さ/サムネイル/関連/コメント)     │
 │        ※ ストリーム URL は取得・返却しない(iframe 再生では不要)                 │
+│        ※ yt-dlp(将来の DL 担当 = D13)は現段階では導入しない                     │
 │                                                                                  │
 │  [ブラウザ] 再生: iframe ─▶ https://www.youtubeeducation.com/embed/{id}?{params} │
 │        (ブラウザ ↔ YouTube 系で完結 = 再生にサーバーは関与しない)                │
@@ -98,7 +99,7 @@
 
 **技術スタック(確定)**: クライアント = Next.js(App Router, `output:'export'`)+ Tailwind CSS v4 +
 GSAP 3.13 + Dexie.js 4 / TypeScript / biome / vitest / pnpm workspaces。
-API = **Bun + Hono**(TypeScript)+ **yt-dlp**(子プロセス)/ **Nginx**(TLS・静的配信・リバースプロキシ)/
+API = **Bun + Hono**(TypeScript)+ **youtubei.js**(InnerTube クライアント)/ **Nginx**(TLS・静的配信・リバースプロキシ)/
 **Docker Compose** / 配備先 = 自宅 **Proxmox VE(LXC/VM)**。
 再生 = **iframe 埋め込み**(再生は YouTube 系 embed が担う = プレイヤー実装は薄い)。
 (詳細: `docs/planning/PHASE0_PLAN.md` §10.4〜§10.7・§10.9)
@@ -109,20 +110,21 @@ API = **Bun + Hono**(TypeScript)+ **yt-dlp**(子プロセス)/ **Nginx**(TLS・�
 
 | ID | 内容 | 状態 | 要点 |
 |---|---|---|---|
-| V1-a | youtubei.js バンドル + Node 初期化 | ✅ 完了(参考) | v18.0.0・1.3MB バンドル・create() 到達(通信はサンドボックス遮断のため未実測) |
-| **V1-b** | **GAS からのページ抽出** | ✅ 完了(参考・アルゴリズムは継承) | 第 1〜6 回(2026-09-13〜15)。**第 4 回(v1d)= `/watch/` ページ抽出成功**(playability OK / 30 形式)/ 第 6 回(v1f)= 全 30 形式 `signatureCipher`。**`/player` InnerTube = 3 ラウンド連続 dead(使わない)**。→ **抽出アルゴリズム(候補列挙 + 括弧バランス切片 + JSON.parse)は V6 とサーバー実装に継承**。decipherer は保留 |
+| V1-a | youtubei.js バンドル + Node 初期化 | ✅ 完了(参考 → **現行の前提**)| v18.0.0 のバンドル(1.3MB)と create() 到達を実測。**2026-09-23 追記: v18.1.0 を Node 22 で直接 import し、ネットワークなしで `Innertube.create()` が成立することを実測**(§7.10) |
+| **V1-b** | **GAS からのページ抽出** | ✅ 完了(参考) | 第 1〜6 回(2026-09-13〜15)。**第 4 回(v1d)= `/watch/` ページ抽出成功**(playability OK / 30 形式)/ 第 6 回(v1f)= 全 30 形式 `signatureCipher`。**`/player` InnerTube = GAS(Google DC)IP から 3 ラウンド連続 dead**(この結果は当時の GAS IP に限る = **自宅 IP での可否は V6 で確認**)。抽出アルゴリズムは V1-d の証跡として保存(**現段階では実装しない**)。decipherer は保留 |
 | V2 | ブラウザ直接取得 | ✅ 完了(参考) | 第 1 回(ユーザー Android): `<video>` 再生 **OK** / fetch 全 **Failed to fetch** = **CORS(ACAO 欠如)**。**DL 保留により決定打ではない**(直リンク再開時の判断材料) |
 | V3-a | GAS `?_sw=` の HTTP 契約 | ✅ 完了(参考) | ローカル模倣で HTML/JS MIME 同居確認。GAS を採用しないため当面用途なし |
 | V3-b | GAS からの SW 登録 | ⏳ 参考(DL/PWA 再開時) | 第 1 回 = text/plain 配信(旧デプロイ)/ 第 2 回 = setMimeType 例外(修正済み)。**サーバー構成では SW は自ドメイン配信 = 制約なし**(自前サーバーで試す場合は V3-b の代わりに通常の SW として検証) |
 | V4 | iOS Safari 挙動 | ⏳ 参考(DL 再開時) | iOS の DL fallback(直リンク)の裏取り。**DL 保留に伴い後回し** |
 | **V5** | **iframe 到達性(ブラウザ側・実行待ち)** | **未着手** | ① `youtubeeducation.com/embed` が学校/自宅の回線で描画・再生できるか ② 公式 embed(`youtube-nocookie.com` 等)の到達性 ③ 埋め込み先からの Player API 直接読込可否 ④ 広告・画質・ログイン要求の挙動(目視)。キット = `verification/v5-browser-iframe-test.html`(`?probe=1` 内蔵)。**サーバー有無に依存しない検証** |
-| **V6** | **サーバー側メタデータ取得(新規・実行待ち)** | **未着手** | ① yt-dlp の有無と版 ② `--dump-single-json` で取得できる項目 ③ ページ抽出(フォールバック)の成否 ④ 検索結果ページの抽出 ⑤ トレンドページの抽出。キット = `verification/v6-metadata-check.mjs`(Node/Bun・依存なし・1 回で JSON 出力) |
+| **V6** | **サーバー側メタデータ取得(新規・実行待ち = youtubei.js の前提確認)** | **未着手** | ① youtubei.js の解決・クライアント生成 ② **InnerTube(生 fetch)が自宅回線から通るか**(watch ページの API キー取得 / `/player` / `/search`)③ youtubei.js の実機能(検索 / 動画 / チャンネル / プレイリスト / ホーム / トレンド / Live Chat)④ yt-dlp の有無(将来の DL 用の記録)。キット = `verification/v6-metadata-check.mjs`(**v2**・Node/Bun・依存なし + `--mode=youtubei` は youtubei.js が必要) |
 
 **旧 GAS 期に判明した制約(参考・サーバー構成では影響しない)**:
 - **O7**: `ContentService.TextOutput.setMimeType` は `MimeType` 列挙型のみ(String は例外)。GAS を使わないため参考。
 - **O5**: GAS のデプロイは旧版を配信し続ける → 旧 GAS キット運用の話。現在は該当なし。
 - **O9(HTTP 429 レート制限)**: 実在(キット累計 ~13 回/1 時間で発生)。**サーバー API でも
-  「リトライ+バックオフ / キャッシュ(TTL)/ single-flight」を実装する**(毎リクエストで yt-dlp を
+  「リトライ+バックオフ / キャッシュ(TTL)/ single-flight」を実装する**(毎リクエストで YouTube へ
+  再取得しない。InnerTube / youtubei.js の呼び出しをキャッシュで吸収する)**。
   無制限に起動しない)。
 ## 7. 技術的事実(調査済み・再調査・再議論不要)
 
@@ -175,7 +177,7 @@ API = **Bun + Hono**(TypeScript)+ **yt-dlp**(子プロセス)/ **Nginx**(TLS・�
 
 ### 7.6 siatube.com 中央 API(現在は依存しないが知見として保持)
 
-> **2026-09-23 追記**: 私たちの新構成(自宅サーバー + API + yt-dlp)は、**この生産アーキに近い形**になった
+> **2026-09-23 追記**: 私たちの新構成(自宅サーバー + API + InnerTube クライアント)は、**この生産アーキに近い形**になった
 > (GAS 期を設けない決定 = §4 の D10/D11)。siatube.com へは依存しない(自前で同じ役割を持つ)。
 - しあTube 元アーキ = 静的 Vue SPA + 中央 API(siatube.com、yt-dlp + InnerTube ベース)。
   ストリーム URL = 署名済み googlevideo 直リンク(本検証でその挙動を実測)。
@@ -187,8 +189,9 @@ API = **Bun + Hono**(TypeScript)+ **yt-dlp**(子プロセス)/ **Nginx**(TLS・�
 
 ### 7.7 V1 検証の最終知見(2026-09-15・実測・再確認不要)
 
-> **2026-09-23 追記**: この知見のうち **「`/player` InnerTube は使わない」「`/watch/` ページ抽出は開いている」**
-> はサーバー構成でも有効な方針(抽出アルゴリズムを継承)。**ただし IP が変わる**(GAS → 自宅回線)ため、
+> **2026-09-23 追記(2 回目あり = 重要)**: ここで「使わない」と判断した `/player` InnerTube は、**GAS(Google DC)IP からの実測**。
+> **現行構成のメタデータは youtubei.js(InnerTube)を使う**(D11 改訂)ため、**自宅回線からの可否は V6 で確認する**(結論を先取りしない)。
+> ページ抽出アルゴリズムは V1-d の証跡として保存し、**現段階では実装しない**。
 > ページ抽出と検索/トレンドの可否は **V6 で再確認する**(結論を先取りしない)。
 - **`/player` InnerTube エンドポイントは GAS(Google DC)IP から 3 ラウンド連続で dead**
   (WEB_EMBEDDED_PLAYER/WEB = 200 だが playability ERROR/UNPLAYABLE・汎用 reason /
@@ -222,13 +225,39 @@ API = **Bun + Hono**(TypeScript)+ **yt-dlp**(子プロセス)/ **Nginx**(TLS・�
 ### 7.9 サーバー一本の決定(2026-09-23・ユーザー決定)
 - **決定**: プロジェクトは**最初からサーバーを立てて作る**。GAS 期(= 静的単一 HTML + `script.google.com` の
   2 役構成)は**設けない**。理由の要約: GAS の制約(`UrlFetchApp` のみ / 6 分 / 日次クォータ / デプロイが旧版を
-  配信し続ける = O5・O7)を持ち込まずに済み、**メタデータ取得の手段が増える**(yt-dlp を子プロセスで使える、
+  配信し続ける = O5・O7)を持ち込まずに済み、**メタデータ取得の手段が増える**(youtubei.js で InnerTube を
+  直接扱える、キャッシュの自由度が高い、CORS ヘッダを付けられる)。
   キャッシュの自由度が高い、CORS ヘッダを付けられる)。
-- **選択(ユーザー)**: スタック = **Bun + Hono + Nginx(Docker Compose)** / メタデータ = **yt-dlp 主 +
+- **選択(ユーザー)**: スタック = **Bun + Hono + Nginx(Docker Compose)** / メタデータ = 
+  **youtubei.js(InnerTube クライアント)** / 配備先 = **自宅 Proxmox(LXC/VM)**。**yt-dlp は将来の DL 担当**(D13)。
   ページ抽出フォールバック** / 配備先 = **自宅 Proxmox(LXC/VM)**。
 - **再生は変わらない**: iframe(クライアント側)。**サーバーは再生バイトを中継しない**(D6)。
-- **GAS の検証資産**: V1(抽出アルゴリズム)・O9(429 の知見)は継承、GAS 固有の制約(O5/O7)は参考として保存。
-- **未検証(断定しない)**: 自宅回線からの yt-dlp 実行可否・ページ抽出(検索/トレンド含む)の成否 = **V6**。
+- **GAS の検証資産**: **O9(429 の知見)は継承**。V1 のページ抽出アルゴリズムは**証跡として保存**(現段階では実装しない)、GAS 固有の制約(O5/O7)は参考として保存。
+- **未検証(断定しない)**: 自宅回線から **youtubei.js / InnerTube が通るか**(検索 / 動画 / チャンネル / プレイリスト / トレンド / Live Chat)= **V6**。
+
+### 7.10 youtubei.js(現段階の YouTube クライアント)の実測(2026-09-23)
+
+> 出典: サンドボックスでの実測(`npm install youtubei.js@18.1.0` → import → `Innertube.create()`)と
+> V1-a(バンドル検証)。**ネットワーク越しの可否(InnerTube が通るか)はサンドボックスでは確認できない = V6**。
+
+- **版**: `youtubei.js@18.1.0`(2026-09-22 公開)が最新。**MIT ライセンス**。**ESM**(`"type": "module"`)。
+  依存 = `fflate` / `meriyah` / `@bufbuild/protobuf` の 3 つ(汎用の軽量ライブラリ)。
+- **実行**: Node 22 で**直接 import できた**(394 ms)。**Bun では未実測**(サンドボックスに Bun がない)。
+- **オフラインでクライアント生成が可能**: `Innertube.create({ lang:'ja', location:'JP',
+  generate_session_locally: true, retrieve_player: false, retrieve_innertube_config: false })` が
+  **ネットワークなしで成立**(73 ms・clientName = `WEB`)→ **ネットワーク不要のユニットテストが書ける**。
+- **API 面(型定義で確認)**: `search(query, { type: 'video' | 'channel' | 'playlist' | 'movie' | 'shorts' | 'all' })` /
+  `getSearchSuggestions(query)` / `getInfo(videoId)` / `getBasicInfo(videoId)` / `getComments(videoId, sort)` /
+  `getChannel(id)` / `getPlaylist(id)` / `getPlaylists()` / `getHomeFeed()` / `getHistory()` /
+  `getSubscriptionsFeed()` / `getHashtag(tag)` / `getStreamingData()` / `download()` /
+  `yt.actions.execute(endpoint, args)`。**Live Chat** = `getInfo(id).getLiveChat()`(VideoInfo 側のメソッド)。
+  **トレンド**(`/feed/trending` 相当)は専用メソッドが見当たらないため `yt.actions.execute('/browse', { browseId: 'FEtrending' })`
+  を使う想定(**V6 で確認する**)。
+- **クライアント種別**: `InnerTubeClient` = `WEB`(既定)/ `MWEB` / `IOS` / `ANDROID` / `ANDROID_VR` / `VISIONOS` /
+  `TV` / `TV_EMBEDDED` / `WEB_EMBEDDED` / `WEB_CREATOR` / `YTMUSIC` / `YTKIDS` など(`create({ client_name })` で指定)。
+- **サーバー実装での前提**: **プロセスで 1 個のクライアントを使い回す**(セッション / Cache を保持)。
+  O9(レート制限対策)は InnerTube 呼び出しにも適用する(キャッシュ + single-flight)。
+- **限界(ユーザー指摘)**: メディア取得・ライブ配信の録画などは youtubei.js だけでは扱いにくい → **将来 yt-dlp が担当**(D13)。
 
 ## 8. 検証キットの状態と、P00(サーバー実装)の仕様(着手時にこれ)
 
@@ -241,25 +270,31 @@ API = **Bun + Hono**(TypeScript)+ **yt-dlp**(子プロセス)/ **Nginx**(TLS・�
 - 旧キット `verification/v5b-gas-test.gs`(GAS からの検索/トレンド抽出)は **GAS を実装しないため不要**
   (= サーバー版の V6 に読み替え。ファイルは参考として保存)。
 
-### 8.2 V6(サーバー側・実行待ち)= メタデータ取得の確認(新規)
-- キット `verification/v6-metadata-check.mjs` = **Node/Bun で実行する 1 ファイル(依存なし)**。
-  ① yt-dlp の有無と版 ② `yt-dlp --dump-single-json` で取得できる項目 ③ ページ抽出(フォールバック)の成否
-  ④ 検索結果ページ(`/results?search_query=`)の抽出 ⑤ トレンドページ(`/feed/trending`)の抽出。
-  **1 回の実行で JSON を出力**(そのまま送付できる)。連続実行はしない(間隔を 10〜30 分空ける)。
-- 実行場所: **自宅サーバー(または同じ回線の PC)**。**サンドボックスからは YouTube に到達できない**ため、
-  ユーザー環境での実行が必須(理由 = §11-2)。
+### 8.2 V6(サーバー側・実行待ち)= youtubei.js / InnerTube の前提確認(新規・キット v2)
+
+- キット `verification/v6-metadata-check.mjs`(**v2**)= **Node/Bun で実行する 1 ファイル**。
+  - `--mode=probe` = 環境 + youtubei.js の解決 + yt-dlp の有無(**ネットワーク 0 回**)
+  - `--mode=innertube` = 生 fetch で **InnerTube が自宅回線から通るか**(watch ページの API キー取得 →
+    `/youtubei/v1/player` → `/youtubei/v1/search` = 3 リクエスト)
+  - `--mode=youtubei` = **youtubei.js の実機能**(既定 steps = `search,video`。`--steps=all` で
+    channel / playlist / home / trending / livechat も実行)
+  - `--mode=all` = innertube + youtubei(既定 steps)/ `--mode=ytdlp` = yt-dlp の有無(将来の DL 用の記録)
+  - **1 回の実行で JSON を出力**(そのまま送付できる)。**10 分ガード**つき(連続実行を避ける)
+- youtubei.js を使う検証のため、先に `npm install youtubei.js`(キットと同じディレクトリ。別の場所なら `--deps=<パス>`)
+  が必要。`--mode=probe` だけならインストール不要。
+- 実行場所: **自宅サーバー(または同じ回線の PC)**。サンドボックスからは YouTube に到達できない(§11-2)。
 
 ### 8.3 P00 の仕様(2026-09-23 改訂 = サーバー一本。着手時にこれ)
 1. **構成**: `apps/api`(Bun + Hono)= メタデータ API / `deploy/`(Docker Compose: nginx + api、Proxmox 手順・TLS) /
    `apps/web`(Next.js `output:'export'`)/ `packages/shared`(API client + types)。
-2. **メタデータ解決**: **yt-dlp 主**(`yt-dlp --dump-single-json --no-warnings --no-playlist <url>` を子プロセス実行。
-   **タイムアウトと同時実行数に上限**を設ける)→ 失敗時は**ページ抽出フォールバック**
-   (`https://www.youtube.com/watch?v=<id>&hl=ja&gl=JP` を desktop UA で取得 → `ytInitialPlayerResponse` を
-   候補列挙 + 括弧バランス切片 + JSON.parse = `verification/v1f-gas-test.gs` のアルゴリズムを TS へ移植)。
-   取得対象: タイトル / 投稿者 / 長さ / サムネイル / 関連 / 検索結果 / トレンド / コメント。
+2. **メタデータ解決(youtubei.js)**: `apps/api` 内で `youtubei.js` のクライアントを**生成して使い回す**
+   (リクエストごとに作らない)。初期化 = `Innertube.create({ lang: 'ja', location: 'JP' })`
+   (テストでは `generate_session_locally: true` 等で**ネットワーク不要**にする = §7.10)。
+   取得対象 = 検索 / 動画(統計・サムネイル・長さ)/ チャンネル / プレイリスト / コメント / サジェスト /
+   トレンド / Live Chat(必要になった段階で)。**yt-dlp と自前ページ抽出は実装しない**(D11/D13)。
 3. **返すのはメタデータのみ**。**ストリーム URL と DL 用フィールドは返さない**(保留 = D3〜D5/D9)。
-4. **O9 を必ず実装**: キャッシュ(TTL = 数分〜数十分・対象別)+ リトライ+バックオフ + single-flight
-   (+ yt-dlp の起動回数を抑える優先順位: キャッシュ → yt-dlp → ページ抽出)。
+4. **O9 を実装**: キャッシュ(TTL = 対象別。例: 検索 5〜15 分 / 動画メタ 30〜60 分)+ リトライ+バックオフ +
+   single-flight。**YouTube への再取得をキャッシュで吸収する**(毎リクエストで叩かない)。
 5. **API 面**: `/api/health` `/api/video/{id}` `/api/search` `/api/suggest/` `/api/channel/{id}` /
    `/api/playlist/{id}` `/api/comments` `/api/trend`。CORS は自ドメインのみ許可(公開範囲の判断は §10.12)。
 6. **再生(クライアント)**: iframe = `https://www.youtubeeducation.com/embed/{id}?{params}`(既定。
@@ -299,7 +334,7 @@ ytdl/
 │   ├── v1〜v1f / v2・v2b / v3・v3b  # 旧 GAS 期のキット(参考・実行不要)
 │   ├── v5-browser-iframe-test.html  # ★ V5(iframe 到達性・実行待ち)
 │   ├── v5b-gas-test.gs              # 旧 GAS 版(参考・実行不要。サーバー版 = V6)
-│   └── v6-metadata-check.mjs        # ★ V6(サーバー側メタデータ確認・実行待ち)
+│   └── v6-metadata-check.mjs        # ★ V6(youtubei.js / InnerTube の前提確認・v2・実行待ち)
 └── (P00-B 以降で) apps/api, apps/web, packages/shared, deploy/, scripts/
 ```
 
@@ -319,8 +354,9 @@ ytdl/
 - **`main` は PR #3 まで取り込み済み**(`12aeef8`)。現セッションの作業はその先端から始まっている
   (= 「main が古いので取り込む」作業は**完了済み・不要**)。
 - 主要コミット(新しい順):
+  - (2026-09-23) **DOC-4 = メタデータ取得を youtubei.js に変更**(yt-dlp は将来の DL 担当 = D13。V6 キットを v2 に更新)
   - (2026-09-23) **DOC-3 = 「最初からサーバーを立てて構築する」方針へ転換**(GAS を外し、Bun + Hono +
-    Nginx + Docker Compose / メタデータ = yt-dlp 主 + ページ抽出フォールバック / V6 キット追加)
+    Nginx + Docker Compose / メタデータ = yt-dlp 主 + ページ抽出フォールバック / V6 キット追加)(当時の内容。**DOC-4 で youtubei.js へ改訂**)
   - `4873f4e` **DOC-2 = 再生方式を iframe へ転換・DL 保留**(V5 キット追加)
   - `fab6fdc` **DOC-1 = cod-web 期ログの SKILL 化 + 残骸削除**(skills 5 件化・logs 45 件削除・.archive 削除)
   - `12aeef8` PR #3 マージ(前セッションのドキュメント整理・検証完了状態)
@@ -376,8 +412,12 @@ ytdl/
     確認して**」「今の目標から**動画ダウンロードは削除(コメントアウト)**し、**完全に機能する
     YouTube プロキシ閲覧サイト**を構築するのを目標にして」= **iframe 転換 + DL 保留**
   - (2026-09-23)「**プロジェクトは最初からサーバーを立てて作っていく方針です**」= GAS 期を設けず、
-    最初から自宅サーバー(Proxmox + Docker Compose)で構築する。選択 = Bun + Hono + Nginx /
-    yt-dlp 主 + ページ抽出フォールバック / 配備先 = 自宅 Proxmox
+    最初から自宅サーバー(Proxmox + Docker Compose)で構築する。選択 = Bun + Hono + Nginx / 配備先 = 自宅 Proxmox
+  - (2026-09-23)「**yt-dlp と youtubei.js を使うようにしてください**」「基本的には、**YouTube の情報取得・API
+    クライアント部分は youtubei.js、実際のメディア取得・ダウンロード部分は yt-dlp** という役割分担に」
+    → **D11 改訂(メタデータ = youtubei.js)+ D13(yt-dlp = 将来の DL 担当)**。さらに
+    「**現段階である YouTube クライアントの作成では youtubei.js のみ使う**。今後のダウンロード機能のときに yt-dlp」
+    と明示 → **現段階では yt-dlp を導入しない**。
 - ユーザーは**検証キットを実際に自分で実行して結果を貼付**してくれる(GAS デプロイ・スマホ操作まで
   協力してくれる)。手順は `verification/README.md` に書いてあるので「README を見て実行」で足りる。
 - ユーザーの端末環境(参考): Android 10 + SamsungBrowser 30(第 1 回 V2 実行に使用)。
@@ -391,15 +431,15 @@ ytdl/
 1. **V5 と V6 の実行をお願いする**(2026-09-23 の現行必須検証 = §8.1・§8.2):
    - `verification/v5-browser-iframe-test.html`(ブラウザで開く。`?probe=1` で自己チェック)
    - `verification/v6-metadata-check.mjs`(自宅サーバーまたは同じ回線の PC で `node` / `bun` で実行)
-   - 目的: ① **iframe 方式の成立可否**(`youtubeeducation.com` の描画・再生)② **サーバー側のメタデータ
-     取得可否**(yt-dlp / ページ抽出 / 検索 / トレンド)。NG の場合は結果を見て `ask_user` で相談する。
+   - 目的: ① **iframe 方式の成立可否**(`youtubeeducation.com` の描画・再生)② **youtubei.js / InnerTube が
+     自宅回線から通るか**(player / search の生 fetch と youtubei.js の実機能。NG なら `ask_user` で相談)。
 2. **P00 の GO 待ち**(V5/V6 の結果に依存しない P00-B/C は先行着手も可):
    - P00-B: サーバー骨格(`apps/api` = Bun + Hono + `deploy/` Docker Compose + Nginx 設定)
    - P00-C: web スキャフォールド(`apps/web` = Next.js + Tailwind v4 + M3 トークン + GSAP + ルータ骨格)
-   - P00-D: メタデータ解決(yt-dlp 主 + ページ抽出フォールバック + O9)+ vitest
+   - P00-D: メタデータ解決(**youtubei.js** + O9)+ vitest(クライアントはオフライン生成でテスト可 = §7.10)
    - P00-E: 配備(Compose 一式 + Proxmox LXC 手順 + TLS)
    - P00-F: M3 Expressive 基線(ホーム / watch スケルトン + API 接続)
-   - 推奨順: **B → C → D → E → F**(D の検索/トレンドは V6 の結果を反映する)
+   - 推奨順: **B → C → D → E → F**(D の実装は V6 の結果を反映する。B/C は先行可)
 3. **作業のたびに commit+push**(§11)。タスク ID をコミットメッセージに含める。
 4. `docs/task-list.md` は**常に最新に**(進捗の正本)。
 
@@ -423,8 +463,8 @@ YouTube プロキシ閲覧サイト(しあTube 相当の閲覧機能 + M3 Design
 - 再生 = iframe(`https://www.youtubeeducation.com/embed/{id}` を既定・公式 embed に差し替え可能)。
   しあTube の実コード(ajgpw/siatube@44ab1599)で同方式を確認済み(D1 改訂)。
 - 構成 = 自宅 Proxmox(LXC/VM)+ Docker Compose(Nginx + Bun/Hono API)。GAS 期は設けない(D10)。
-- メタデータ = yt-dlp 主 + ページ抽出フォールバック(D11)。signature decipherer / ストリーム URL 解決 /
-  DL 機構 = 保留(D3〜D5/D7/D9)。
+- メタデータ = **youtubei.js(InnerTube クライアント)**。**yt-dlp は将来の DL 担当**(現段階では導入しない = D13)。
+  signature decipherer / ストリーム URL 解決 / DL 機構 = 保留(D3〜D5/D7/D9)。
 - 次の検証 = V5(ブラウザ側 iframe 到達性)・V6(サーバー側メタデータ取得)。ユーザーが実行して結果を貼付する。
 - その後は P00 の GO 待ち(推奨順 B → C → D → E → F)。
 
@@ -441,11 +481,11 @@ YouTube プロキシ閲覧サイト(しあTube 相当の閲覧機能 + M3 Design
 
 | # | 項目 | 誰が | 状態 |
 |---|---|---|---|
-| 1 | ~~V1 検証(v1〜v1f)~~ | ユーザー + AI | **✅ 完了(2026-09-15)** = 抽出アルゴリズムはサーバー実装へ継承(復号は保留) |
+| 1 | ~~V1 検証(v1〜v1f)~~ | ユーザー + AI | **✅ 完了(2026-09-15)** = 抽出アルゴリズムは証跡として保存(現段階では実装しない)。V1-a は youtubei.js の前提確認として現行 |
 | 2 | **V5(ブラウザ側 iframe 到達性)** | ユーザー + AI | **未着手 = 次に依頼するキット**(§8.1) |
-| 3 | **V6(サーバー側メタデータ取得)** | ユーザー + AI | **未着手 = 次に依頼するキット**(§8.2) |
+| 3 | **V6(youtubei.js / InnerTube の前提確認)** | ユーザー + AI | **未着手 = 次に依頼するキット**(§8.2・キット v2) |
 | 4 | **P00 開始の GO** | ユーザー | **待機中** |
 | 5 | P00-B ~ P00-F の実装 | AI | 未着手(GO が来たら着手可・推奨順 B → C → D → E → F) |
-| 6 | 動画 DL 機能 | - | **保留(実装対象外)**。設計・調査は docs に保存(再開時に参照) |
+| 6 | 動画 DL 機能 | - | **保留(実装対象外)**。再開時は **yt-dlp が担当**(D13)。設計・調査は docs に保存 |
 | 7 | 旧 GAS キット(v1〜v3b・v5b)の実行 | - | **不要**(GAS を実装しないため。参考として保存) |
 | 8 | PR(main 向け)の作成・マージ | ユーザー | セッション固定ブランチごとに判断 |

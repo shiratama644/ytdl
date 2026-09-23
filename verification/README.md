@@ -11,7 +11,7 @@
 ## ⏭ 次に実行するもの(2026-09-23 追加・現行スコープで必須): V5(ブラウザ)と V6(サーバー)
 
 > 仕様 = [`../docs/HANDOVER.md`](../docs/HANDOVER.md) §8.1(V5)・§8.2(V6) / 結果の記録先
-> 判定結果は [VERIFICATION_P0.md §V5](../docs/research/VERIFICATION_P0.md) と計画書 §10.8 に反映します。
+> 判定結果は [VERIFICATION_P0.md §V5](../docs/research/VERIFICATION_P0.md) と計画書 §10.9.1 に反映します。
 
 ### 1. キット①(ブラウザで開く): [`v5-browser-iframe-test.html`](v5-browser-iframe-test.html) — 3〜5 分
 
@@ -30,42 +30,47 @@
 > **可能であれば**: 学校・職場の**フィルタが有効なネットワーク**で実行してください(到達性の確認が目的のため、
 > その環境の結果が最も重要です)。自宅回線では「正常に再生できる」ことの確認になります。
 
-### 2. キット②(V6・サーバー側): [`v6-metadata-check.mjs`](v6-metadata-check.mjs) — 1〜2 分
+### 2. キット②(V6・サーバー側): [`v6-metadata-check.mjs`](v6-metadata-check.mjs) — 1〜3 分(**キット v2 = youtubei.js**)
 
-> **なぜサーバー側でやるか**: server-first の方針(D10)で、メタデータは **サーバー(自宅 Proxmox LXC/VM)の
-> yt-dlp 主経路 + ページ抽出フォールバック** が担います。**実行するネットワーク(自宅回線)から**
-> ① yt-dlp が使えるか ② `--dump-single-json` で必要な項目が取れるか ③ ページ抽出(フォールバック)
-> ④ 検索結果ページ ⑤ トレンド が取得できるかを、このキット 1 つで確認します。
-> **依存パッケージ不要**(Node 18+ / Bun のどちらでも動きます)。
+> **なぜサーバー側でやるか**: server-first の方針(D10)で、メタデータは **サーバー(自宅 Proxmox LXC/VM)** が
+> **`youtubei.js`(InnerTube の JavaScript クライアント)** で取得します(D11 改訂)。**実行するネットワーク(自宅回線)から**
+> それが通るかを、このキットで段階的に確認します(サンドボックスからは YouTube に到達できません)。
+> **どのモードも 1 回の実行 = リクエスト数は最小**です(**10 分未満の再実行はキットが中断**。意図的な再実行のみ `--force`)。
 
-1. キットをダウンロード(または clone 済みのリポジトリから開く): [`v6-metadata-check.mjs`](v6-metadata-check.mjs)
-2. **プロジェクトを配備する予定のマシン**(Proxmox の LXC/VM、または普段使う PC)で、まず **probe**(ネットワーク 0 回)を実行:
+1. キットを用意する(clone 済みのリポジトリの `verification/` を開く)。
+2. **まず probe(ネットワーク 0 回)** — 依存なしで動きます:
    ```bash
    node v6-metadata-check.mjs
    ```
-   → `ytdlp.found` / `ytdlp.version` と環境情報が JSON で表示されます。
-   **`ytdlp.found = false` の場合**は yt-dlp を入れてから進めてください(例: `winget install yt-dlp` / `pipx install yt-dlp` / 公式バイナリ)。
-3. yt-dlp が入ったら、**まとめて 1 回**実行(**推奨**):
+   → 環境 / `youtubeiPkg`(youtubei.js が見つかったか)/ `ytdlp`(将来の DL 用の記録)が出ます。
+3. **youtubei.js を入れる**(キットと同じディレクトリで):
    ```bash
-   node v6-metadata-check.mjs --mode=all
+   npm install youtubei.js        # 別の場所に入れた場合は --deps=<そのパス>
    ```
-   → 2〜5 を順に実行し、**数秒〜1〜2 分**で JSON を出力して `verification/v6-result.json` に保存します。
-   - 外部へのリクエストは**この 1 回で 3〜4 件**(ページ 3 件 + yt-dlp 1 件)です。リクエスト間には待ちを入れています。
-   - **429(レート制限)の JSON/エラーが出た場合**は、その出力を送った上で **10〜30 分待ってから**同じコマンドをもう 1 回だけ実行してください。
-4. 個別に再確認したい場合(**必ず 10〜30 分空けて 1 つずつ**):
+   `youtubeiPkg.resolved = false` のままでも **`--mode=probe` / `--mode=innertube` は実行できます**
+   (youtubei.js を使うのは `--mode=youtubei` のみ)。
+4. **InnerTube の前提確認(生 fetch = 4 リクエスト)**:
    ```bash
-   node v6-metadata-check.mjs --mode=video        # yt-dlp の主経路
-   node v6-metadata-check.mjs --mode=page         # ページ抽出フォールバック
-   node v6-metadata-check.mjs --mode=search --q=料理
-   node v6-metadata-check.mjs --mode=trend
-   node v6-metadata-check.mjs --mode=ytsearch --q=料理   # yt-dlp の検索が使えるか
+   node v6-metadata-check.mjs --mode=innertube
    ```
-   - 前回の実行から **10 分未満**の場合はキット側が中断します(意図的な再実行のみ `--force`)。
-5. 出力された **JSON(または `verification/v6-result.json`)をそのまま送付**してください
+   → ① watch ページから API キー・クライアント版が取れるか ② `/youtubei/v1/player` ③ `/youtubei/v1/search`。
+   **ここが NG の場合は youtubei.js の実機能も通らない可能性が高い**ため、`--mode=youtubei` は続けずに結果を送ってください。
+5. **youtubei.js の実機能**(まず基本の 2 ステップ):
+   ```bash
+   node v6-metadata-check.mjs --mode=youtubei
+   ```
+   → 検索(`--q=料理`。`--q=` で変更)と動画情報(既定 = `jNQXAC9IVRw`。`--id=` で変更)を確認します。**OK なら**:
+   ```bash
+   node v6-metadata-check.mjs --mode=youtubei --steps=all
+   ```
+   → チャンネル / プレイリスト / ホーム / トレンド / Live Chat も確認します(`--channel=` / `--playlist=` / `--live=` で対象を変更可)。
+6. (任意) **yt-dlp の有無**(将来の DL 用の記録): `node v6-metadata-check.mjs --mode=ytdlp`
+7. **出力された JSON(または `verification/v6-result.json`)をそのまま送付**してください
    (チャット貼付 or [`Verification-Results.md`](Verification-Results.md) へコミット)。
 
 > **補足**: 旧 `v5b-gas-test.gs` の検索・トレンド確認(V5-4)は **GAS を採用しない決定(D10)により実行不要**です
-> (参考として保存)。同じ確認はこの V6 の ④⑤ が担います。
+> (参考として保存)。同じ確認は V6 の `--mode=youtubei`(`search` / `trending`)が担います。
+> **429(レート制限)が出た場合**は、その出力を送った上で **10〜30 分待ってから**同じコマンドをもう 1 回だけ実行してください。
 
 ## サンドボックス側で実施済み
 

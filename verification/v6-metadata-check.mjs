@@ -1,27 +1,36 @@
 #!/usr/bin/env node
 /**
- * V6 検証キット: サーバー側メタデータ取得の確認(自宅環境で実行)
+ * V6 検証キット: サーバー側メタデータ取得の確認(自宅環境で実行) — v2 (2026-09-23)
  *
- * 目的(2026-09-23 の server-first 方針 = HANDOVER §8.2):
- *   1. yt-dlp の有無と版
- *   2. yt-dlp --dump-single-json で取得できる項目(メタデータ)
- *   3. ページ抽出フォールバック(V1-d のアルゴリズム = /watch/ の ytInitialPlayerResponse)
- *   4. 検索結果ページ(/results?search_query=)の抽出
- *   5. トレンド(/feed/trending)の抽出
+ * 方針(2026-09-23 ユーザー指示): 現段階の YouTube クライアント(情報取得)は **youtubei.js**。
+ *   - 検索 / 動画・チャンネル・プレイリストのメタデータ / 統計 / Live Chat = youtubei.js(InnerTube クライアント)
+ *   - yt-dlp は **将来のダウンロード機能**用(現段階では実装しない。このキットでは存在確認のみ)
+ *
+ * 確認したいこと:
+ *   1. youtubei.js が解決・実行できるか(版・import・クライアント生成)
+ *   2. **InnerTube(生 fetch)が自宅の回線から通るか** = youtubei.js の前提条件(重要)
+ *      2-a. watch ページから API キー / クライアント版を取得できるか
+ *      2-b. /youtubei/v1/player に POST して playabilityStatus / videoDetails が返るか
+ *      2-c. /youtubei/v1/search に POST して検索結果(動画)が返るか
+ *   3. youtubei.js の実機能(search / getInfo / getChannel / getPlaylist / ホーム / トレンド / Live Chat)
+ *   4. yt-dlp の有無と版(将来の DL 機能用の記録)
  *
  * 使い方(依存パッケージ不要。Node 18+ / Bun のどちらでも動きます):
- *   node v6-metadata-check.mjs                      # probe: 環境と yt-dlp の確認だけ(ネットワーク 0 回)
- *   node v6-metadata-check.mjs --mode=all           # 2〜5 をまとめて実行(推奨。ネットワーク ~4 回・1〜2 分)
- *   node v6-metadata-check.mjs --mode=video         # 2(+3)だけ
- *   node v6-metadata-check.mjs --mode=page          # 3 だけ
- *   node v6-metadata-check.mjs --mode=search --q=料理
- *   node v6-metadata-check.mjs --mode=trend
- *   node v6-metadata-check.mjs --mode=ytsearch --q=料理   # yt-dlp の ytsearch が使えるかの確認
+ *   node v6-metadata-check.mjs                         # probe: 環境とパッケージ解決の確認(ネットワーク 0 回)
+ *   node v6-metadata-check.mjs --mode=innertube        # InnerTube の生 fetch(3 リクエスト)
+ *   node v6-metadata-check.mjs --mode=youtubei         # youtubei.js(要インストール。既定 steps = search,video)
+ *   node v6-metadata-check.mjs --mode=youtubei --steps=all
+ *   node v6-metadata-check.mjs --mode=ytdlp            # 参考: yt-dlp の版(将来の DL 用)
+ *   node v6-metadata-check.mjs --mode=all              # innertube + youtubei(既定 steps)= 5 リクエスト
+ *
+ * youtubei.js の導入(キットと同じディレクトリで実行する場合):
+ *   npm install youtubei.js        # または bun add youtubei.js
+ *   (どこか別のディレクトリに入れた場合は --deps=<そのパス> を付ける)
  *
  * レート制限(429)対策 = 必須:
  *   - **連続で実行しない**。1 回実行したら 10〜30 分空ける(このキットは前回の実行から
  *     10 分未満のネットワーク実行を検出したら中断します。意図的に再実行する時だけ --force を付ける)。
- *   - 1 回の実行で外部へ出るリクエストは最小限(ページ取得は 1 回ずつ・間に待ちを入れる)。
+ *   - 1 回の実行で外部へ出るリクエストは最小限(各リクエストの間に待ちを入れる)。
  *
  * 出力:
  *   - 標準出力に JSON(これをそのまま送付してください)
@@ -29,74 +38,60 @@
  */
 import { spawn } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RESULT_PATH = join(HERE, 'v6-result.json');
 const STATE_PATH = join(tmpdir(), 'ytdl-v6-lastrun.json');
 
 const MIN_GAP_MS = 10 * 60 * 1000; // 前回実行から 10 分未満なら中断(--force で回避)
-const REQUEST_TIMEOUT_MS = 20000;
-const YTDLP_TIMEOUT_MS = 60000;
+const REQUEST_TIMEOUT_MS = 25000;
+const CHILD_TIMEOUT_MS = 20000;
 const BETWEEN_REQUESTS_MS = 4000;
 
 const DEFAULT_VIDEO_ID = 'jNQXAC9IVRw'; // 「Me at the zoo」(公開・短尺・安定)
 const DEFAULT_QUERY = '料理';
+const DEFAULT_CHANNEL_ID = 'UC_x5XG1OV2P6uZZ5FSM9Ttw'; // Google Developers(公開・安定)
+const DEFAULT_PLAYLIST_ID = 'PLrEnWoR732-BHrPp_Pm8_VleD68f9s14-'; // Google Developers の公開プレイリスト
 
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
-const YTDLP_KEYS = [
-  'id',
-  'title',
-  'description',
-  'uploader',
-  'uploader_id',
-  'channel',
-  'channel_id',
-  'duration',
-  'view_count',
-  'like_count',
-  'comment_count',
-  'upload_date',
-  'thumbnail',
-  'thumbnails',
-  'categories',
-  'tags',
-  'webpage_url',
-  'formats',
-  'requested_formats',
-  'subtitles',
-  'automatic_captions',
-  'chapters',
-  'heatmap',
-  'availability',
-  'age_limit',
-];
+const ALL_STEPS = ['search', 'video', 'channel', 'playlist', 'home', 'trending', 'livechat'];
 
 // ---------------------------------------------------------------- utilities
 
-function nowIso() {
-  return new Date().toISOString();
-}
-
-function log(msg) {
-  process.stderr.write(`# ${msg}\n`);
-}
-
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
+const nowIso = () => new Date().toISOString();
+const log = (msg) => process.stderr.write(`# ${msg}\n`);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function parseArgs(argv) {
-  const out = { mode: 'probe', id: DEFAULT_VIDEO_ID, q: DEFAULT_QUERY, force: false };
+  const out = {
+    mode: 'probe',
+    id: DEFAULT_VIDEO_ID,
+    q: DEFAULT_QUERY,
+    channel: DEFAULT_CHANNEL_ID,
+    playlist: DEFAULT_PLAYLIST_ID,
+    live: null,
+    deps: null,
+    steps: ['search', 'video'],
+    force: false,
+  };
   for (const a of argv) {
     if (a.startsWith('--mode=')) out.mode = a.slice('--mode='.length);
     else if (a.startsWith('--id=')) out.id = a.slice('--id='.length);
     else if (a.startsWith('--q=')) out.q = a.slice('--q='.length);
-    else if (a === '--force') out.force = true;
+    else if (a.startsWith('--channel=')) out.channel = a.slice('--channel='.length);
+    else if (a.startsWith('--playlist=')) out.playlist = a.slice('--playlist='.length);
+    else if (a.startsWith('--live=')) out.live = a.slice('--live='.length);
+    else if (a.startsWith('--deps=')) out.deps = a.slice('--deps='.length);
+    else if (a.startsWith('--steps=')) {
+      const v = a.slice('--steps='.length);
+      out.steps = v === 'all' ? [...ALL_STEPS] : v.split(',').map((s) => s.trim()).filter(Boolean);
+    } else if (a === '--force') out.force = true;
   }
   return out;
 }
@@ -118,9 +113,9 @@ function writeState(mode) {
 }
 
 function guardRateLimit(mode) {
-  if (mode === 'probe') return { ok: true, warnings: [] };
+  if (mode === 'probe' || mode === 'ytdlp') return { ok: true, warnings: [] };
   const st = readState();
-  if (!st || !st.at) return { ok: true, warnings: [] };
+  if (!st?.at) return { ok: true, warnings: [] };
   const elapsed = Date.now() - Date.parse(st.at);
   if (Number.isFinite(elapsed) && elapsed < MIN_GAP_MS) {
     return {
@@ -135,7 +130,7 @@ function guardRateLimit(mode) {
 }
 
 /** 子プロセスを実行して { code, stdout, stderr, timedOut, error } を返す(例外は投げない) */
-function run(cmd, args, timeoutMs) {
+function run(cmd, args, timeoutMs = CHILD_TIMEOUT_MS) {
   return new Promise((resolve) => {
     let child;
     try {
@@ -172,13 +167,20 @@ function run(cmd, args, timeoutMs) {
   });
 }
 
-async function fetchText(url) {
+async function fetchWithTimeout(url, init = {}) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const res = await fetch(url, {
-      redirect: 'follow',
-      signal: ctrl.signal,
+    const res = await fetch(url, { redirect: 'follow', signal: ctrl.signal, ...init });
+    return res;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchText(url) {
+  try {
+    const res = await fetchWithTimeout(url, {
       headers: {
         'user-agent': UA,
         'accept-language': 'ja-JP,ja;q=0.9,en;q=0.8',
@@ -186,286 +188,315 @@ async function fetchText(url) {
       },
     });
     const body = await res.text();
-    return { ok: res.ok, status: res.status, url: res.url, bytes: body.length, body };
+    return { ok: res.ok, status: res.status, url: res.url, bytes: body.length, body, error: null };
   } catch (e) {
     return { ok: false, status: null, url, bytes: 0, body: '', error: String(e) };
-  } finally {
-    clearTimeout(timer);
   }
 }
 
-// -------------------------------------------------- JSON extraction (V1-d)
-
-/** `{` の位置から括弧バランスで 1 個の JSON オブジェクトを切り出す(文字列内の括弧は無視) */
-function balancedSlice(text, start) {
-  let depth = 0;
-  let inStr = false;
-  let esc = false;
-  for (let i = start; i < text.length; i += 1) {
-    const c = text[i];
-    if (inStr) {
-      if (esc) esc = false;
-      else if (c === '\\') esc = true;
-      else if (c === '"') inStr = false;
-      continue;
-    }
-    if (c === '"') {
-      inStr = true;
-      continue;
-    }
-    if (c === '{') depth += 1;
-    else if (c === '}') {
-      depth -= 1;
-      if (depth === 0) return text.slice(start, i + 1);
-    }
-  }
-  return null;
-}
-
-/** 代入文 `<marker> = {` の候補を全て列挙する(初回出現が偽構文のことがある = V1-c の実測) */
-function candidateSlices(html, marker) {
-  const re = new RegExp(`${marker}\\s*=\\s*\\{`, 'g');
-  const out = [];
-  let m = re.exec(html);
-  while (m && out.length < 8) {
-    const braceAt = html.indexOf('{', m.index);
-    const slice = braceAt >= 0 ? balancedSlice(html, braceAt) : null;
-    if (slice) out.push(slice);
-    m = re.exec(html);
-  }
-  return out;
-}
-
-function pickParsed(slices, requiredKeys) {
-  for (const s of slices) {
+async function postJson(url, body) {
+  try {
+    const res = await fetchWithTimeout(url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'user-agent': UA,
+        'accept-language': 'ja-JP,ja;q=0.9,en;q=0.8',
+        origin: 'https://www.youtube.com',
+      },
+      body: JSON.stringify(body),
+    });
+    const text = await res.text();
+    let json = null;
     try {
-      const obj = JSON.parse(s);
-      if (requiredKeys.every((k) => obj && typeof obj === 'object' && k in obj)) return obj;
+      json = JSON.parse(text);
     } catch {
-      /* 次の候補へ */
+      /* JSON でない応答(429 の HTML 等) */
     }
+    return { ok: res.ok, status: res.status, bytes: text.length, json, head: text.slice(0, 200), error: null };
+  } catch (e) {
+    return { ok: false, status: null, bytes: 0, json: null, head: '', error: String(e) };
   }
-  return null;
 }
 
-function countOccurrences(text, marker) {
-  const re = new RegExp(`${marker}\\s*=\\s*\\{`, 'g');
+/** オブジェクトを再帰的に走査し、指定キーを持つ値の件数を数える(件数上限つき) */
+function countKey(node, key, limit = 500) {
   let n = 0;
-  while (re.exec(text)) n += 1;
+  const stack = [node];
+  while (stack.length && n < limit) {
+    const cur = stack.pop();
+    if (!cur || typeof cur !== 'object') continue;
+    if (Object.prototype.hasOwnProperty.call(cur, key)) n += 1;
+    for (const v of Object.values(cur)) if (v && typeof v === 'object') stack.push(v);
+  }
   return n;
 }
 
-/** オブジェクトを再帰的に走査して条件に合う値を集める(件数上限つき) */
-function collect(node, pred, limit = 200) {
+function collectTitles(node, key, limit = 5) {
   const out = [];
   const stack = [node];
   while (stack.length && out.length < limit) {
     const cur = stack.pop();
     if (!cur || typeof cur !== 'object') continue;
-    if (pred(cur)) out.push(cur);
-    for (const v of Object.values(cur)) {
-      if (v && typeof v === 'object') stack.push(v);
+    const r = cur[key];
+    if (r?.title) {
+      const t = r.title.runs?.[0]?.text ?? r.title.simpleText ?? null;
+      if (t) out.push(t);
     }
+    for (const v of Object.values(cur)) if (v && typeof v === 'object') stack.push(v);
   }
   return out;
 }
 
-function rendererTitle(renderer) {
-  const t = renderer?.title;
-  if (typeof t === 'string') return t;
-  if (t?.runs?.[0]?.text) return t.runs[0].text;
-  if (t?.simpleText) return t.simpleText;
-  return null;
-}
-
-function summarizeItems(data) {
-  const videos = collect(data, (o) => 'videoRenderer' in o && o.videoRenderer?.videoId);
-  const rich = collect(data, (o) => 'richItemRenderer' in o);
-  const playlists = collect(data, (o) => 'playlistRenderer' in o);
-  const channels = collect(data, (o) => 'channelRenderer' in o);
-  return {
-    videoCount: videos.length,
-    richItemCount: rich.length,
-    playlistCount: playlists.length,
-    channelCount: channels.length,
-    sampleTitles: videos.slice(0, 5).map((o) => rendererTitle(o.videoRenderer)),
-    sampleVideoIds: videos.slice(0, 5).map((o) => o.videoRenderer?.videoId ?? null),
-  };
-}
-
-// ------------------------------------------------------------------ checks
+// -------------------------------------------------------------- 1. 環境確認
 
 async function checkYtdlp() {
   const version = await run('yt-dlp', ['--version'], 15000);
   if (version.code === 0 && version.stdout.trim()) {
-    return { found: true, version: version.stdout.trim(), command: 'yt-dlp', error: null };
-  }
-  const alt = await run('yt-dlp.exe', ['--version'], 15000);
-  if (alt.code === 0 && alt.stdout.trim()) {
-    return { found: true, version: alt.stdout.trim(), command: 'yt-dlp.exe', error: null };
+    return { found: true, version: version.stdout.trim(), error: null };
   }
   return {
     found: false,
     version: null,
-    command: 'yt-dlp',
-    error: (version.stderr || version.error || '').trim().slice(0, 300) || 'not found',
+    error: (version.stderr || version.error || '').trim().slice(0, 200) || 'not found',
   };
 }
 
-function summarizeYtdlpJson(json) {
-  const missing = YTDLP_KEYS.filter((k) => !(k in json));
-  const formats = Array.isArray(json.formats) ? json.formats : [];
-  const sample = formats.slice(0, 3).map((f) => ({
-    format_id: f?.format_id ?? null,
-    ext: f?.ext ?? null,
-    height: f?.height ?? null,
-    has_url: typeof f?.url === 'string',
-    has_signature_cipher: typeof f?.signatureCipher === 'string' || typeof f?.cipher === 'string',
-    protocol: f?.protocol ?? null,
-  }));
-  return {
-    ok: true,
-    source: 'yt-dlp',
-    presentKeys: YTDLP_KEYS.filter((k) => k in json),
-    missingKeys: missing,
-    id: json.id ?? null,
-    title: json.title ?? null,
-    uploader: json.uploader ?? json.channel ?? null,
-    duration: json.duration ?? null,
-    viewCount: json.view_count ?? null,
-    uploadDate: json.upload_date ?? null,
-    thumbnail: typeof json.thumbnail === 'string' ? json.thumbnail.slice(0, 120) : null,
-    formatCount: formats.length,
-    formatsSample: sample,
-    formatKeys: formats[0] ? Object.keys(formats[0]).slice(0, 30) : [],
-    hasAutoCaptions: !!json.automatic_captions && Object.keys(json.automatic_captions).length > 0,
-    hasChapters: Array.isArray(json.chapters) && json.chapters.length > 0,
-  };
-}
-
-async function checkVideoViaYtdlp(id, command) {
-  const url = `https://www.youtube.com/watch?v=${id}`;
-  const r = await run(
-    command,
-    ['--dump-single-json', '--no-warnings', '--no-playlist', '--skip-download', url],
-    YTDLP_TIMEOUT_MS,
-  );
-  const firstLine = r.stdout.split('\n').find((l) => l.trim().startsWith('{'));
-  if (r.code === 0 && firstLine) {
+function findPackageVersion(entryPath) {
+  let dir = dirname(entryPath);
+  for (let i = 0; i < 6; i += 1) {
+    const candidate = join(dir, 'package.json');
     try {
-      const json = JSON.parse(firstLine);
-      return { ...summarizeYtdlpJson(json), exitCode: r.code, timedOut: r.timedOut };
+      const pkg = JSON.parse(readFileSync(candidate, 'utf8'));
+      if (pkg?.name === 'youtubei.js') return { version: pkg.version ?? null, path: candidate };
+    } catch {
+      /* 親ディレクトリへ */
+    }
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return { version: null, path: null };
+}
+
+function resolveYoutubei(depsDir) {
+  const bases = [depsDir, process.cwd(), HERE].filter(Boolean);
+  const tried = [];
+  for (const base of bases) {
+    try {
+      const req = createRequire(join(base, '_v6-resolve.cjs'));
+      const entry = req.resolve('youtubei.js');
+      const info = findPackageVersion(entry);
+      return { resolved: true, base, entry, version: info.version, tried };
     } catch (e) {
-      return { ok: false, source: 'yt-dlp', error: `JSON parse 失敗: ${String(e)}`, exitCode: r.code };
+      tried.push({ base, error: String(e).slice(0, 120) });
     }
   }
-  return {
-    ok: false,
-    source: 'yt-dlp',
-    exitCode: r.code,
-    timedOut: r.timedOut,
-    stderrTail: (r.stderr || r.error || '').trim().split('\n').slice(-5).join(' / ').slice(0, 600),
-  };
+  return { resolved: false, base: null, entry: null, version: null, tried };
 }
 
-async function checkPage(id) {
-  const url = `https://www.youtube.com/watch?v=${id}&hl=ja&gl=JP`;
-  const res = await fetchText(url);
-  const markers = {
-    ytInitialPlayerResponse: countOccurrences(res.body, 'ytInitialPlayerResponse'),
-    ytInitialData: countOccurrences(res.body, 'ytInitialData'),
-  };
-  const player = pickParsed(candidateSlices(res.body, 'ytInitialPlayerResponse'), [
-    'playabilityStatus',
-    'videoDetails',
-  ]);
-  const streaming = player?.streamingData ?? null;
-  const formats = Array.isArray(streaming?.formats) ? streaming.formats : [];
-  const adaptive = Array.isArray(streaming?.adaptiveFormats) ? streaming.adaptiveFormats : [];
-  const all = [...formats, ...adaptive];
-  return {
-    url,
-    status: res.status,
-    ok: res.ok,
-    bytes: res.bytes,
-    title: res.body.match(/<title>([^<]{0,120})<\/title>/)?.[1] ?? null,
-    markers,
-    parsed: !!player,
-    playabilityStatus: player?.playabilityStatus?.status ?? null,
-    playabilityReason: player?.playabilityStatus?.reason ?? null,
-    videoTitle: player?.videoDetails?.title ?? null,
-    videoAuthor: player?.videoDetails?.author ?? null,
-    lengthSeconds: player?.videoDetails?.lengthSeconds ?? null,
-    viewCount: player?.videoDetails?.viewCount ?? null,
-    formatCount: all.length,
-    formatUrlCount: all.filter((f) => typeof f?.url === 'string').length,
-    formatSignatureCipherCount: all.filter((f) => f?.signatureCipher || f?.cipher).length,
-    error: res.error ?? null,
-  };
-}
+// ------------------------------------------ 2. InnerTube 生 fetch(前提条件)
 
-async function checkSearch(q) {
-  const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}&hl=ja&gl=JP`;
-  const res = await fetchText(url);
-  const data = pickParsed(candidateSlices(res.body, 'ytInitialData'), ['contents']);
-  return {
-    url,
-    status: res.status,
-    ok: res.ok,
-    bytes: res.bytes,
-    markers: {
-      ytInitialData: countOccurrences(res.body, 'ytInitialData'),
-      ytInitialPlayerResponse: countOccurrences(res.body, 'ytInitialPlayerResponse'),
+async function checkInnertube(id, q) {
+  const out = { watchPage: null, apiKeyFound: false, clientVersion: null, player: null, search: null };
+
+  const page = await fetchText(`https://www.youtube.com/watch?v=${id}&hl=ja&gl=JP`);
+  const apiKey = page.body.match(/"INNERTUBE_API_KEY":"([^"]+)"/)?.[1] ?? null;
+  const clientVersion = page.body.match(/"INNERTUBE_CLIENT_VERSION":"([\d.]+)"/)?.[1] ?? null;
+  out.watchPage = {
+    status: page.status,
+    ok: page.ok,
+    bytes: page.bytes,
+    title: page.body.match(/<title>([^<]{0,120})<\/title>/)?.[1] ?? null,
+    inlineDataMarkers: {
+      ytInitialPlayerResponse: (page.body.match(/ytInitialPlayerResponse\s*=\s*\{/g) ?? []).length,
+      ytInitialData: (page.body.match(/ytInitialData\s*=\s*\{/g) ?? []).length,
     },
-    parsed: !!data,
-    items: data ? summarizeItems(data) : null,
-    error: res.error ?? null,
+    error: page.error,
   };
-}
-
-async function checkTrend() {
-  const url = 'https://www.youtube.com/feed/trending?hl=ja&gl=JP';
-  const res = await fetchText(url);
-  const data = pickParsed(candidateSlices(res.body, 'ytInitialData'), ['contents']);
-  return {
-    url,
-    status: res.status,
-    ok: res.ok,
-    bytes: res.bytes,
-    markers: { ytInitialData: countOccurrences(res.body, 'ytInitialData') },
-    parsed: !!data,
-    items: data ? summarizeItems(data) : null,
-    error: res.error ?? null,
-  };
-}
-
-async function checkYtdlpSearch(q, command) {
-  const r = await run(
-    command,
-    ['--dump-single-json', '--no-warnings', '--flat-playlist', '--playlist-end', '10', `ytsearch10:${q}`],
-    YTDLP_TIMEOUT_MS,
-  );
-  const firstLine = r.stdout.split('\n').find((l) => l.trim().startsWith('{'));
-  if (r.code === 0 && firstLine) {
-    try {
-      const json = JSON.parse(firstLine);
-      const entries = Array.isArray(json.entries) ? json.entries : [];
-      return {
-        ok: true,
-        entryCount: entries.length,
-        sampleTitles: entries.slice(0, 5).map((e) => e?.title ?? null),
-        sampleIds: entries.slice(0, 5).map((e) => e?.id ?? null),
-      };
-    } catch (e) {
-      return { ok: false, error: `JSON parse 失敗: ${String(e)}` };
-    }
+  out.apiKeyFound = !!apiKey;
+  out.clientVersion = clientVersion;
+  if (!apiKey || !clientVersion) {
+    out.error = 'API キー / クライアント版がページから取得できませんでした(この時点で youtubei.js の前提が未確認)';
+    return out;
   }
-  return {
-    ok: false,
-    exitCode: r.code,
-    timedOut: r.timedOut,
-    stderrTail: (r.stderr || r.error || '').trim().split('\n').slice(-5).join(' / ').slice(0, 600),
+
+  const context = {
+    client: { clientName: 'WEB', clientVersion, hl: 'ja', gl: 'JP' },
   };
+
+  await sleep(BETWEEN_REQUESTS_MS);
+  const player = await postJson(`https://www.youtube.com/youtubei/v1/player?key=${encodeURIComponent(apiKey)}`, {
+    context,
+    videoId: id,
+    contentCheckOk: true,
+    racyCheckOk: true,
+  });
+  const pd = player.json;
+  const formats = pd?.streamingData?.formats ?? [];
+  const adaptive = pd?.streamingData?.adaptiveFormats ?? [];
+  out.player = {
+    status: player.status,
+    ok: player.ok,
+    bytes: player.bytes,
+    jsonParsed: !!pd,
+    playabilityStatus: pd?.playabilityStatus?.status ?? null,
+    playabilityReason: pd?.playabilityStatus?.reason ?? null,
+    videoTitle: pd?.videoDetails?.title ?? null,
+    author: pd?.videoDetails?.author ?? null,
+    lengthSeconds: pd?.videoDetails?.lengthSeconds ?? null,
+    viewCount: pd?.videoDetails?.viewCount ?? null,
+    formatCount: formats.length + adaptive.length,
+    formatUrlCount: [...formats, ...adaptive].filter((f) => typeof f?.url === 'string').length,
+    formatSignatureCipherCount: [...formats, ...adaptive].filter((f) => f?.signatureCipher || f?.cipher).length,
+    error: player.error,
+  };
+
+  await sleep(BETWEEN_REQUESTS_MS);
+  const search = await postJson(`https://www.youtube.com/youtubei/v1/search?key=${encodeURIComponent(apiKey)}`, {
+    context,
+    query: q,
+  });
+  const sd = search.json;
+  out.search = {
+    status: search.status,
+    ok: search.ok,
+    bytes: search.bytes,
+    jsonParsed: !!sd,
+    videoRendererCount: sd ? countKey(sd, 'videoRenderer') : null,
+    sampleTitles: sd ? collectTitles(sd, 'videoRenderer') : null,
+    error: search.error,
+  };
+  return out;
+}
+
+// ------------------------------------------------ 3. youtubei.js の実機能
+
+async function checkYoutubei(resolved, args) {
+  const out = { clientCreated: false, clientName: null, steps: {}, error: null };
+  if (!resolved.resolved) {
+    out.error = 'youtubei.js が解決できません(導入していない場合は下記の手順でインストールしてください)';
+    return out;
+  }
+  let mod;
+  try {
+    mod = await import(pathToFileURL(resolved.entry).href);
+  } catch (e) {
+    out.error = `import 失敗: ${String(e).slice(0, 300)}`;
+    return out;
+  }
+  const { Innertube } = mod;
+  if (!Innertube) {
+    out.error = 'Innertube が export に存在しません(版の不一致?)';
+    return out;
+  }
+
+  let yt;
+  try {
+    yt = await Innertube.create({
+      lang: 'ja',
+      location: 'JP',
+      generate_session_locally: true,
+      retrieve_player: false,
+      retrieve_innertube_config: false,
+    });
+    out.clientCreated = true;
+    out.clientName = yt.session?.context?.client?.clientName ?? null;
+  } catch (e) {
+    out.error = `Innertube.create 失敗: ${String(e).slice(0, 300)}`;
+    return out;
+  }
+
+  let first = true;
+  const step = async (name, fn) => {
+    if (!args.steps.includes(name)) return;
+    if (!first) await sleep(BETWEEN_REQUESTS_MS);
+    first = false;
+    const t0 = Date.now();
+    try {
+      out.steps[name] = { ok: true, ms: Date.now() - t0, ...(await fn()) };
+    } catch (e) {
+      out.steps[name] = { ok: false, ms: Date.now() - t0, error: String(e).slice(0, 300) };
+    }
+  };
+
+  await step('search', async () => {
+    const r = await yt.search(args.q, { type: 'video' });
+    return {
+      estimatedResults: r.estimated_results ?? null,
+      videoCount: r.videos?.length ?? null,
+      sampleTitles: (r.videos ?? []).slice(0, 5).map((v) => v?.title?.text ?? v?.title?.toString?.() ?? null),
+    };
+  });
+
+  await step('video', async () => {
+    const info = await yt.getInfo(args.id);
+    const b = info.basic_info ?? {};
+    return {
+      title: b.title ?? null,
+      author: b.author ?? null,
+      duration: b.duration ?? null,
+      viewCount: b.view_count ?? null,
+      isLive: b.is_live ?? null,
+      thumbnailCount: Array.isArray(b.thumbnail) ? b.thumbnail.length : null,
+      hasStreamingData: !!info.streaming_data,
+      playabilityStatus: info.playability_status?.status ?? null,
+      primaryKeys: Object.keys(info).slice(0, 20),
+    };
+  });
+
+  await step('channel', async () => {
+    const c = await yt.getChannel(args.channel);
+    return {
+      title: c.metadata?.title ?? null,
+      videoCount: c.videos?.length ?? null,
+      hasLiveStreams: c.has_live_streams ?? null,
+    };
+  });
+
+  await step('playlist', async () => {
+    const p = await yt.getPlaylist(args.playlist);
+    return {
+      title: p.info?.title?.toString?.() ?? null,
+      totalItems: p.info?.total_items ?? null,
+      videoCount: p.videos?.length ?? null,
+    };
+  });
+
+  await step('home', async () => {
+    const h = await yt.getHomeFeed();
+    return { videoCount: h.videos?.length ?? null, hasContinuation: h.has_continuation ?? null };
+  });
+
+  await step('trending', async () => {
+    // トレンドは専用メソッドが無いため browse を直接叩く(得られた生 JSON から件数を集計)
+    const res = await yt.actions.execute('/browse', { browseId: 'FEtrending' });
+    const videoRendererCount = countKey(res?.data ?? res, 'videoRenderer');
+    return { videoRendererCount, sampleTitles: collectTitles(res?.data ?? res, 'videoRenderer') };
+  });
+
+  await step('livechat', async () => {
+    const id = args.live ?? args.id;
+    const info = await yt.getInfo(id);
+    const isLive = info.basic_info?.is_live ?? null;
+    let liveChat = null;
+    let liveChatError = null;
+    try {
+      liveChat = info.getLiveChat?.();
+    } catch (e) {
+      liveChatError = String(e).slice(0, 200);
+    }
+    return {
+      videoId: id,
+      isLive,
+      liveChatCreated: !!liveChat,
+      liveChatClass: liveChat?.constructor?.name ?? null,
+      liveChatInitialResponse: !!liveChat?.initial_info,
+      liveChatError,
+    };
+  });
+
+  return out;
 }
 
 // -------------------------------------------------------------------- main
@@ -473,7 +504,7 @@ async function checkYtdlpSearch(q, command) {
 async function main() {
   const started = Date.now();
   const args = parseArgs(process.argv.slice(2));
-  const valid = ['probe', 'all', 'video', 'page', 'search', 'trend', 'ytsearch'];
+  const valid = ['probe', 'all', 'innertube', 'youtubei', 'ytdlp'];
   if (!valid.includes(args.mode)) {
     log(`--mode=${args.mode} は不明です。使える値: ${valid.join(' / ')}`);
     process.exitCode = 2;
@@ -483,11 +514,20 @@ async function main() {
   const guard = guardRateLimit(args.mode);
   const out = {
     kit: 'V6',
+    kitVersion: 2,
     mode: args.mode,
     startedAt: nowIso(),
-    target: { videoId: args.id, query: args.q },
+    target: {
+      videoId: args.id,
+      query: args.q,
+      channelId: args.channel,
+      playlistId: args.playlist,
+      liveVideoId: args.live,
+      steps: args.steps,
+    },
     env: {
       node: process.version,
+      bun: typeof globalThis.Bun !== 'undefined' ? (globalThis.Bun.version ?? 'unknown') : null,
       platform: `${process.platform} ${process.arch}`,
       cwd: process.cwd(),
       hasFetch: typeof fetch === 'function',
@@ -495,18 +535,32 @@ async function main() {
     warnings: [...guard.warnings],
     notes: [],
     ytdlp: null,
-    video: null,
-    page: null,
-    search: null,
-    trend: null,
-    ytdlpSearch: null,
+    youtubeiPkg: null,
+    innertube: null,
+    youtubei: null,
   };
+
+  const yti = resolveYoutubei(args.deps);
+  out.youtubeiPkg = {
+    resolved: yti.resolved,
+    base: yti.base,
+    version: yti.version,
+    tried: yti.tried,
+  };
+  if (!yti.resolved) {
+    out.youtubeiPkg.installHints = [
+      'キットと同じディレクトリで `npm install youtubei.js`(または `bun add youtubei.js`)を実行する',
+      '別のディレクトリに入れる場合は `--deps=<そのパス>` を付ける',
+    ];
+  }
 
   out.ytdlp = await checkYtdlp();
   if (!out.ytdlp.found) {
     out.notes.push(
-      'yt-dlp が見つかりません。インストール(ex: winget install yt-dlp / pipx install yt-dlp / 公式バイナリ)後に probe から再実行してください。',
+      'yt-dlp が見つかりません(現段階では不要 = 将来のダウンロード機能で導入します。記録として報告のみ)。',
     );
+  } else {
+    out.notes.push('yt-dlp が見つかりました(現段階では未使用。将来のダウンロード機能で使う予定)。');
   }
 
   if (args.mode === 'probe') {
@@ -515,39 +569,37 @@ async function main() {
     out.notes.push('レート制限対策により実行を中断しました(--force を付けると実行できます)。');
     process.exitCode = 3;
   } else {
-    const ytdlpCmd = out.ytdlp.found ? out.ytdlp.command : null;
-
-    if (args.mode === 'all' || args.mode === 'video') {
-      if (ytdlpCmd) {
-        out.video = await checkVideoViaYtdlp(args.id, ytdlpCmd);
-      } else {
-        out.video = { ok: false, source: 'yt-dlp', error: 'yt-dlp が見つからないため実行しませんでした' };
+    if (args.mode === 'all' || args.mode === 'innertube') {
+      out.innertube = await checkInnertube(args.id, args.q);
+      if (out.innertube.apiKeyFound && out.innertube.player?.jsonParsed) {
+        out.notes.push('InnerTube の /player が応答しています(youtubei.js の前提は満たせています)。');
+      } else if (out.innertube.apiKeyFound) {
+        out.notes.push('API キーは取得できましたが /player の応答は要確認です(結果の JSON を確認してください)。');
       }
     }
-    if (args.mode === 'all' || args.mode === 'page') {
+    if (args.mode === 'all' || args.mode === 'youtubei') {
       if (args.mode === 'all') await sleep(BETWEEN_REQUESTS_MS);
-      out.page = await checkPage(args.id);
+      out.youtubei = await checkYoutubei(yti, args);
+      if (!out.youtubei.clientCreated) {
+        out.notes.push('youtubei.js のクライアント生成または実行で問題が出ています(結果の JSON を確認してください)。');
+      } else {
+        const entries = Object.entries(out.youtubei.steps);
+        const failed = entries.filter(([, v]) => !v.ok).map(([k]) => k);
+        if (!entries.length) out.notes.push('youtubei.js: クライアントは生成できましたが、実行したステップはありません。');
+        else if (failed.length) out.notes.push(`youtubei.js: 実行 ${entries.length} ステップ中 ${failed.length} 件が失敗(${failed.join(', ')})。結果の JSON を確認してください。`);
+        else out.notes.push(`youtubei.js: 実行した ${entries.length} ステップはすべて成功しています。`);
+      }
     }
-    if (args.mode === 'all' || args.mode === 'search') {
-      if (args.mode === 'all') await sleep(BETWEEN_REQUESTS_MS);
-      out.search = await checkSearch(args.q);
-    }
-    if (args.mode === 'all' || args.mode === 'trend') {
-      if (args.mode === 'all') await sleep(BETWEEN_REQUESTS_MS);
-      out.trend = await checkTrend();
-    }
-    if (args.mode === 'ytsearch' && ytdlpCmd) {
-      out.ytdlpSearch = await checkYtdlpSearch(args.q, ytdlpCmd);
+    if (args.mode === 'ytdlp') {
+      out.notes.push('ytdlp モード = 存在確認のみ(実ダウンロードは行いません。DL 機能は将来対応)。');
     }
     writeState(args.mode);
-
-    // 判定のヒント(断定はしない・ユーザーが結果を見て判断するための材料)
-    if (out.video?.ok) out.notes.push('yt-dlp の主経路が成立しています(項目は presentKeys を確認)。');
-    if (out.video && out.video.ok === false)
-      out.notes.push('yt-dlp が失敗しています。この場合はページ抽出(フォールバック)の結果で判断します。');
-    if (out.page?.parsed) out.notes.push('ページ抽出フォールバックは JSON を解析できています。');
-    if (out.search) out.notes.push(`検索: videoCount=${out.search.items?.videoCount ?? 'n/a'}(0 なら抽出経路の再検討が必要)。`);
-    if (out.trend) out.notes.push(`トレンド: videoCount=${out.trend.items?.videoCount ?? 'n/a'}(0 なら抽出経路の再検討が必要)。`);
+    const requestCount = args.mode === 'innertube' ? 4 : args.mode === 'youtubei' ? args.steps.length : 0;
+    if (args.mode === 'all') {
+      out.notes.push(`この実行の外部リクエスト数(概算) = ${4 + args.steps.length} 件(リクエスト間には待ちを入れています)。`);
+    } else if (requestCount) {
+      out.notes.push(`この実行の外部リクエスト数(概算) = ${requestCount} 件。`);
+    }
     out.notes.push('結果の JSON を保存し、verification/Verification-Results.md へ記録します。');
   }
 

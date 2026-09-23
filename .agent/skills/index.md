@@ -14,7 +14,7 @@
 | 状況 | 使うスキル |
 | :--- | :--- |
 | 初回 / 全体把握 | [`project-overview/SKILL.md`](./project-overview/SKILL.md) |
-| pnpm / Next.js export / Bun + Hono API / yt-dlp / Docker Compose + Nginx の使いどころ・実測ハマり | [`tech-stack/SKILL.md`](./tech-stack/SKILL.md) |
+| pnpm / Next.js export / Bun + Hono API / youtubei.js / Docker Compose + Nginx の使いどころ・実測ハマり | [`tech-stack/SKILL.md`](./tech-stack/SKILL.md) |
 | 「動かない / 検証できない / YouTube 系に接続したい」環境トラブル | [`sandbox-constraints/SKILL.md`](./sandbox-constraints/SKILL.md) |
 | 品質ツールチェーン（TS strict / biome 2.x / vitest / coverage / Playwright）の設定・ハマり | [`quality-toolchain/SKILL.md`](./quality-toolchain/SKILL.md) |
 | しあTube 実コードの iframe プレイヤー方式（D1 改訂の根拠・未検証項目） | [`../../docs/research/SIATUBE_CODE_VERIFICATION.md`](../../docs/research/SIATUBE_CODE_VERIFICATION.md) |
@@ -26,7 +26,7 @@
 | スキル | できるようになること（Agent の能力） | 最終更新 |
 | :--- | :--- | :--- |
 | [project-overview/SKILL.md](./project-overview/SKILL.md) | プロダクト目標・**サーバー一本の構成**・設計判断（D1〜D12 + 状態）・フェーズ進捗を素早く把握する | 2026-09-23（server-first を反映・DOC-3） |
-| [tech-stack/SKILL.md](./tech-stack/SKILL.md) | pnpm / Next.js export / Tailwind v4 / GSAP / Dexie / **Bun + Hono API + yt-dlp** / Docker Compose + Nginx / iframe 再生を正しい形で使い、実測ハマりを回避できる | 2026-09-23（server-first を反映・DOC-3） |
+| [tech-stack/SKILL.md](./tech-stack/SKILL.md) | pnpm / Next.js export / Tailwind v4 / GSAP / Dexie / **Bun + Hono API + youtubei.js** / Docker Compose + Nginx / iframe 再生を正しい形で使い、実測ハマりを回避できる |
 | [sandbox-constraints/SKILL.md](./sandbox-constraints/SKILL.md) | Sandbox の egress ブロック / re-clone / ユーザー実行キット（V5・V6）運用 / Web UI コミットを迂回して検証・復旧できる | 2026-09-23（server-first を反映・DOC-3） |
 | [quality-toolchain/SKILL.md](./quality-toolchain/SKILL.md) | 品質ツールチェーン（TS strict / biome 2.x / vitest / coverage / Playwright）を正しい形で設定し、実測ハマりを回避できる | 2026-09-21（新規・cod-web 期ログ 7 件をインポート） |
 

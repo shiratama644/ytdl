@@ -6,4 +6,4 @@
 
 | 計画書 | フェーズ | 状態 |
 |---|---|---|
-| [`PHASE0_PLAN.md`](./PHASE0_PLAN.md) | Phase 0: 基盤構築(自宅サーバー基盤 = Bun/Hono API + Docker Compose/Nginx、メタデータ解決(yt-dlp 主 + ページ抽出)、web スキャフォールド)+ 全体アーキテクチャ確定 | 進行中 |
+| [`PHASE0_PLAN.md`](./PHASE0_PLAN.md) | Phase 0: 基盤構築(自宅サーバー基盤 = Bun/Hono API + Docker Compose/Nginx、メタデータ解決(youtubei.js)、web スキャフォールド)+ 全体アーキテクチャ確定 | 進行中 |

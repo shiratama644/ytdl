@@ -32,10 +32,10 @@ description: ytdl（YouTube プロキシ閲覧サイト）の全体像（目標�
 | 配備 | **自宅 Proxmox(LXC/VM)** + **Docker Compose**（`nginx` + `api`）。**GAS 期は設けない**（GAS は実装しない） |
 | 配信 | **Nginx** が静的配信（Next.js `output:'export'`）+ `/api/*` を api へ転送 + TLS |
 | API | **Bun + Hono**（`apps/api`）= **メタデータ解決のみ**（再生バイトは中継しない） |
-| メタデータ | **yt-dlp 主**(`--dump-single-json` を子プロセス)+ **ページ抽出フォールバック**(V1-d のアルゴリズム)+ **O9** |
+| メタデータ | **youtubei.js**(InnerTube クライアント。検索 / 動画 / チャンネル / プレイリスト / 統計 / Live Chat)+ **O9** |
 | 再生 | **iframe 埋め込み**(`youtubeeducation.com/embed` 既定・公式 embed 差し替え可 = D1)。サーバー関与なし |
 | DL | ~~720p 以下 muxed 直リンク / 方式 A・B・C~~ = **保留**(実装対象外) |
-| 未検証 | **V5**(ブラウザ側 iframe 到達性)/ **V6**(サーバー側メタデータ取得)= 実行待ち |
+| 未検証 | **V5**(ブラウザ側 iframe 到達性)/ **V6**(youtubei.js / InnerTube の前提確認)= 実行待ち |
 
 ## 技術スタック（要点・PHASE0_PLAN §10.4）
 
@@ -46,17 +46,18 @@ description: ytdl（YouTube プロキシ閲覧サイト）の全体像（目標�
 | スタイリング / モーション / 永続化 | **Tailwind CSS v4**（`@theme` で M3 トークン）/ **GSAP 3.13** / **Dexie.js 4** |
 | 再生 | **iframe 埋め込み**（`youtubeeducation.com/embed` 既定・公式 embed 差し替え可）。直リンク DASH / hls.js = **保留** |
 | ~~DL~~ | **保留**（mp4-muxer / webm-muxer / StreamSaver は docs に保存） |
-| サーバー | **Bun + Hono**（API・`apps/api`）/ **Nginx**（TLS・静的配信・転送）/ **Docker Compose** + **Proxmox(LXC/VM)** / **yt-dlp**（メタデータの主経路） |
+| サーバー | **Bun + Hono**（API・`apps/api`）/ **Nginx**（TLS・静的配信・転送）/ **Docker Compose** + **Proxmox(LXC/VM)** / **youtubei.js**（メタデータ取得。**yt-dlp は将来の DL 担当** = D13） |
 | 品質 | TypeScript / biome / vitest |
 
 ## 確定設計（再議論禁止・詳細は HANDOVER §4）
 
 - **D1【改訂 2026-09-23】** 再生 = **iframe 埋め込み**（`youtubeeducation.com/embed` 既定・公式 embed 差し替え可）。直リンク DASH = **保留**
-- **D2【改訂 2026-09-23】** バックエンド = **自前実装**（siatube.com API 不使用は継続）。役割 = **メタデータ解決**（**yt-dlp 主 + ページ抽出フォールバック** = D11）。decipherer = **保留**
+- **D2【改訂 2026-09-23】** バックエンド = **自前実装**（siatube.com API 不使用は継続）。役割 = **メタデータ解決**（**youtubei.js = InnerTube クライアント** = D11）。decipherer = **保留**
 - **D3/D4/D5/D9【保留】** DL 関連（方式 A/B/C・FSA・muxer・StreamSaver）
 - **D6【改訂】** 再生経路のサーバー中継をしない（iframe で確定）。サーバーの役割 = メタデータ解決とキャッシュ。DL relay = **保留**
 - **D10【新規 2026-09-23】** **サーバー一本**（自宅 Proxmox + Docker Compose = Nginx + Bun/Hono）。**GAS 期を設けず、GAS 版は実装しない**
-- **D11【新規 2026-09-23】** メタデータ = **yt-dlp 主 + ページ抽出フォールバック**（第三者 API 不使用）
+- **D11【新規 2026-09-23・改訂】** メタデータ = **youtubei.js（InnerTube クライアント）**（第三者 API 不使用）。自前ページ抽出は実装しない（証跡として保存）
+- **D13【新規 2026-09-23】** **yt-dlp = 将来のメディア取得・DL 担当**（DL は保留 = D3。現段階では導入しない）
 - **D12【新規 2026-09-23】** クライアント配信 = **Nginx の静的配信**（単一 HTML 化は任意 = ミラー用）
 - **D7【保留】** 直リンク/復号の対策ラダー（再開時に再開）
 - **D8【継続】** v2b = スキップ（**再提案しない**）
@@ -68,7 +69,7 @@ description: ytdl（YouTube プロキシ閲覧サイト）の全体像（目標�
 
 | フェーズ | 内容 | 状態 |
 | :--- | :--- | :--- |
-| 検証（P0 着手前） | V1〜V4（旧 GAS 期）= ✅ 完了（記録。抽出アルゴリズムは継承）/ **V5（ブラウザ側 iframe 到達性）・V6（サーバー側メタデータ取得）= 未着手 = 次に実行** | **V5 / V6 待ち** |
+| 検証（P0 着手前） | V1〜V4（旧 GAS 期）= ✅ 完了（記録 = 参照）/ **V5（ブラウザ側 iframe 到達性）・V6（youtubei.js / InnerTube の前提確認・キット v2）= 未着手 = 次に実行** | **V5 / V6 待ち** |
 | **P00** | 基盤構築（B: サーバー骨格 = Bun/Hono + Compose / C: web + shared / D: メタデータ解決 / E: 配備 / F: M3 基線） | **未着手 = ユーザー GO 待ち**（推奨順: B→C→D→E→F） |
 | P1 | 再生（iframe プレイヤー + ブロック時フォールバック）+ 閲覧機能の接続 | 未着手 |
 | ~~P2~~ | ~~ダウンロード機能~~ | **保留** |
@@ -82,7 +83,7 @@ ytdl/
 ├── .agent/                 # 記憶システム（hooks / skills / logs）
 ├── docs/                   # planning(設計正本) / research(証跡) / task-list(進捗正本) / HANDOVER(入口)
 ├── verification/           # 検証キット + 生結果（1 ファイル = 最新のみ。V5 = ブラウザ / V6 = サーバー）
-├── apps/api                # (P00-B) Bun + Hono = メタデータ API（yt-dlp 主 + ページ抽出フォールバック + O9）
+├── apps/api                # (P00-B) Bun + Hono = メタデータ API（youtubei.js + O9）
 ├── apps/web                # (P00-C) Next.js (App Router, output:'export')
 ├── packages/shared         # (P00-C) API client + types + 定数
 ├── deploy/                 # (P00-E) docker-compose.yml / nginx.conf / proxmox 手順

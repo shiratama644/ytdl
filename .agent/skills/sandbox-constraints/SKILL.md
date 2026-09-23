@@ -16,7 +16,7 @@ description: Arena Sandbox の恒常的制約（YouTube 系 egress ブロック 
 | **ターン跨ぎにリポジトリが再クローンされる**（本プロジェクトで 5 回以上実測。ターン途中にも発生） | ローカル HEAD が起点コミットに巻き戻る | **変更のたびに commit+push** + re-clone 検知時に `.agent/hooks/sandbox-rebuild-recovery.md`（fetch 全 refspec → `reset --soft origin/<branch>` → `add -A` → 差分確認） |
 | **Chromium バイナリ install 不可** | Playwright 等のローカル実行不可 | 書くことはできるが実行しない。「実環境検証待ち」として報告 |
 | **Bun / Docker の可否は環境依存**（未実測） | `apps/api`（Bun）や `deploy/`（Docker Compose）の**実行確認**ができない可能性 | 着手時に `bun --version`・`docker version`・`docker compose version` を**実測**する。不可なら「コンテナ構成は `config` 検証まで・実起動はユーザー環境（Proxmox）」として報告 |
-| **外向きの実ネットワーク検証は自宅環境が唯一の手段** | yt-dlp・ページ抽出・検索・トレンドの可否は Sandbox では分からない | **V6 キット**（`verification/v6-metadata-check.mjs`）をユーザーが**配備予定マシン**で実行 → JSON を送付 |
+| **外向きの実ネットワーク検証は自宅環境が唯一の手段** | **InnerTube / youtubei.js が通るか**(検索・動画・チャンネル・プレイリスト・トレンド・Live Chat)は Sandbox では分からない | **V6 キット v2**（`verification/v6-metadata-check.mjs`。`--mode=probe/innertube/youtubei/all`）をユーザーが**配備予定マシン**で実行 → JSON を送付 |
 | **ユーザーが GitHub Web UI で直接コミットする** | worktree に古いコピーが残る → `git add -A` がユーザーの削除を復活させる | commit 前に fetch + `git checkout origin/<branch> -- <ファイル>` / ユーザーが削除したファイルは worktree 側も削除（AGENTS.md §4.5） |
 | `uploads/` 等は同期されない場合がある | ユーザー送付ファイルの喪失 | 貼付が来たら必ずファイル化してコミット（`verification/Verification-Results.md` = 最新の生結果のみ運用） |
 | `bun.sh` / `nodejs.org` / `get.pnpm.io` 等は到達不可（registry.npmjs.org は到達可） | ランタイム導入に制限 | pnpm は `npm install -g pnpm`（`.agent/hooks/restore-sandbox-env.sh`） |
@@ -37,7 +37,7 @@ Android/iOS/PC Chrome）で実行して結果を貼付・コミット**してく
 | `setMimeType` は **enum のみ**（`ContentService.MimeType.JSON` 等）※ 旧 GAS 期の知見 | String は例外（O7・実測 2 回） |
 | GCS の 429 ページ（1648B のレート制限 HTML）は**結果として記録**する（失敗ではない） | v1e 試行 1 |
 
-キット一式 = `verification/`（v1〜v1f = V1 系 / v2・v2b = V2 / v3・v3b = V3 / v5・v5b = V5（旧 GAS 期の検証・`v5b` は参考保存）/ **v6-metadata-check.mjs = V6（サーバー側メタデータ取得。2026-09-23 追加 = 現行の必須キット）**）。
+キット一式 = `verification/`（v1〜v1f = V1 系 / v2・v2b = V2 / v3・v3b = V3 / v5・v5b = V5（旧 GAS 期の検証・`v5b` は参考保存）/ **v6-metadata-check.mjs = V6（youtubei.js / InnerTube の前提確認。2026-09-23 追加 = 現行の必須キット・v2）**）。
 旧 V1〜V4 は完了または保留（参照情報）。**現行で実行するのは V5（ブラウザ）と V6（サーバー）**。手順は `verification/README.md`、結果は `verification/Verification-Results.md`（1 ファイル = 最新のみ）。
 
 ## ツール癖（Sandbox 内）
@@ -64,5 +64,5 @@ Android/iOS/PC Chrome）で実行して結果を貼付・コミット**してく
 
 ## 確認できないこと（断定禁止）
 
-- 自宅回線からの yt-dlp / ページ抽出 / 検索 / トレンドの成否（**V6 待ち**）・ブラウザの iframe 到達性（**V5 待ち**）・学校フィルタの具体挙動 = **実環境検証待ち**として報告。
+- 自宅回線からの **youtubei.js / InnerTube の成否（V6 待ち）**・ブラウザの iframe 到達性（**V5 待ち**）・学校フィルタの具体挙動 = **実環境検証待ち**として報告。
   「〜のはずです」で書き、確定値のように書かない（AGENTS.md §7.3）。

@@ -4,6 +4,7 @@
 > 実際のしあTube のコードを確認してください」(2026-09-23) に対する確認結果。
 > **設計の正本は `docs/HANDOVER.md` §4（D1〜D9）**。本書はその判断根拠（実コード）を示す資料。
 > 参考資料の性格: しあTube の調査全体は [`SHIATUBE_DEEP_RESEARCH.md`](SHIATUBE_DEEP_RESEARCH.md)（仕様正本ではない）。
+> **2026-09-23 追記（DOC-4）**: メタデータ取得は **`youtubei.js`（InnerTube クライアント）に改訂**（D11）。しあTube の「GAS 中継 + スプレッドシート」方式は**採用しない**（GAS 期なし = D10）。
 
 ## 1. 確認方法（到達手段）
 
@@ -74,14 +75,14 @@ const fallbackBase = "https://siatube.wjg.jp";
 | 5 | **動画 DL は iframe 方式と接続しない**（DL には解決済み URL と relay が必要）。ユーザー判断で DL は**保留**（実装対象外・docs は保存） | D3〜D5/D9 = 保留 |
 | 6 | 未検証の前提が 3 つ残る → **V5 検証キット**で実環境確認する（下記） | `verification/v5*` |
 
-## 4. 未検証項目（V5 で確認する — 断定禁止）
+## 4. 未検証項目（V5 / V6 で確認する — 断定禁止）
 
 | # | 未検証事項 | なぜ重要か | 確認方法 |
 |---|---|---|---|
 | 1 | 学校/自宅の回線から **`www.youtubeeducation.com/embed/<id>` が描画・再生できるか** | iframe 方式の根幹。ブロックされると方式自体が成立しない | `verification/v5-browser-iframe-test.html` |
 | 2 | **公式 embed（`youtube-nocookie.com` / `youtube.com`）の到達性**（代替経路の有無） | ミラーが死んだ/ブロックされた場合の逃げ道の有無 | 同上（切替 UI 付き） |
 | 3 | **Player API を埋め込み先ホストから直接読み込めるか**（`/iframe_api` 相当） | シート方式（しあTube）を採らずに済むかの判断材料 | 同上 |
-| 4 | **検索結果ページ抽出**（`/results?search_query=`）と**トレンド取得** | メタデータ API（検索・ホーム）の可否。V1 で実証済みなのは `/watch/` のみ | **`verification/v6-metadata-check.mjs`（サーバー側 = V6-4 / V6-5）**。旧 `v5b-gas-test.gs`（GAS 版）は GAS 不採用のため参考保存 |
+| 4 | **検索・トレンドなどのメタデータ取得** | メタデータ API（検索・ホーム・チャンネル・プレイリスト）の可否 | **`verification/v6-metadata-check.mjs`（サーバー側・キット v2 = V6-2 / V6-3）**。**`youtubei.js`（InnerTube クライアント）で確認**する（D11 改訂）。旧 `v5b-gas-test.gs` は GAS 不採用のため参考保存 |
 | 5 | embed 再生時の**広告・画質・ログイン要求**の実挙動 | 体験/運用の前提（「広告なし」を断定しない） | ユーザーの目視（V5 のチェックリスト） |
 
 ## 5. 出典（GitHub・commit 固定）

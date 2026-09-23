@@ -7,7 +7,7 @@
 
 - **再生は iframe 埋め込み**: `https://www.youtubeeducation.com/embed/{id}` を既定に、公式 embed へ差し替え可能な形で実装(しあTube の実コードで同方式を確認済み)。プレイヤー実装は薄く保つ
 - **最初からサーバーを立てて構築**(2026-09-23 のユーザー決定): 自宅 **Proxmox(LXC/VM)** 上に **Docker Compose** で **Nginx + Bun(Hono) API** を配備する。**GAS 期は設けない**(GAS の検証資産は参考として保存)
-- **メタデータ解決 = yt-dlp 主 + ページ抽出フォールバック**: yt-dlp の `--dump-single-json` を主経路、自前のページ抽出(V1 で実証したアルゴリズム)をフォールバックに持つ
+- **メタデータ解決 = youtubei.js(InnerTube クライアント)**: 検索・動画・チャンネル・プレイリストなどの情報を取得する(第三者 API は使わない)。**yt-dlp は将来のダウンロード機能で使う**
 - **Material 3 Design Expressive** の UI/UX(+ GSAP モーション)
 - 再生バイトはサーバーを通さない(再生はブラウザ ↔ YouTube 系で完結 = サーバーはメタデータとキャッシュのみ)
 - ~~動画ダウンロード~~ = **保留**(2026-09-23 のユーザー決定。設計・調査は docs に保存)
@@ -23,13 +23,13 @@
 
 進捗の正本: [`docs/task-list.md`](docs/task-list.md) ・ 設計正本: [`docs/planning/PHASE0_PLAN.md`](docs/planning/PHASE0_PLAN.md) ・ 引き継ぎ: [`docs/HANDOVER.md`](docs/HANDOVER.md)
 
-**検証**: V1〜V4(GAS 期)= ✅ 完了(記録。ページ抽出アルゴリズムはサーバー実装へ継承)/ **V5 = ブラウザ側の iframe 到達性(実行待ち)** / **V6 = サーバー側のメタデータ取得確認(yt-dlp + ページ抽出。実行待ち)**。キットは [`verification/`](verification/README.md)、実コード根拠は [`docs/research/SIATUBE_CODE_VERIFICATION.md`](docs/research/SIATUBE_CODE_VERIFICATION.md)
+**検証**: V1〜V4(GAS 期)= ✅ 完了(記録。**現行スコープでは参照**)/ **V5 = ブラウザ側の iframe 到達性(実行待ち)** / **V6 = youtubei.js / InnerTube の前提確認(サーバー側・実行待ち)**。
 
 ## 構成(予定)
 
 ```
 apps/web         Next.js (App Router, output:'export') + Tailwind v4 + GSAP + Dexie
-apps/api         Bun + Hono = メタデータ API(yt-dlp 主 + ページ抽出フォールバック、O9 = キャッシュ/リトライ/single-flight)
+apps/api         Bun + Hono = メタデータ API(youtubei.js + O9 = キャッシュ/リトライ/single-flight)
 packages/shared  API client(fetch 輸送)+ types + エラー分類
 deploy/          Docker Compose(nginx / api)+ Proxmox 配備手順・TLS
 scripts/         任意: 単一 HTML ビルド(ミラー配布用)

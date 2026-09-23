@@ -7,6 +7,7 @@
 | 主要一次情報 | 公開リポジトリ 2 件のフルクローン(ソースコード読了)、プロダクション API の読み取り専用実測、公式サイト/ミラー観測 |
 | 信頼度凡例 | ◎=クローン済みソース/公式実測、○=公式リポジトリ・プロフィール、△=二次情報(記事・SNS・Q&A) |
 | 実コード確認(追記) | **2026-09-23**: [`ajgpw/siatube`](https://github.com/ajgpw/siatube) @ `44ab1599`(2026-09-16・MIT)をクローンし、主要ファイル(プレイヤー / API クライアント / worker / GAS 中継)を読了 → 結果を [SIATUBE_CODE_VERIFICATION.md](SIATUBE_CODE_VERIFICATION.md) に集約(② 再生 = iframe 方式 / ③ パラメータ供給 / ④ メタデータ取得 / ⑦ GAS 中継) |
+| 現行スコープの採用判断(追記) | **2026-09-23**: 本調査のうち本プロジェクトが現行で採用するのは **iframe 再生**(既定 `youtubeeducation.com` = ③ の方式)と **メタデータ取得(youtubei.js = InnerTube クライアント。D11 改訂)**。**yt-dlp は将来の DL 担当**(D13。現段階では導入しない)。DL 機構・signature 復号・中央 API 依存の設計は**保留**(D2〜D5・D9) |
 
 ---
 

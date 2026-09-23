@@ -2,7 +2,7 @@
 
 ytdl は、**YouTube プロキシ閲覧サイト**のリポジトリです。**再生は iframe 埋め込み**
 (`youtubeeducation.com/embed` 既定・公式 embed に差し替え可能)、**メタデータは自前のサーバー API**
-(Bun + Hono。yt-dlp 主 + ページ抽出フォールバック)が担い、Material 3 Design Expressive の UI で差別化します。
+(Bun + Hono + youtubei.js)が担い、Material 3 Design Expressive の UI で差別化します。
 **最初からサーバーを立てて構築**する方針(2026-09-23)で、GAS 期は設けません(GAS 版は実装しない)。**動画 DL は保留**。
 
 ---

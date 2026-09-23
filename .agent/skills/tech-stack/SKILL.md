@@ -1,6 +1,6 @@
 ---
 name: tech-stack
-description: ytdl のスタック（pnpm / Next.js export / Tailwind v4 / GSAP / Dexie / Bun + Hono API / Docker Compose + Nginx + yt-dlp / iframe 再生）の使いどころと実測ハマり。実装時に参照。仕様の正本は docs/。
+description: ytdl のスタック（pnpm / Next.js export / Tailwind v4 / GSAP / Dexie / Bun + Hono API + youtubei.js / Docker Compose + Nginx / iframe 再生）の使いどころと実測ハマり。実装時に参照。仕様の正本は docs/。
 ---
 
 # Tech Stack Skill — ytdl の技術構成を使いこなす
@@ -23,37 +23,49 @@ description: ytdl のスタック（pnpm / Next.js export / Tailwind v4 / GSAP /
 | ~~DL muxer~~ | **保留**（mp4-muxer / webm-muxer = docs に保存） | 再開時のみ参照 |
 | ~~DL 保存~~ | **保留**（StreamSaver / FSA / 直リンク = docs に保存） | 再開時のみ参照 |
 | **API ランタイム** | **Bun + Hono**（TypeScript。`apps/api`） | Node 専用 API（`fs` の一部等）に依存しない / 依存管理は pnpm のまま（ランタイムだけ Bun） |
-| **メタデータ解決** | **yt-dlp 主 + ページ抽出フォールバック**（+ O9） | **毎リクエストで yt-dlp を起動しない**（キャッシュ → yt-dlp → ページ抽出の順）。ストリーム URL は返さない |
+| **メタデータ解決** | **youtubei.js（InnerTube クライアント）**+ O9 | **クライアントをプロセスで 1 個使い回す**（毎リクエストで生成しない）。**ストリーム URL は返さない** |
 | **リバースプロキシ / TLS** | **Nginx**（静的配信 + `/api/*` 転送 + 証明書） | アプリ側で TLS を持たない / 直接 api ポートを公開しない |
-| **配備** | **Docker Compose**（nginx + api）+ 自宅 **Proxmox(LXC/VM)** | yt-dlp はイメージに同梱。更新はイメージ再ビルド + 手順書どおり |
+| **配備** | **Docker Compose**（nginx + api）+ 自宅 **Proxmox(LXC/VM)** | **youtubei.js は版を固定**（pin）。更新はイメージ再ビルド + 動作確認 |
 | ~~GAS バックエンド~~ | **採用しない**（D10・2026-09-23）。実測知見のみ下記に保存 | GAS 固有の制約（UrlFetchApp / doGet / 6 分 / enum のみ）を持ち込まない |
 | 品質 | TypeScript（strict）/ **biome** / **vitest** | ESLint/Prettier / `bun test` |
 
-## メタデータ抽出（サーバー側 = `apps/api` の核心。V1 のアルゴリズムを継承）
+## メタデータ取得（サーバー側 = `apps/api` の核心。**youtubei.js**）
 
-### 主経路 = yt-dlp（D11・2026-09-23 ユーザー選択）
+### 主経路 = youtubei.js（D11 改訂・2026-09-23 ユーザー指示）
 
-- `yt-dlp --dump-single-json --no-warnings --no-playlist <url>` を**子プロセス**で実行し、JSON を正規化する
-  （タイトル / 投稿者 / 長さ / サムネイル / 関連 / 検索 / トレンド / コメント）。
-- **タイムアウトと同時実行数の上限**を必ず設ける（多重起動でサーバーが飽和するのを防ぐ）。
-- yt-dlp の出力は**版によって項目が変わり得る** → 必須項目の検証と、欠落時の縮退（フォールバックへ）を書く。
-- 更新は**イメージ再ビルド**で行う（ホストに直接入れない = 再現性の確保）。
+- **現段階の YouTube クライアントは youtubei.js のみ**（ユーザー指示 2026-09-23）。
+  **yt-dlp は将来のダウンロード機能の担当**（D13。現段階では導入しない）。
+- `Innertube.create({ lang: 'ja', location: 'JP' })` を**プロセスで 1 個**生成して使い回す（毎リクエストで作らない）。
+  - `search(q, { type })` / `getSearchSuggestions` / `getInfo` / `getBasicInfo` / `getComments` / `getChannel` /
+    `getPlaylist` / `getHomeFeed` など（`youtubei.js@18.1.0` の型定義で確認済み）。
+  - **Live Chat** = `getInfo(id).getLiveChat()`。**トレンド**（`/feed/trending` 相当）は専用メソッドが見当たらないため
+    `yt.actions.execute('/browse', { browseId: 'FEtrending' })` を使う想定（**できるかは V6 で確認**）。
+  - クライアント種別は `InnerTubeClient`（`WEB` 既定 / `MWEB` / `ANDROID` / `IOS` / `TV` / `WEB_EMBEDDED` など）で切替できる。
+- **オフラインでクライアント生成できる**（`generate_session_locally: true` / `retrieve_player: false` /
+  `retrieve_innertube_config: false` = 2026-09-23 実測 73 ms）→ **ネットワーク不要のユニットテストが書ける**。
+- **版は固定する**（メジャー更新で API が変わり得る）。更新はイメージ再ビルド + 動作確認。
+- **返すのはメタデータのみ**。**ストリーム URL は取得・返却しない**（iframe 再生では不要）。復号もしない。
+- **実ネットワークの可否 = V6 待ち**（自宅回線から InnerTube が通るか）。結果を見ずに運用前提を断定しない。
 
-### フォールバック = ページ抽出（V1 検証で確定・参照実装 = `verification/v1f-gas-test.gs` のアルゴリズム）
+> **将来（DL 再開時）の主経路 = yt-dlp**（D13）: `yt-dlp --dump-single-json` を子プロセスで実行する形は
+> **タイムアウトと同時実行数の上限**を必ず設け、更新はイメージ再ビルドで行う（設計は docs/planning に保存）。
+
+### ~~フォールバック = ページ抽出~~ = **実装しない**（証跡として保存・参照実装 = `verification/v1f-gas-test.gs`）
+> **2026-09-23 追記**: D11 改訂により**現段階では実装しない**。**将来 yt-dlp / 抽出を再検討する時の手順**として残す（アルゴリズム自体は V1-d で実証済み = VERIFICATION_P0.md）。
 
 1. **取得**: `https://www.youtube.com/watch?v=<id>&hl=ja&gl=JP` を desktop UA +
    `Accept-Language: ja-JP` で取得する（サーバー = `fetch`。旧 GAS では `UrlFetchApp.fetch(muteHttpExceptions: true)`）。
 2. **抽出**: 代入文 `ytInitialPlayerResponse\s*=\s*\{`（検索・トレンドは `ytInitialData`）を正規表現で
    **全候補列挙**（初回出現は `WIZ_global_data` 内の偽構文に当ることが実測あり）→ 括弧バランス切片
    （`balancedSlice`）→ `JSON.parse` → 期待キーを持つ実レスポンスを採用。
-   **検索・トレンドの可否は V6 で確認する**（未確定の間は実装しない）。
+   （旧 GAS 期の記録。**現行構成では使わない**）。
 3. **~~decipherer~~ = 保留（2026-09-23）**: formats は**全形式 `signatureCipher`**（`url` フィールドなし = 実測 v1f）。
    形式 = `s=<cipher>&sp=sig&url=<URL エンコード済みの videoplayback URL>`（base URL には
    `expire`/`ei`/`ip=` が既に含まれる = 欠落するのは署名のみ）。
    復号 = **youtube-dlp 型 signature transform 逆変換**: watch ページの player JS から transform
    関数群を抽出 → `s` に逆順適用 → `decode(url) + &sig=<復号値>`。
 4. **O9（必須）**: 429/5xx のリトライ+バックオフ / **キャッシュ（TTL = 対象別）** / 同一対象の single-flight。
-   優先順位 = **キャッシュ → yt-dlp → ページ抽出**（yt-dlp の起動回数を抑える）。
+   優先順位 = **キャッシュ → （TTL 切れなら）YouTube 取得**（毎リクエストで叩かない）。
    （429 は旧 GAS 期に ~13 回/時で実発生 = O9 記録。自宅回線での実挙動は V6 で確認する）
 
 ### 旧 GAS 期の制約（参考・採用しない。実測・AGENTS.md §6.3）
@@ -113,5 +125,5 @@ description: ytdl のスタック（pnpm / Next.js export / Tailwind v4 / GSAP /
 
 ## API を記憶で書かない
 
-Bun / Hono / Next.js / GSAP / yt-dlp / Docker Compose はメジャー更新で API が変わる。
+Bun / Hono / Next.js / GSAP / youtubei.js / Docker Compose はメジャー更新で API が変わる。
 公式ドキュメントを検索して確認し、存在しないメソッドを発明しない（AGENTS.md §7.4）。
