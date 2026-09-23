@@ -1,9 +1,14 @@
 # P0 検証証跡(Phase 0 着手前)
 
 > 目的: 設計原則 §10.2-4「ブラウザからの直接取得可否(CORS、Range、URL 有効期限、codec/container 対応等)を検証した上で利用する」を実施する。
-> 計画書 §10.9 の検証リスト V1〜V4 に対応。
-> 実施日: 2026-09-12(ユーザー名: shiratama644 / 分岐: arena/01a094ec-ytdl)
+> 計画書(§10.8〜§10.9 付近)の「可行性検証リスト」V1〜V5 に対応(2026-09-23 に V5 を追加)。
+> 実施日: 2026-09-12(ユーザー名: shiratama644 / 分岐: 当時のセッション固定ブランチ。**過去セッションのブランチ名は記録しない** = HANDOVER §10)
 > 第 1 回ユーザー実行結果の記録: 2026-09-13
+>
+> **⚠️ 方針転換(2026-09-23)**: 再生方式を **iframe 一本**(既定 `youtubeeducation.com/embed`・公式 embed へ差し替え可)へ転換し、**動画ダウンロードは目標から外して「保留(実装対象外)」** とした。これに伴い:
+> - **V1〜V4 の記録は証跡として保持**する(過去に実施した事実のため書き換えない)。ただし「設計への影響」表の**確定判断は [../planning/PHASE0_PLAN.md](../planning/PHASE0_PLAN.md) §10.7・§10.8・§11 の改訂版が正**となり、直リンク再生・DL 経路は**保留**。
+> - 新規の検証項目 = **V5**(iframe 到達性 / GAS IP からの検索・トレンド抽出)。キット = [`verification/v5-browser-iframe-test.html`](../../verification/v5-browser-iframe-test.html) / [`verification/v5b-gas-test.gs`](../../verification/v5b-gas-test.gs)、手順 = [`verification/README.md`](../../verification/README.md)、仕様 = [../HANDOVER.md](../HANDOVER.md) §8.1。
+> - 実コード根拠(しあTube の iframe 実装 = 既定 Type1) = [SIATUBE_CODE_VERIFICATION.md](SIATUBE_CODE_VERIFICATION.md)。
 
 ---
 
@@ -81,7 +86,8 @@ Exception: パラメータ（String）が ContentService.TextOutput.setMimeType 
 貼付したのが **修正前の v1b(旧コピー)**。リポジトリの最新 v1b は enum 使用済みで
 (行 41 = `.setMimeType(ContentService.MimeType.JSON);`)この例外は出ない(リモート raw 確認済み)。
 → **最新版を再取得して再実行**(raw URL + 自己チェック行:
-https://raw.githubusercontent.com/shiratama644/ytdl/arena/01a094ec-ytdl/verification/v1b-gas-test.gs)。
+https://raw.githubusercontent.com/shiratama644/ytdl/<セッション固定ブランチ>/verification/v1b-gas-test.gs
+(= ブランチ名は `git branch --show-current` で確認)。
 実行データは未取得 = V1-b 第 2 回はまだ未実施。
 
 ### V1-b(第 2 回・試行 2) — ❌ 全 client 失敗(データ取得・分析済み)
@@ -400,15 +406,32 @@ iOS 固有(FSA なし / SW / 再生)の最終確認は `verification/v2-browser-
 
 ---
 
+## V5: iframe 到達性 / GAS IP からの検索・トレンド抽出 — ⏳ 未実施(2026-09-23 追加・ユーザー実行待ち)
+
+方針転換(再生 = iframe 一本 / DL = 保留)により、**現行スコープで実環境確認が必要な項目は V5 に集約**された。
+V1〜V4 の証跡は上記のとおり保持する(V1-d の `/watch/` ページ抽出は**メタデータ解決**として現行スコープでも使用)。
+
+| ID | 内容 | キット | 状態 |
+|---|---|---|---|
+| V5-1 | `youtubeeducation.com/embed/{id}?{params}` の**描画・再生**(しあTube 既定 = Type1 の再現) | [`verification/v5-browser-iframe-test.html`](../../verification/v5-browser-iframe-test.html)(`?probe=1` 内蔵) | ⏳ 未実施 |
+| V5-2 | **公式 embed**(`www.youtube-nocookie.com/embed`)の到達性(差し替え候補との比較) | 同上 | ⏳ 未実施 |
+| V5-3 | 埋め込み先からの **Player API 直接読込**(`https://www.youtube.com/iframe_api`)の可否 | 同上 | ⏳ 未実施 |
+| V5-4 | **GAS IP からの検索結果ページ抽出 / トレンド取得**(`/results?search_query=` / `/feed/trending`) | [`verification/v5b-gas-test.gs`](../../verification/v5b-gas-test.gs)(**1 実行 = 1 fetch**) | ⏳ 未実施 |
+| V5-5 | **広告・画質・ログイン要求**の挙動(目視) | キット① | ⏳ 未実施 |
+
+- 判定の使い道: **V5-1/V5-2 = iframe 既定の決定**(第一候補 = `youtubeeducation.com`、不可なら公式 embed)/ **V5-3 = 再生位置制御・終了検知の実装可否**(不可でも iframe 表示自体は成立)/ **V5-4 = 検索・トレンド機能の可否**(不可なら該当機能は保留 = 計画書 R11)/ **V5-5 = UI 上の注意書き**(全画面広告・ログイン要求は iframe 提供元依存 = 計画書 R12)。
+- 結果の記録先 = [`verification/Verification-Results.md`](../../verification/Verification-Results.md)(1 ファイル = 最新のみ)。確定した判断は本文書と計画書 §10.8 に反映する。
+
 ## 設計への影響(2026-09-13 に確定した判断を含む)
 
+> **⚠️ 2026-09-23 の転換による有効範囲**: 下表は**当時の判断の記録**(証跡)。現行スコープで**継続するのは #4(siatube.com API 不使用 = 自前実装)**のみで、**#1(直リンク再生)・#2(DL 経路)・#3 の decipherer 部分・#5(GAS からの SW 配信)は保留**。現行の設計判断 = 計画書 §10.7(再生 = iframe)/ §10.8(検証・DL 保留)/ §11(リスク)。
 | # | 事項 | 結論 | 状態 |
 |---|---|---|---|
-| 1 | **再生経路**(dual `<video>` DASH 直読み) | **成立を確認**(ユーザー環境 Android で playing) | 確定済み(V2 第 1 回 A) |
-| 2 | **DL 経路**(fetch → muxer → StreamSaver) | googlevideo 直接 fetch は **CORS で不可**(V2 実測 + 第三者的証拠)。**ユーザー決定(2026-09-13)**: 自宅サーバーは siatube 型の動画全面プロキシにはしない(高負荷のため)。→ **A(DL 専用 relay + クライアント mux + StreamSaver + 進捗UI)主 + B(yt-dlp バッチ + 完成ファイル)フォールバック**(主方式はユーザー選択済み・[DOWNLOAD_MECHANISM_RESEARCH.md §6](DOWNLOAD_MECHANISM_RESEARCH.md))。**relay はダウンロード時のみに限定(再生には一切使用しない=ユーザーの常設制約)**。GAS 期は C(720p 以下直リンク) | 確定済み |
-| 3 | **GAS 期セルフ解決**(youtubei.js / raw InnerTube) | **ユーザー決定(2026-09-13): youtubei.js による自前実装(siatube.com API は使用しない)**。**v1d(第 4 回)= ✅ 成立**:`/watch/` ページの `ytInitialPlayerResponse` 抽出で **playability OK / formats 30 種 / 1080p+140 取得成功**(desktop・mobile 両方)。**`/player` エンドポイントは 3 ラウンド連続 dead** → 本番リゾラ = **watch ページ抽出**(Invidious 同型)で確定。**アーキ分岐(リゾラを初期から自宅サーバーへ)= 不採用**。**残る未確認事項**: formats に `url` フィールドが無い(sampleUrl=null)→ `signatureCipher`/`ciphertext` 提供の可能性 = P00-D に復号機構要の場合がある → **次 = v1e**(最小キット・フィールド構成の確定)。**v1e 試行 1 = HTTP 429(累計 fetch による一時的レート制限)** → 試行 2(リトライ内蔵版)= **長待ち化でユーザーに「表示されない」と報告** = キット設計ミス → **v1f(再設計: `?probe=1` 即返り自己チェック + 1 回実行 = 1 fetch 数秒)= ✅ 完了: ストリーム URL = 全 30 形式 `signatureCipher`(復号必須・youtube-dlp 型 transform 逆変換)。**Phase A リゾラ = watch 抽出 + decipherer + O9(リトライ/キャッシュ/single-flight)で確定。P00-D 冒頭 = 復号済み URL の fetch 実動作スパイク** | **✅ V1 全項目完了** |
+| 1 | **再生経路**(dual `<video>` DASH 直読み) | **成立を確認**(ユーザー環境 Android で playing) | 確定済み(V2 第 1 回 A) **← 2026-09-23: 直リンク再生 = 保留(iframe 一本へ)** |
+| 2 | **DL 経路**(fetch → muxer → StreamSaver) | googlevideo 直接 fetch は **CORS で不可**(V2 実測 + 第三者的証拠)。**ユーザー決定(2026-09-13)**: 自宅サーバーは siatube 型の動画全面プロキシにはしない(高負荷のため)。→ **A(DL 専用 relay + クライアント mux + StreamSaver + 進捗UI)主 + B(yt-dlp バッチ + 完成ファイル)フォールバック**(主方式はユーザー選択済み・[DOWNLOAD_MECHANISM_RESEARCH.md §6](DOWNLOAD_MECHANISM_RESEARCH.md))。**relay はダウンロード時のみに限定(再生には一切使用しない=ユーザーの常設制約)**。GAS 期は C(720p 以下直リンク) | 確定済み **← 2026-09-23: DL = 保留(実装対象外)** |
+| 3 | **GAS 期セルフ解決**(youtubei.js / raw InnerTube) | **ユーザー決定(2026-09-13): youtubei.js による自前実装(siatube.com API は使用しない)**。**v1d(第 4 回)= ✅ 成立**:`/watch/` ページの `ytInitialPlayerResponse` 抽出で **playability OK / formats 30 種 / 1080p+140 取得成功**(desktop・mobile 両方)。**`/player` エンドポイントは 3 ラウンド連続 dead** → 本番リゾラ = **watch ページ抽出**(Invidious 同型)で確定。**アーキ分岐(リゾラを初期から自宅サーバーへ)= 不採用**。**残る未確認事項**: formats に `url` フィールドが無い(sampleUrl=null)→ `signatureCipher`/`ciphertext` 提供の可能性 = P00-D に復号機構要の場合がある → **次 = v1e**(最小キット・フィールド構成の確定)。**v1e 試行 1 = HTTP 429(累計 fetch による一時的レート制限)** → 試行 2(リトライ内蔵版)= **長待ち化でユーザーに「表示されない」と報告** = キット設計ミス → **v1f(再設計: `?probe=1` 即返り自己チェック + 1 回実行 = 1 fetch 数秒)= ✅ 完了: ストリーム URL = 全 30 形式 `signatureCipher`(復号必須・youtube-dlp 型 transform 逆変換)。**Phase A リゾラ = watch 抽出 + decipherer + O9(リトライ/キャッシュ/single-flight)で確定。P00-D 冒頭 = 復号済み URL の fetch 実動作スパイク** | **✅ V1 全項目完了** **← 2026-09-23: decipherer / ストリーム URL 解決 = 保留(メタデータ解決 = V1-d の抽出は継続使用)** |
 | 4 | ~~GAS 期リゾルの代替戦略~~ | **決定(2026-09-13): (b) セルフ解決のみ**。siatube.com API 依存は不採用(第三者依存・O1 の可用性リスクを排除)。shiatube の実測 API 形状は**参考資料**としては残す(応答正規化・PO token の知見) | 確定済み |
-| 5 | **GAS からの SW 配信** | DL 設計確定により **GAS 期は StreamSaver 不使用(直リンク)** → V3-b は**参考**(PWA/オフライン機能の判断材料)に降格 | v3b は任意 |
+| 5 | **GAS からの SW 配信** | DL 設計確定により **GAS 期は StreamSaver 不使用(直リンク)** → V3-b は**参考**(PWA/オフライン機能の判断材料)に降格 | v3b は任意 **← 2026-09-23: DL 保留に伴い保留** |
 
 ---
 
@@ -428,11 +451,13 @@ iOS 固有(FSA なし / SW / 再生)の最終確認は `verification/v2-browser-
 
 ## 状態サマリ
 
+> **2026-09-23 転換後の有効範囲**: 下表は**証跡として保持**(過去の実施記録)。**現行スコープで必要なのは V1-d の `/watch/` ページ抽出(メタデータ解決)と V5(未実施)**。V2(googlevideo 直接取得 = CORS)・V3-b(StreamSaver)・V4(iOS)は **DL / 直リンク再生の保留に伴い参照情報**(O2 = URL 有効期限 ≈6h / O3 = 他 IP 再生も同様)。
 | ID | 状態 | 次アクション |
 |---|---|---|
 | V1-a | ✅ 完了(サンドボックス) | - |
-| **V1-b** | **✅ 完了(第 1〜6 回 2026-09-13〜15)**: `/player` = GAS IP から不可(×3 ラウンド)/ **`/watch/` 抽出 = 可行**(30 形式・1080p+140)/**ストリーム URL = 全 signatureCipher(復号要)**/ 429 = O9 | **Phase A リゾラ = watch 抽出 + decipherer + O9 で確定 → P00-D 着手可(冒頭 = 復号済み URL の fetch 実動作スパイク)** |
-| V2 | ✅ 部分判定で確定(第 1 回 Android): 再生 OK / fetch 全 NG = **CORS 成立** / expire ≈5.9h / 他 IP 再生 OK | v2b はユーザー判断でスキップ(D8) |
+| **V1-b** | **✅ 完了(第 1〜6 回 2026-09-13〜15)**: `/player` = GAS IP から不可(×3 ラウンド)/ **`/watch/` 抽出 = 可行**(30 形式・1080p+140)/**ストリーム URL = 全 signatureCipher(復号要)**/ 429 = O9 | **Phase A リゾラ = watch 抽出 + decipherer + O9 で確定 → P00-D 着手可(冒頭 = 復号済み URL の fetch 実動作スパイク)** **← 2026-09-23: decipherer 部分 = 保留。`/watch/` 抽出はメタデータ解決として継続使用** |
+| V2 | ✅ 部分判定で確定(第 1 回 Android): 再生 OK / fetch 全 NG = **CORS 成立** / expire ≈5.9h / 他 IP 再生 OK | v2b はユーザー判断でスキップ(D8) **← 2026-09-23: 直リンク再生の保留に伴い参照情報** |
 | V3-a | ✅ 完了(サンドボックス) | - |
-| V3-b | ⏳ 任意(参考 = DL には不要): 第 1 回 text/plain(旧デプロイ)/ 第 2 回 setMimeType 例外(私のバグ・修正済み) | PWA/オフライン判断用。時間がある時 |
-| V4 | ⏳ 待ち(任意) | 同一 HTML を iOS で実行(DL fallback の UX 裏取り) |
+| V3-b | ⏳ 任意(参考 = DL には不要): 第 1 回 text/plain(旧デプロイ)/ 第 2 回 setMimeType 例外(私のバグ・修正済み) | PWA/オフライン判断用。時間がある時 **← 2026-09-23: DL 保留に伴い参照情報** |
+| V4 | ⏳ 待ち(任意) | 同一 HTML を iOS で実行(DL fallback の UX 裏取り) **← 2026-09-23: DL 保留に伴い参照情報** |
+| **V5** | ⏳ **未実施(2026-09-23 追加・ユーザー実行待ち)** | キット実行 → 結果を [`verification/Verification-Results.md`](../../verification/Verification-Results.md) へ → 判定を §V5 と計画書 §10.8 に反映 |

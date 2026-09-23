@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V5: iframe 到達性テスト(ブラウザ)</title>
+<style>
+  :root {
+    --bg: #12131a; --surface: #1c1d26; --surface2: #24252f; --outline: #3a3c48;
+    --text: #e6e1e5; --muted: #a8a5b0; --primary: #c2c7f5; --ok: #7fd8a0; --warn: #ffd27f; --ng: #ff9b9b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans JP", sans-serif; line-height: 1.6; }
+  h1 { font-size: 1.25rem; margin: 0 0 4px; }
+  h2 { font-size: 1rem; margin: 24px 0 8px; color: var(--primary); }
+  .muted { color: var(--muted); font-size: 0.85rem; }
+  .card { background: var(--surface); border: 1px solid var(--outline); border-radius: 16px; padding: 12px; margin: 12px 0; }
+  .grid { display: grid; gap: 12px; grid-template-columns: 1fr; }
+  @media (min-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } }
+  .frame-wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 12px; overflow: hidden; }
+  iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  label { display: block; font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
+  select, input, textarea, button { font: inherit; color: var(--text); background: var(--surface2);
+    border: 1px solid var(--outline); border-radius: 8px; padding: 6px 8px; width: 100%; }
+  button { background: var(--primary); color: #1b1c22; font-weight: 600; cursor: pointer; width: auto; padding: 8px 14px; }
+  button.secondary { background: var(--surface2); color: var(--text); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  #log { max-height: 200px; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.75rem; white-space: pre-wrap; background: #0e0f14; border: 1px solid var(--outline); border-radius: 8px; padding: 8px; }
+  #raw { height: 240px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; }
+  .pill { display: inline-block; font-size: 0.75rem; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--outline); color: var(--muted); }
+  .ok { color: var(--ok); } .warn { color: var(--warn); } .ng { color: var(--ng); }
+  ol, ul { padding-left: 1.2rem; }
+  #probePanel { display: none; }
+  code { background: #0e0f14; padding: 1px 4px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>V5 検証キット①: iframe 到達性(ブラウザ)</h1>
+<p class="muted">
+  <span class="pill">2026-09-23</span>
+  <span class="pill">V5-1 / V5-2 / V5-3 / V5-5</span>
+  しあTube の既定方式 = <code>www.youtubeeducation.com/embed/&lt;id&gt;</code> の iframe が
+  <strong>この回線・このブラウザで描画・再生できるか</strong>を確認します(公式 embed との比較つき)。
+  参考にした方式: <code>ajgpw/siatube</code>(MIT)の <code>youtubeEducationPlayer.js</code>(コードは複製していません)。
+</p>
+
+<div class="card" id="probePanel"></div>
+
+<div id="main">
+  <div class="card">
+    <h2>手順(3〜5 分)</h2>
+    <ol>
+      <li>このページを開いたまま <strong>枠 A / 枠 B の動画</strong>を確認する(自動再生はしません。「▶」を押してください)。</li>
+      <li><strong>枠 C</strong> の結果(Player API が読めたか)を確認する(自動で実行されます)。</li>
+      <li>各枠の<strong>目視チェック</strong>(再生可否 / 広告 / 画質 / ログイン要求)を選ぶ(v5-5)。</li>
+      <li>最下部の「<strong>結果をコピー</strong>」を押して送付してください。</li>
+    </ol>
+    <p class="muted">
+      可能であれば<strong>学校・職場のフィルタが有効な回線</strong>で実行してください(到達性の確認が目的のため)。
+      動画 ID は <code>?v=&lt;id&gt;</code> で差し替えできます(例: <code>v5-browser-iframe-test.html?v=dQw4w9WgXcQ</code>)。
+      枠 A/B に<strong>ブロックページや黒画面</strong>が出た場合は、その画面の文言を
+      「補足」欄に控えてください(判定の重要な証拠になります)。
+    </p>
+    <div class="row">
+      <button class="secondary" id="reload">全枠を再読込</button>
+      <button class="secondary" id="snapshot">現在の状態を表示に反映</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>枠 A = V5-1: youtubeeducation.com(既定候補)</h2>
+      <div class="frame-wrap"><iframe id="frameA" title="V5-1 youtubeeducation"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+        allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
+      <p class="muted" id="srcA"></p>
+      <div id="autoA" class="muted">自動観測: 待機中…</div>
+      <label>再生できたか
+        <select id="m-playA">
+          <option value="未確認">未確認</option>
+          <option>再生できた(音声も出た)</option>
+          <option>再生できた(映像のみ/音声のみ)</option>
+          <option>エラー表示(「この動画は再生できません」等)</option>
+          <option>黒画面・無反応</option>
+          <option>ブロックページが表示された</option>
+          <option>ログイン画面が表示された</option>
+        </select>
+      </label>
+      <label>広告(V5-5)
+        <select id="m-adA">
+          <option value="未確認">未確認</option>
+          <option>なし</option>
+          <option>あり(スキップ可)</option>
+          <option>あり(全画面・スキップ不可)</option>
+          <option>あり(オーバーレイ/バナー)</option>
+        </select>
+      </label>
+      <label>画質(V5-5)
+        <select id="m-qA">
+          <option value="未確認">未確認</option>
+          <option>144p〜240p 程度</option>
+          <option>360p〜480p 程度</option>
+          <option>720p 以上</option>
+          <option>自動のみ(選択不可)</option>
+          <option>画質メニューなし</option>
+        </select>
+      </label>
+      <label>ログイン要求(V5-5)
+        <select id="m-loginA">
+          <option value="未確認">未確認</option>
+          <option>なし</option>
+          <option>あり(視聴前)</option>
+          <option>あり(一部機能のみ)</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="card">
+      <h2>枠 B = V5-2: 公式 embed(youtube-nocookie)</h2>
+      <div class="frame-wrap"><iframe id="frameB" title="V5-2 youtube-nocookie"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+        allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
+      <p class="muted" id="srcB"></p>
+      <div id="autoB" class="muted">自動観測: 待機中…</div>
+      <label>再生できたか
+        <select id="m-playB">
+          <option value="未確認">未確認</option>
+          <option>再生できた(音声も出た)</option>
+          <option>再生できた(映像のみ/音声のみ)</option>
+          <option>エラー表示(「この動画は再生できません」等)</option>
+          <option>黒画面・無反応</option>
+          <option>ブロックページが表示された</option>
+          <option>ログイン画面が表示された</option>
+        </select>
+      </label>
+      <label>広告(V5-5)
+        <select id="m-adB">
+          <option value="未確認">未確認</option>
+          <option>なし</option>
+          <option>あり(スキップ可)</option>
+          <option>あり(全画面・スキップ不可)</option>
+          <option>あり(オーバーレイ/バナー)</option>
+        </select>
+      </label>
+      <label>画質(V5-5)
+        <select id="m-qB">
+          <option value="未確認">未確認</option>
+          <option>144p〜240p 程度</option>
+          <option>360p〜480p 程度</option>
+          <option>720p 以上</option>
+          <option>自動のみ(選択不可)</option>
+          <option>画質メニューなし</option>
+        </select>
+      </label>
+      <label>ログイン要求(V5-5)
+        <select id="m-loginB">
+          <option value="未確認">未確認</option>
+          <option>なし</option>
+          <option>あり(視聴前)</option>
+          <option>あり(一部機能のみ)</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>枠 C = V5-3: Player API を埋め込み先ホストから直接読めるか</h2>
+    <div id="apiResult" class="muted">自動で実行します(最大 10 秒)…</div>
+    <p class="muted">
+      <strong>合格の意味</strong>: 読めれば「再生位置の制御・終了検知・自動再生の制御」を自前で実装できる余地があります。
+      <strong>不合格でも iframe の表示・再生自体は成立します</strong>(API は付加価値)。
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>補足(任意)</h2>
+    <label>ブロック画面の文言・気づいた点など<textarea id="notes" rows="3" placeholder="例: 枠 A は『このサイトはブロックされています』と表示、枠 B は再生可"></textarea></label>
+  </div>
+
+  <div class="card">
+    <h2>観測ログ(自動・参考)</h2>
+    <div id="log"></div>
+  </div>
+
+  <div class="card">
+    <h2>結果(これを送付してください)</h2>
+    <div class="row">
+      <button id="copy">結果をコピー</button>
+      <button class="secondary" id="refresh">結果を再生成</button>
+    </div>
+    <label>送付用 JSON(コピーできない場合はこの全文を選択してコピー)<textarea id="raw" readonly></textarea></label>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var VERSION = '2026-09-23';
+  var EDUCATION_HOST = 'https://www.youtubeeducation.com';
+  var OFFICIAL_HOST = 'https://www.youtube-nocookie.com';
+  var params = new URLSearchParams(location.search);
+
+  // ---- ?probe=1: ネットワークに一切アクセスしない自己診断 -------------------------------------
+  if (params.get('probe') === '1' || params.get('probe') === 'true') {
+    var probe = {
+      test: 'V5', probe: true, ok: true, version: VERSION,
+      file: 'v5-browser-iframe-test.html',
+      checks: ['V5-1 youtubeeducation の iframe', 'V5-2 公式 embed', 'V5-3 Player API 直接読込', 'V5-5 目視項目'],
+      defaultVideo: 'jNQXAC9IVRw',
+      note: 'この JSON が出れば最新版です(ネットワークアクセスは行っていません)。続けて ?probe なしの URL を開いてください。'
+    };
+    var text = JSON.stringify(probe, null, 2);
+    var panelEl = document.getElementById('probePanel');
+    panelEl.style.display = 'block';
+    panelEl.innerHTML = '<h2>自己診断 (probe)</h2><div id="log">' + text.replace(/[&<>]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c];
+    }) + '</div>';
+    var rawEl0 = document.getElementById('raw');
+    if (rawEl0) { rawEl0.value = text; }
+    if (window.console && console.log) { console.log('[V5 probe]', probe); }
+    var mainEl = document.getElementById('main');
+    if (mainEl) { mainEl.style.display = 'none'; }
+    return;
+  }
+
+  // ---- 通常モード -----------------------------------------------------------------------------
+  var state = {
+    test: 'V5',
+    version: VERSION,
+    executedAt: new Date().toISOString(),
+    href: location.href,
+    origin: location.origin,
+    ua: navigator.userAgent,
+    videoA: params.get('v') || 'jNQXAC9IVRw',
+    videoB: params.get('v2') || params.get('v') || 'jNQXAC9IVRw',
+    iframeParams: null,
+    frames: {
+      A: { host: EDUCATION_HOST, src: '', createdAt: null, loadMs: null, messageCount: 0, eventTypes: [], errors: [] },
+      B: { host: OFFICIAL_HOST, src: '', createdAt: null, loadMs: null, messageCount: 0, eventTypes: [], errors: [] }
+    },
+    playerApi: { status: 'pending', src: 'https://www.youtube.com/iframe_api', elapsedMs: null, YT: null, YTPlayer: null, onYouTubeIframeAPIReady: null, extra: {} },
+    manual: {},
+    messages: [],
+    notes: ''
+  };
+
+  function log(msg) {
+    var el = document.getElementById('log');
+    var line = '[' + new Date().toISOString().slice(11, 19) + '] ' + msg;
+    if (el) { el.textContent += line + '\n'; el.scrollTop = el.scrollHeight; }
+    if (window.console && console.log) { console.log('[V5]', msg); }
+  }
+
+  // ---- iframe の URL 生成(siatube と同じ強制パラメータ方針) ------------------------------------
+  function buildSrc(host, videoId) {
+    var p = new URLSearchParams();
+    p.set('enablejsapi', '1');
+    p.set('controls', '1');
+    p.set('playsinline', '1');
+    p.set('autoplay', '0');
+    p.set('widgetid', '1');
+    p.set('origin', location.origin);
+    p.set('forigin', location.href);
+    p.set('hl', 'ja');
+    p.set('cc_lang_pref', 'ja');
+    return host + '/embed/' + encodeURIComponent(videoId) + '?' + p.toString();
+  }
+
+  var frameA = document.getElementById('frameA');
+  var frameB = document.getElementById('frameB');
+  state.frames.A.src = buildSrc(EDUCATION_HOST, state.videoA);
+  state.frames.B.src = buildSrc(OFFICIAL_HOST, state.videoB);
+  state.iframeParams = new URLSearchParams(state.frames.A.src.split('?')[1]).toString();
+  document.getElementById('srcA').textContent = 'URL: ' + state.frames.A.src;
+  document.getElementById('srcB').textContent = 'URL: ' + state.frames.B.src;
+
+  function attach(key, el, autoElId) {
+    var f = state.frames[key];
+    f.createdAt = Date.now();
+    el.addEventListener('load', function () {
+      f.loadMs = Date.now() - f.createdAt;
+      log('枠 ' + key + ': load イベント(' + f.loadMs + ' ms)');
+      updateAuto(key, autoElId);
+      handshake(el, 'v5' + key);
+    });
+    el.addEventListener('error', function () {
+      f.errors.push('error イベント');
+      log('枠 ' + key + ': error イベント');
+    });
+  }
+
+  // クロスオリジンでも、YouTube 系プレイヤーは postMessage でイベントを返す(IFrame API プロトコル)。
+  function handshake(el, id) {
+    var payloads = [
+      JSON.stringify({ event: 'listening', id: id, channel: 'widget' }),
+      JSON.stringify({ event: 'listening', id: id })
+    ];
+    payloads.forEach(function (pl) {
+      try { el.contentWindow.postMessage(pl, '*'); } catch (e) { /* 無視 */ }
+    });
+  }
+
+  window.addEventListener('message', function (e) {
+    if (!/youtube|youtubeeducation|google/i.test(String(e.origin))) { return; }
+    var data = e.data;
+    if (typeof data === 'string') { try { data = JSON.parse(data); } catch (err) { data = { raw: String(e.data).slice(0, 80) }; } }
+    if (!data || typeof data !== 'object') { return; }
+    var ev = data.event || data.type || '(unknown)';
+    var entry = { atMs: Date.now() - state.frames.A.createdAt, origin: e.origin, event: String(ev) };
+    if (data.info !== undefined) { entry.info = data.info; }
+    if (data.infoDelivery) { entry.info = data.infoDelivery; }
+    if (state.messages.length < 40) { state.messages.push(entry); }
+    log('message: ' + e.origin + ' event=' + entry.event + (entry.info ? ' info=' + JSON.stringify(entry.info).slice(0, 120) : ''));
+    ['A', 'B'].forEach(function (k) {
+      if (state.frames[k].host.indexOf(String(e.origin).replace(/^https?:\/\//, '')) >= 0 ||
+          String(e.origin).indexOf(state.frames[k].host) === 0) {
+        state.frames[k].messageCount++;
+        if (state.frames[k].eventTypes.indexOf(String(ev)) < 0) { state.frames[k].eventTypes.push(String(ev)); }
+      }
+    });
+    updateAutoAll();
+  });
+
+  function updateAuto(key, elId) {
+    var f = state.frames[key];
+    var el = document.getElementById(elId);
+    if (!el) { return; }
+    var parts = ['load: ' + (f.loadMs === null ? '未検出' : f.loadMs + ' ms')];
+    parts.push('プレイヤー応答: ' + (f.messageCount > 0 ? f.messageCount + ' 件(' + f.eventTypes.join(', ') + ')' : 'なし'));
+    el.textContent = '自動観測: ' + parts.join(' / ') + '(最終判定は画面の目視で)';
+    el.className = 'muted ' + (f.messageCount > 0 ? 'ok' : (f.loadMs !== null ? 'warn' : 'ng'));
+  }
+  function updateAutoAll() { updateAuto('A', 'autoA'); updateAuto('B', 'autoB'); }
+
+  attach('A', frameA, 'autoA');
+  attach('B', frameB, 'autoB');
+  frameA.src = state.frames.A.src;
+  frameB.src = state.frames.B.src;
+
+  // ---- 枠 C: Player API の直接読込 ------------------------------------------------------------
+  (function testPlayerApi() {
+    var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
+    var done = false;
+    function finish(status) {
+      if (done) { return; }
+      done = true;
+      var t1 = (window.performance && performance.now) ? performance.now() : Date.now();
+      state.playerApi.status = status;
+      state.playerApi.elapsedMs = Math.round(t1 - t0);
+      state.playerApi.YT = !!window.YT;
+      state.playerApi.YTPlayer = !!(window.YT && window.YT.Player);
+      var el = document.getElementById('apiResult');
+      var cls = (status === 'loaded' && window.YT) ? 'ok' : 'ng';
+      el.className = cls;
+      el.textContent = 'Player API: ' + status + ' / 経過 ' + state.playerApi.elapsedMs + ' ms' +
+        ' / window.YT=' + state.playerApi.YT + ' / YT.Player=' + state.playerApi.YTPlayer +
+        (status === 'error' || status === 'timeout' ? '(= youtube.com がこの回線でブロックされている可能性)' : '');
+      log('Player API: ' + status + '(' + state.playerApi.elapsedMs + ' ms)');
+      refresh();
+      // 参考: ミラー側ホストに /iframe_api があるか(本体テストの完了後に実行し、window.YT を汚さないようにする)
+      probeEducationApi();
+    }
+
+    function probeEducationApi() {
+      var s2 = document.createElement('script');
+      s2.src = EDUCATION_HOST + '/iframe_api';
+      s2.async = true;
+      s2.onload = function () { state.playerApi.extra.educationIframeApi = 'onload'; log('youtubeeducation /iframe_api: onload'); refresh(); };
+      s2.onerror = function () { state.playerApi.extra.educationIframeApi = 'onerror'; log('youtubeeducation /iframe_api: onerror'); refresh(); };
+      document.head.appendChild(s2);
+      setTimeout(function () {
+        if (!state.playerApi.extra.educationIframeApi) { state.playerApi.extra.educationIframeApi = 'timeout'; log('youtubeeducation /iframe_api: timeout'); refresh(); }
+      }, 9000);
+    }
+    window.onYouTubeIframeAPIReady = function () {
+      state.playerApi.onYouTubeIframeAPIReady = true;
+      log('onYouTubeIframeAPIReady 発火');
+      finish('loaded');
+    };
+    var s = document.createElement('script');
+    s.src = state.playerApi.src;
+    s.async = true;
+    s.onload = function () { log('iframe_api script: onload'); finish(window.YT ? 'loaded' : 'loaded(YT 未定義)'); };
+    s.onerror = function () { log('iframe_api script: onerror'); finish('error'); };
+    document.head.appendChild(s);
+    setTimeout(function () { if (!done) { finish('timeout'); } }, 8000);
+  }());
+
+  // ---- 結果の組み立て -------------------------------------------------------------------------
+  function manualOf(key) {
+    return {
+      play: document.getElementById('m-play' + key).value,
+      ad: document.getElementById('m-ad' + key).value,
+      quality: document.getElementById('m-q' + key).value,
+      login: document.getElementById('m-login' + key).value
+    };
+  }
+
+  function refresh() {
+    state.notes = document.getElementById('notes').value;
+    state.manual = { A: manualOf('A'), B: manualOf('B') };
+    state.originNote = location.protocol === 'file:'
+      ? 'ローカルファイル(file://)で実行。origin=null がプレイヤーに渡るため、挙動が通常と変わる可能性あり'
+      : 'http(s) で実行';
+    var el = document.getElementById('raw');
+    if (el) { el.value = JSON.stringify(state, null, 2); }
+  }
+
+  document.getElementById('reload').addEventListener('click', function () {
+    ['A', 'B'].forEach(function (k) { state.frames[k] = { host: state.frames[k].host, src: state.frames[k].src, createdAt: Date.now(), loadMs: null, messageCount: 0, eventTypes: [], errors: [] }; });
+    frameA.src = state.frames.A.src; frameB.src = state.frames.B.src;
+    log('全枠を再読込しました');
+  });
+  document.getElementById('snapshot').addEventListener('click', refresh);
+  document.getElementById('refresh').addEventListener('click', refresh);
+  document.getElementById('copy').addEventListener('click', function () {
+    refresh();
+    var text = document.getElementById('raw').value;
+    var ok = function () { alert('コピーしました。チャットに貼り付けるか、verification/Verification-Results.md へ貼ってコミットしてください。'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(ok, function () {
+        document.getElementById('raw').removeAttribute('readonly');
+        document.getElementById('raw').select();
+        alert('クリップボードが使えない環境です。表示中の JSON を選択してコピーしてください。');
+      });
+    } else {
+      document.getElementById('raw').removeAttribute('readonly');
+      document.getElementById('raw').select();
+      alert('クリップボードが使えない環境です。表示中の JSON を選択してコピーしてください。');
+    }
+  });
+  ['m-playA', 'm-adA', 'm-qA', 'm-loginA', 'm-playB', 'm-adB', 'm-qB', 'm-loginB'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) { el.addEventListener('change', refresh); }
+  });
+
+  log('V5 検証キット①を開始(version ' + VERSION + ')');
+  log('origin=' + location.origin + ' / protocol=' + location.protocol);
+  refresh();
+  setTimeout(function () { updateAutoAll(); refresh(); }, 3000);
+  setTimeout(function () { updateAutoAll(); refresh(); log('15 秒経過: 目視チェックと「結果をコピー」へ進んでください'); }, 15000);
+}());
+</script>
+</body>
+</html>

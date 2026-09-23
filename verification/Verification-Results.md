@@ -1,3 +1,10 @@
+# 検証結果(最新のみ)
+
+> 運用: **1 ファイル = 最新の結果のみ**(過去のラウンドは git 履歴 + [`../docs/research/VERIFICATION_P0.md`](../docs/research/VERIFICATION_P0.md) に残ります)。
+> **次にここへ貼るもの = V5 の結果**(2026-09-23 追加): ① [`v5-browser-iframe-test.html`](v5-browser-iframe-test.html) の JSON(V5-1 / V5-2 / V5-3 / V5-5)
+> ② [`v5b-gas-test.gs`](v5b-gas-test.gs) の JSON(V5-4 = trend / search)。手順 = [`README.md`](README.md)。
+> 以下は現在の内容 = **V1f**(2026-09-15・旧スコープ = `/watch/` ページ抽出のストリーム URL 形式。現行では参照情報)。
+
 ## Test Result: V1f
 
 {

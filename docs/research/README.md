@@ -14,9 +14,10 @@
 
 | 文書 | 内容 |
 |---|---|
+| [`SIATUBE_CODE_VERIFICATION.md`](./SIATUBE_CODE_VERIFICATION.md) | しあTube 実コード確認(2026-09-23)。`ajgpw/siatube@44ab1599` のソース照合により、**既定の再生方式 = iframe(`youtubeeducation.com/embed`)**、params 供給(Google スプレッドシート・1h キャッシュ)、Player API のインライン注入、GAS = 中継専用、を確定。D1 改訂(iframe)の根拠 + 未検証項目(V5) |
 | [`SHIATUBE_DEEP_RESEARCH.md`](./SHIATUBE_DEEP_RESEARCH.md) | しあTube (SiaTube) 完全調査(2026-09-12)。公開リポジトリ2件のフルクローンによるソース精読 + プロダクション API ライブ実測。アーキテクチャ(静的 SPA + 中央 API、yt-dlp/InnerTube)、API 形状実測、運営・コミュニティ、法的性質、競合エコシステム、本プロジェクトへの採用候補 10 パターン |
 | [`VERIFICATION_P0.md`](./VERIFICATION_P0.md) | P0 検証証跡(2026-09-12〜)。V1〜V4 の実施記録(サンドボックス + ユーザー実行)。再生経路 OK / ブラウザ fetch は CORS 不可(最有力)/ GAS 実環境の複数制約(setMimeType は enum のみ等) |
-| [`DOWNLOAD_MECHANISM_RESEARCH.md`](./DOWNLOAD_MECHANISM_RESEARCH.md) | DL 機構調査(2026-09-13)。StreamSaver.js の機構要件(SW+fetch+ReadableStream、Chromium 系のみ)、googlevideo の CORS 実態(本検証 + Invidious/Piped 実務証拠)、直リンクの制約(クロスオリジン download 属性無効・進捗UI 不可)、実現可能方式 A(relay+クライアントmux)/ B(サーバーmuxバッチ)/ C(直リンク) の比較とフェーズ別提案 |
+| [`DOWNLOAD_MECHANISM_RESEARCH.md`](./DOWNLOAD_MECHANISM_RESEARCH.md) | **保留**(2026-09-23 に DL が実装対象外へ)。DL 機構調査(2026-09-13)。StreamSaver.js の機構要件(SW+fetch+ReadableStream、Chromium 系のみ)、googlevideo の CORS 実態(本検証 + Invidious/Piped 実務証拠)、直リンクの制約(クロスオリジン download 属性無効・進捗UI 不可)、実現可能方式 A(relay+クライアントmux)/ B(サーバーmuxバッチ)/ C(直リンク) の比較とフェーズ別提案 |
 
 ## ソース信頼度ルール
 

@@ -6,8 +6,11 @@
 | 目的 | 本プロジェクト(YouTube Proxy Site)の参照設計調査。しあTube の全体像・技術実装・運営・法的性質・競合環境を一次情報中心に完全に整理する |
 | 主要一次情報 | 公開リポジトリ 2 件のフルクローン(ソースコード読了)、プロダクション API の読み取り専用実測、公式サイト/ミラー観測 |
 | 信頼度凡例 | ◎=クローン済みソース/公式実測、○=公式リポジトリ・プロフィール、△=二次情報(記事・SNS・Q&A) |
+| 実コード確認(追記) | **2026-09-23**: [`ajgpw/siatube`](https://github.com/ajgpw/siatube) @ `44ab1599`(2026-09-16・MIT)をクローンし、主要ファイル(プレイヤー / API クライアント / worker / GAS 中継)を読了 → 結果を [SIATUBE_CODE_VERIFICATION.md](SIATUBE_CODE_VERIFICATION.md) に集約(② 再生 = iframe 方式 / ③ パラメータ供給 / ④ メタデータ取得 / ⑦ GAS 中継) |
 
 ---
+
+> **2026-09-23 追記(本調査と実コード確認の関係)**: 本文書は**全体像・運営・法的性質・競合**の調査。**技術実装の詳細(再生方式 = `youtubeeducation.com/embed` の iframe・パラメータ供給・API 面・GAS 中継)**については、ソースコードを直接読んで確認した [SIATUBE_CODE_VERIFICATION.md](SIATUBE_CODE_VERIFICATION.md) を**正**とし、本プロジェクトの実装時は同文書を参照する(本文書の該当記述と齟齬がある場合は同文書を優先)。
 
 ## 0. 要約(Conclusion First)
 

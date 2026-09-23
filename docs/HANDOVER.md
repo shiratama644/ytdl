@@ -1,8 +1,8 @@
 # AI 引き継ぎドキュメント(ytdl)
 
-> 作成: 2026-09-14 / **最終整理: 2026-09-16**(AGENTS.md・.agent/・全ドキュメントを ytdl 現状に同期)
-> 対象ブランチ: `arena/01a094ec-ytdl` / 最新コミット: ブランチ先端(`7761203` =
-> v1f 結果分析 = **V1 検証完了** を必ず含む)
+> 作成: 2026-09-14 / **最終更新: 2026-09-23**(再生方式を iframe へ転換・動画 DL を保留 = DOC-2)
+> 対象ブランチ: **セッション固定ブランチ**(Arena のセッションごとに `arena/<id>-ytdl`)。
+> 必ず `git branch --show-current` で確認する(§10)
 > **引き継ぐ AI へ: このファイルが第一のエントリポイントです。§1 → §13 の順で読み、
 >  §9 に指定したファイル群をその優先順で読んでから作業を開始してください。**
 
@@ -12,29 +12,33 @@
 
 1. **このプロジェクトの全設計判断は確定済み**(§4)。再議論・再提案しないこと。ユーザーが確認済み。
 2. **ユーザーとのコミュニケーションは日本語**(返信もドキュメントも)。
-3. **ユーザーの常設指示: 「検証してから構築する」**(verify first, build second)。**V1〜V2 は完了(§6)**。
-   V3-b / V4 = 任意(参考)。
-4. **V1(GAS 解決)= ✅ 全項目完了(v1f・第 6 回 2026-09-15)**: Phase A リゾラ = **`/watch/` ページ
-   抽出 + signature decipherer + O9**(リトライ+バックオフ / キャッシュ / single-flight)で**確定**。
-   ストリーム URL は全 30 形式 `signatureCipher`(復号必須・youtube-dlp 型 transform 逆変換)。
-   **P00-B/C/E/F と P00-D は全て着手可能 = ユーザーの GO 待ち**(P00-D 冒頭 = 復号済み URL の
-   fetch 実動作スパイク)。
+3. **ユーザーの常設指示: 「検証してから構築する」**(verify first, build second)。V1〜V2 = 完了(§6)。
+   **2026-09-23 の方針転換で検証の位置づけが変わった**(§4・§6 の状態欄)。
+4. **方針転換(2026-09-23・ユーザー決定)**: 再生は **iframe 埋め込み**(しあTube と同じ
+   `youtubeeducation.com/embed`)+ **動画 DL は目標から除外して保留**(実装対象外・設計は docs に保存)。
+   役割: 再生 = ブラウザが YouTube 系 embed を直接再生 / バックエンド = **メタデータ解決**。
+   ストリーム URL 解決・signature decipherer・DL 機構 = **保留**。
+   次の検証 = **V5**(iframe 到達性・検索/トレンド抽出 = ユーザー実行キット)/ 実装 = **P00 GO 待ち**。
 5. **このサンドボックスはターン跨ぎにリポジトリを再クローンする**。作業のたびに必ず **commit して push**
    (復旧手順は §11)。push しない作業は消える。
 
 ## 2. プロジェクト概要
 
-- **ytdl** = YouTube プロキシサイト。「しあTube(静的サイト版)」と**同じ需要構造**(学校のフィルタ回避・
-  アカウント不要・広告なし・高画質視聴)に、**2 つの差別化**を持つ:
-  1. **動画ダウンロード機能**(拡張子 mp4/webm × 画質 144p〜4K × キュー管理。しあTube に無い)
-  2. **Material 3 Design Expressive の UI + GSAP モーション**
+- **ytdl** = YouTube プロキシ閲覧サイト。「しあTube(静的サイト版)」と**同じ需要構造**(学校のフィルタ回避・
+  アカウント不要・広告なし・高画質視聴)を持つ。**2026-09-23 のユーザー決定で再定義**:
+  1. **再生 = iframe 埋め込み**(しあTube の既定方式と同じ。`youtubeeducation.com/embed`)
+  2. **差別化 = Material 3 Design Expressive の UI + GSAP モーション**
+  3. ~~動画ダウンロード機能~~ → **保留**(目標から除外。実装しないが設計・調査は docs に保存)
+  - 機能範囲 = **しあTube 相当フル**(トレンド / 検索+サジェスト / 視聴+関連+コメント / チャンネル /
+    プレイリスト / 履歴 / 登録 / 設定。DL を除く)
 - **2 フェーズ運用**:
   - **Phase A(GAS 期・MVP)**: 静的単一 HTML + `script.google.com` の GAS Web アプリ(doGet が
     HTML 配信 + `?api=` JSON ディスパッチの 2 役)。学校環境でそのまま動く。
-  - **Phase B(自宅サーバー期)**: Proxmox VE / LXC + Bun(Hono)+ Nginx + yt-dlp。
-    移行トリガー: GAS クォータ到達 / googlevideo ブロック / DL 本格利用 など。
+  - **Phase B(自宅サーバー期)= 将来オプション**: Proxmox VE / LXC + Bun(Hono)+ Nginx。
+    **DL 保留に伴い主目的(relay / yt-dlp)が外れた**ため再定義(移行トリガー = GAS クォータ到達など)。
 - **法的スタンス**: 個人視聴の私的使用(日本著作権法第 30 条圏)を前提。サーバーでの保存・再配信・
-  再エンコードはしない(§4 の D6)。
+  再エンコードはしない(§4 の D6)。**iframe 方式は YouTube 公式 embed の利用に近い形**であり、
+  直リンク再配布より露出が小さい(断定はしない。しあTube 実コードも同じ方式 = §7.8)。
 - 前提調査: しあTube の完全調査(ソース精読 + API 実測)を完了済み
   → [`research/SHIATUBE_DEEP_RESEARCH.md`](research/SHIATUBE_DEEP_RESEARCH.md)
 
@@ -42,6 +46,7 @@
 
 > ユーザーが明示した原則。**文書に書き記す際は絶対表現(「サーバー負荷ゼロ」「完全に」等)を禁止**され、
 > 条件付き・検証可能な表現を使うよう指示されている。`docs/planning/PHASE0_PLAN.md` §10.2 に原文登記済み。
+> **2026-09-23 追記**: 原則 2・3 は動画 DL(保留)に紐づく。DL を実装しない間も**表現規約は継続**。
 
 1. **サーバー側で動画データを中継・変換しない限り**、動画処理に伴う CPU/メモリ負荷を最小化できる
    (※ 「サーバー負荷は完全にゼロ」は**禁止表現**)
@@ -52,61 +57,70 @@
 4. **ブラウザからの直接取得可否(CORS、Range、URL 有効期限、codec/container 対応等)を検証した上で利用する**
    (※ 「生 URL をブラウザへ返せば再生可能」は**禁止表現** = 必ず検証してから利用)
 
-## 4. 確定した設計(全項目ユーザー承認済み・再議論禁止)
+## 4. 確定した設計(全項目ユーザー承認済み・**2026-09-23 に改訂/保留を反映**)
+
+> 状態の凡例: **【改訂】** = 2026-09-23 のユーザー決定で内容変更 / **【継続】** = 変更なし /
+> **【保留】** = 実装対象外(docs は保存・再開時に参照)。**旧文面の全文**は git 履歴 +
+> `docs/planning/PHASE0_PLAN.md` §10.8/§10.10 + [`research/DOWNLOAD_MECHANISM_RESEARCH.md`](research/DOWNLOAD_MECHANISM_RESEARCH.md) に残る。
 
 | # | 判断 | 内容 | 確定日 |
 |---|---|---|---|
-| D1 | **再生経路** | ネイティブ `<video>`(映像)+ `<audio>`(音声)の **2 要素 DASH シンクロ再生**(MSE/dash.js/shaka 不使用)。muxed 360p が既定、高画質は DASH。m3u8(ライブ)のみ hls.js。**全フェーズで googlevideo 直読み = サーバー関与ゼロ** | 2026-09-13 |
-| D2 | **リゾラ** | **自前実装**。**siatube.com API の使用はしない**(第三者依存排除)。**V1 検証(2026-09-15)により Phase A の実装 = `/watch/` ページ抽出 + signature decipherer + O9 に確定**(GAS 後端に youtubei.js ランタイムは不要 = `/player` InnerTube 経路は GAS IP から不可、3 ラウンド検証。D7 ラダーの「raw InnerTube / watch 経路」が検証採用された形) | 2026-09-14(実装は 09-15 確定) |
-| D3 | **DL(自宅サーバー期)** | **方式 A が主経路**: `/dl` **ダウンロード専用 relay(オンデマンド・DL 時のみ)** → ブラウザ fetch → **Web Worker 内で mp4-muxer/webm-muxer(再エンコードなし)** → **StreamSaver.js**(SW は自ドメイン配信)→ **進捗UI( % / 速度 / ETA / キャンセル / レジューム)**。**方式 B がフォールバック**: yt-dlp バッチ(ダウンロード+mux)→ 完成ファイルを Nginx 配信(Range)。A が不安定(bot チェック/PO token)になったときの補完 | 2026-09-13 |
-| D4 | **DL(GAS 期)** | **720p 以下 muxed 直リンクのみ**(ブラウザネイティブ保存。進捗UI/ファイル名制御/キューなし = 縮小機能は承知済み) | 2026-09-13 |
-| D5 | **DL(iOS/Firefox)** | 直リンクフォールバック(= D4 相当)。StreamSaver は **Chromium 系のみ対応**(公式)ため | 2026-09-13 |
-| D6 | **relay の使用範囲** | **ダウンロードのときのみ。再生には一切使用しない**。自宅サーバーは siatube 型の「動画バイト全面プロキシ」**にはしない**(高負荷のため、ユーザー事前調査)。**常設制約** | 2026-09-13(14 に再確認) |
-| D7 | **対策ラダー**(自前解決の範囲内) | ① client 選択 ② clientVersion 鮮度管理 ③ **PO token 生成**(実証要) ④ raw InnerTube / **watch ページ抽出(= V1 で Phase A の採用経路と確定)**。Phase A は④が主経路で固定。ラダーは Phase B(yt-dlp・組込み済み)および Phase A の鮮度維持(R1: decipherer が player JS 更新で壊れ得る)に対応するもの | 2026-09-14(15 に確定) |
-| D8 | **v2b(CORS 確定テスト)** | **スキップ**(ユーザー判断)。理由: DL が自社サーバー経路になるため、googlevideo 直 fetch の有無は DL 設計を変えない | 2026-09-13 |
-| D9 | **FSA(File System Access API)** | **DL 主経路にしない**(ユーザーが明示的に StreamSaver 主経路を指定)。Chromium での StreamSaver 補完/代替として保持 | 初期 |
+| D1 | **再生経路** | **【改訂 2026-09-23】iframe 埋め込み**(`https://www.youtubeeducation.com/embed/{id}` を既定、公式 embed に差し替え可能な形)。直リンク再生(2 要素 DASH・hls.js・MSE)は**保留 = 実装しない** | 2026-09-23(改訂) |
+| D2 | **バックエンド** | **自前実装**(siatube.com API 不使用 = 継続)。役割は**メタデータ解決**(`/watch/` 抽出 = V1 で実証済み / 検索・トレンド = V5 で検証)。**signature decipherer・ストリーム URL 解決は保留** | 2026-09-14(09-23 改訂) |
+| D3 | **DL(自宅サーバー期)= 保留** | 旧設計: 方式 A 主(`/dl` DL 専用 relay → Worker で mp4/webm-muxer → StreamSaver → 進捗UI)+ 方式 B 補完(yt-dlp バッチ)。**2026-09-23 ユーザー決定で実装対象外**(設計は docs に保存) | 2026-09-13(09-23 保留) |
+| D4 | **DL(GAS 期)= 保留** | 旧設計: 720p 以下 muxed 直リンクのみ(実測 = itag 22/37 なし → itag 18 のみ)。**実装対象外** | 2026-09-13(09-23 保留) |
+| D5 | **DL(iOS/Firefox)= 保留** | 旧設計: 直リンクフォールバック(StreamSaver は Chromium 系のみ)。**実装対象外** | 2026-09-13(09-23 保留) |
+| D6 | **relay の使用範囲** | **再生経路のサーバー中継はしない**(iframe 方式で確定 = 再生はブラウザ ↔ YouTube 系で完結)。**DL 専用 relay は保留**。自宅サーバーは siatube 型の動画全面プロキシにしない(常設) | 2026-09-13(09-23 改訂) |
+| D7 | **対策ラダー = 保留** | 旧設計: client 選択 / clientVersion 鮮度 / PO token / decipherer churn 対策。**直リンク再開時に再開**(iframe 方式では不要) | 2026-09-14(09-23 保留) |
+| D8 | **v2b(CORS 確定テスト)** | **スキップ**(ユーザー判断・変更なし)。**再提案しない** | 2026-09-13 |
+| D9 | **FSA = 保留** | 旧設計: DL 主経路にしない(StreamSaver 指定)。**DL 保留に伴い対象外** | 初期(09-23 保留) |
 
-## 5. 全体アーキテクチャ(確定版)
+## 5. 全体アーキテクチャ(2026-09-23 改訂)
 
 ```
-┌────────────────────────── Phase A: GAS(現在〜移行まで) ──────────────────────────┐
-│  [学校LAN] ──HTTPS──▶ script.google.com/macros/s/<id>/exec                        │
-│      doGet(e) が 2 役:  1) 単一 HTML 配信(Next.js export + inline)              │
+┌────────────────────────── Phase A: GAS(現在・MVP) ───────────────────────────────┐
+│  [学校LAN] ──HTTPS──▶ script.google.com/macros/s/<id>/exec   (GAS Web アプリ)     │
+│      doGet(e) が 2 役: 1) 単一 HTML 配信(Next.js export + inline)                │
 │                        2) ?api= クエリディスパッチ / google.script.run RPC        │
 │      ▼ (UrlFetchApp = サーバー間通信、CORS 不要)                                  │
-│   youtube.com /watch/ ページ抽出(desktop UA + ja-JP) + signature decipherer      │
-│      → JSON(メタ + 復号済み googlevideo URL 群 + itag/codec/contentLength/期限)  │
-│  [ブラウザ] 再生: <video>/<audio> 直リンク(googlevideo 直)                        │
-│           DL:   720p 以下 muxed 直リンク(D4)                                     │
-└──────────────────────────────────────────────────────────────────────────────────┘
+│   youtube.com /watch/ ページ抽出(desktop UA + ja-JP)                             │
+│      → JSON(メタデータのみ: タイトル/投稿者/長さ/サムネイル/関連)                 │
+│      ※ ストリーム URL は取得・返却しない(iframe 再生では不要)                   │
+│      ※ 検索・トレンドの抽出経路 = 未検証(V5 で確認後に実装)                     │
+│                                                                                   │
+│  [ブラウザ] 再生: iframe ─▶ https://www.youtubeeducation.com/embed/{id}?{params}  │
+│        (ブラウザ ↔ YouTube 系で完結 = 再生にサーバーは関与しない)                 │
+└───────────────────────────────────────────────────────────────────────────────────┘
 
-┌────────────────────────── Phase B: 自宅サーバー(Proxmox/LXC、移行後) ────────────┐
-│  Nginx(https) ─▶ Bun/Node Hono API(yt-dlp subprocess, PO token)                 │
-│                 ─▶ 静的配信(Next.js export)+ Service Worker(StreamSaver・自ド) │
-│  再生: <video>/<audio> 直リンク(googlevideo 直 = サーバー関与ゼロ)               │
-│  DL 主(A): /dl?src=... (DL 専用 relay・オンデマンド・host whitelist)              │
-│            → ブラウザ fetch(ACAO/Content-Length/CD) → Worker mux → StreamSaver   │
-│  DL 補完(B): yt-dlp バッチ → 完成ファイルを Nginx 配信(Range)                     │
-│  DL fallback(C): 720p 以下 muxed 直リンク(iOS / Firefox)                         │
-└──────────────────────────────────────────────────────────────────────────────────┘
+┌────────── Phase B: 自宅サーバー(将来オプション・DL 保留に伴い再定義) ───────────┐
+│  Nginx(https) ─▶ Bun/Hono(メタデータ解決の強化・キャッシュ)                       │
+│                 ─▶ 静的配信(Next.js export)                                      │
+│  再生: 同じ iframe 方式(サーバー関与なし)                                        │
+│  (旧 DL 設計 = 方式 A/B/C・relay・Service Worker は**保留**)                      │
+└───────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 **技術スタック(確定)**: Next.js(App Router, `output:'export'`)+ Tailwind CSS v4 + GSAP 3.13 +
-Dexie.js 4 / TypeScript / biome / vitest / pnpm workspaces。GAS 後端 = **`/watch/` ページ抽出
-+ signature decipherer + O9(プレーン JS・youtubei.js ランタイム不使用 = V1 で確定)**。
-自宅サーバー = Bun + Hono + yt-dlp + Nginx。
-(詳細: `docs/planning/PHASE0_PLAN.md` §10.4〜§10.6)
+Dexie.js 4 / TypeScript / biome / vitest / pnpm workspaces。GAS 後端 = **メタデータ解決
+(`/watch/` 抽出 = V1 実証済み)+ O9**(プレーン JS・youtubei.js ランタイム不使用 = V1 で確定)。
+再生 = **iframe 埋め込み**(再生は YouTube 系 embed が担う = プレイヤー実装は薄い)。
+自宅サーバー = Bun + Hono + Nginx(**将来オプション**。DL 用 yt-dlp は保留)。
+(詳細: `docs/planning/PHASE0_PLAN.md` §10.4〜§10.7)
 
 ## 6. 検証の現状(証跡の正本: `docs/research/VERIFICATION_P0.md`)
+
+> **2026-09-23 更新**: 再生 = iframe 転換により、検証の**位置づけ**が変わった(下表の状態欄)。
+> **次に実行するのは V5**(iframe 到達性・メタデータ抽出)。V3-a/V3-b/V4 = 保留項目の参考。
 
 | ID | 内容 | 状態 | 要点 |
 |---|---|---|---|
 | V1-a | youtubei.js バンドル + Node 初期化 | ✅ 完了 | v18.0.0・1.3MB バンドル・create() 到達(通信はサンドボックス遮断のため未実測) |
-| **V1-b** | **GAS 実環境でのストリーム解決** | **✅ 完了(第 1〜6 回 2026-09-13〜15)** | 第 1 回失敗 / 第 2 回(v1b・`c53eddb`)= 全 client 失敗(version 陳腐化は排除)/ 第 3 回(v1c・`bf513ab`)= キット側の抽出バグ 2 点で未了(ただし **watch ページは 200/718KB で取得成功 + マーカー存在 + botCheck なし** = IP 壁は確定せず)/**第 4 回(v1d・`37b3b94`)= ✅ 成功**: `/watch/` ページの `ytInitialPlayerResponse` 抽出で **playability OK / formats 30 種 / 1080p(137)+ audio(140) 取得成功**(desktop・mobile UA 両方)。**本番リゾラ = watch ページ抽出(Invidious 同型)で確定**。**`/player` エンドポイントは 3 ラウンド連続 dead**(ERROR / UNPLAYABLE / ANDROID 400)→ 使わない。**アーキ分岐(リゾラを初期から自宅サーバーへ)= 不採用**。itags: **itag 22/37(mp4 muxed)なし** → D4(DL・GAS 期)の muxed 直リンクは **itag 18(360p)のみ**(「720p 以下」上限内、高画質 DL は Phase B)。**第 5 回(v1e)= 429(=O9)→ 試行 2 長待ち化(設計ミス)→ 第 6 回(v1f・`6143012`)= ✅ 完了: ストリーム URL = 全 30 形式 `signatureCipher`**(`url`=0 / `ciphertext`=0)→ **復号必須 = Phase A リゾラ = watch 抽出 + signature decipherer + O9(リトライ+バックオフ / キャッシュ / single-flight)で確定**。P00-D 冒頭 = 復号済み URL の fetch 実動作スパイク |
-| V2 | ブラウザ直接取得 | ✅ 部分判定で確定 | 第 1 回(ユーザー Android): `<video>` 再生 **OK** / fetch 全 **Failed to fetch** → **CORS(ACAO 欠如)成立**。expire ≈5.9h / 他 IP 再生 OK(ip= 縛りなし)。v2b は D8 でスキップ |
-| V3-a | GAS `?_sw=` の HTTP 契約 | ✅ 完了 | ローカル模倣で HTML/JS MIME 同居確認 |
-| V3-b | GAS からの SW 登録 | ⏳ 任意(参考) | DL 設計確定で **GAS 期は StreamSaver 不使用** → 「最重要」から**降格**。PWA/オフライン判断用のみ。第 1 回 = text/plain 配信(旧デプロイ)、第 2 回 = setMimeType 例外(私のバグ、修正済み) |
-| V4 | iOS Safari 挙動 | ⏳ 任意 | iOS の DL fallback(直リンク)の裏取り。後で |
+| **V1-b** | **GAS 実環境でのストリーム解決** | ✅ 完了(第 1〜6 回 2026-09-13〜15) / **位置づけ変更** | 第 1 回失敗 / 第 2 回 = 全 client 失敗(version 陳腐化は排除)/ 第 3 回 = キット側バグ 2 点(v1c)/ **第 4 回(v1d)= ✅ watch 抽出成功**(playability OK / 30 形式 / 1080p+140)/ 第 5 回(v1e)= 429(O9)/ 第 6 回(v1f)= **全 30 形式 `signatureCipher`**。**`/player` InnerTube = 3 ラウンド連続 dead(使わない)**。**2026-09-23 改訂: 抽出の知見 = メタデータ供給源として活用 / 復号(decipherer)は保留**(iframe 再生ではストリーム URL を使わない) |
+| V2 | ブラウザ直接取得 | ✅ 部分判定で確定(記録として保持) | 第 1 回(ユーザー Android): `<video>` 再生 **OK** / fetch 全 **Failed to fetch** → **CORS(ACAO 欠如)成立**。expire ≈5.9h / 他 IP 再生 OK。v2b は D8 でスキップ。**DL 保留により決定打ではなくなったが、直リンク再開時の判断材料** |
+| V3-a | GAS `?_sw=` の HTTP 契約 | ✅ 完了(記録) | ローカル模倣で HTML/JS MIME 同居確認。**DL/PWA 保留に伴い当面用途なし** |
+| V3-b | GAS からの SW 登録 | ⏳ 任意(保留項目の参考) | 第 1 回 = text/plain 配信(旧デプロイ)/ 第 2 回 = setMimeType 例外(修正済み)。用途 = 将来の PWA/オフライン判断のみ |
+| V4 | iOS Safari 挙動 | ⏳ 任意(保留項目の参考) | iOS の DL fallback(直リンク)の裏取り。**DL 保留に伴い後回し** |
+| **V5** | **iframe 到達性 + メタデータ抽出(検索/トレンド)** | **未着手(次に実行する必須キット)** | ① `youtubeeducation.com/embed` が学校/自宅で描画・再生できるか ② 公式 embed(`youtube-nocookie.com` 等)の到達性 ③ 埋め込み先からの Player API 直接読込可否 ④ GAS からの検索結果/トレンド抽出 ⑤ embed の広告・画質・ログイン要求の挙動。キット: `verification/v5-browser-iframe-test.html`(①②③⑤)/ `verification/v5b-gas-test.gs`(④) |
 
 **GAS 実行で判明した制約(本プロジェクトの GAS 実装に直接効く)**:
 - **O7: GAS の `ContentService.TextOutput.setMimeType` は `ContentService.MimeType` 列挙型のみ
@@ -121,6 +135,9 @@ Dexie.js 4 / TypeScript / biome / vitest / pnpm workspaces。GAS 後端 = **`/wa
   watch ページを再 fetch しない)。
 
 ## 7. 技術的事実(調査済み・再調査・再議論不要)
+
+> **2026-09-23 追記**: §7.1〜§7.5 は **DL / 直リンク設計(保留)の記録**として保存する。
+> iframe 再生の実コード確認は **§7.8** と [`research/SIATUBE_CODE_VERIFICATION.md`](research/SIATUBE_CODE_VERIFICATION.md) を参照。
 
 ### 7.1 googlevideo.com の CORS
 - **`Access-Control-Allow-Origin` を返さない** → ブラウザの `fetch()` は必ずブロックされる。
@@ -194,46 +211,59 @@ Dexie.js 4 / TypeScript / biome / vitest / pnpm workspaces。GAS 後端 = **`/wa
 - googlevideo URL の `ip=<解決元 IP>` は**再生経路では縛りを実効しない**(O3・V2 実測)。
   → ブラウザが別 IP から `<video>` で取得しても再生 OK。
 
+### 7.8 しあTube 実コード確認(2026-09-23・iframe 方式)
+- しあTube の**既定の再生方式は iframe**(`https://www.youtubeeducation.com/embed/{id}?{params}`)。
+  実コード(`ajgpw/siatube@44ab1599`): `StreamPlayer.vue`(既定 = "1")/ `StreamType1.vue` /
+  `youtubeEducationPlayer.js`(params と Player API コードを Google スプレッドシートから 1h キャッシュで
+  取得 → `<script>` にインライン注入)/ `StreamTypeDropdown.vue`(Type2 = 「再生できない場合こちら」= 逃げ道)。
+- **GAS の役割 = 中継**(`siatubeGAScode/code.gs`: 自前サーバー API へ UrlFetchApp 転送・3 リトライ・
+  JSON 返却)。**GAS では YouTube 解決をしない**。私たちの Phase A は自前サーバーを持たないため、
+  逆に **GAS がメタデータ解決の主体**になる(V1 の `/watch/` 抽出を活用)。
+- **Player API 初期化に失敗しても iframe は残す**実装 = 再生自体は API なしで成立する。
+- 詳細(コード抜粋・出典 URL・未検証項目) = [`research/SIATUBE_CODE_VERIFICATION.md`](research/SIATUBE_CODE_VERIFICATION.md)。
+
 ## 8. 検証キットの状態と、P00-D の仕様(着手時にこれ)
 
-### 8.1 V1 = ✅ 完了 → P00-D 着手可能(ユーザー GO 待ち)
-- **GAS 実行の検証キットはすべて完了**(v1〜v1f 計 6 ラウンド)。生データ =
-  `verification/Verification-Results.md`(現在 = v1f の JSON)。**ユーザーに実行を依頼する
-  必須キットは残っていない**(v3b / V4 = 任意・後回し)。
-- **P00-D(GAS 後端)の確定仕様**(V1 検証の結果から):
-  1. **リゾラ = `/watch/` ページ抽出**: `https://www.youtube.com/watch?v=<id>&hl=ja&gl=JP`
-     を desktop UA(+ `Accept-Language: ja-JP`)で UrlFetchApp 取得 → 代入文
-     `ytInitialPlayerResponse = {` を正規表現で全候補列挙 → 括弧バランス切片 → JSON.parse →
-     `playabilityStatus/streamingData/videoDetails` を持つ実レスポンスを採用
-     (v1d/v1f で実証済みのアルゴリズム。`verification/v1f-gas-test.gs` に参照実装あり)。
-  2. **signature decipherer**: formats 全形式が `signatureCipher`
-     (`s=<cipher>&sp=sig&url=<encoded>`)→ youtube-dlp 型 transform 逆変換で復号
-     (player JS からの transform 抽出 → `s` 逆変換 → `decode(url) + &sig=<復号値>`)。
-     → **冒頭のスパイク: 復号済み URL を GAS から Range 1 チャンク取得して 200 を確認**
-     (ここが通れば設計確定のまま進める)。
-  3. **O9 を必ず実装**: 429/5xx のリトライ+バックオフ / **CacheService で解決結果をキャッシュ**
-     (TTL = `expiresInSeconds` の数値×安全係数、例: 0.5) / 同一動画の single-flight。
-  4. doGet ディスパッチ: `/`(単一 HTML)+ `?api=health|video|search...`(+ `?probe=1` 自己診断)。
-     `/player` InnerTube は使わない(§7.7)。
-  5. API 返却 = メタ + **復号済み googlevideo URL 群**(itag/codec/qualityLabel/
-     approxDurationMs/contentLength)+ `expiresInSeconds`。
-- 失敗時のフォールバック: D7 ラダー(別 client / PO token)→ それでも不可なら
-  Phase B 早期移行(§11 R1)。
+### 8.1 V5(次に実行する必須キット)= iframe 到達性 + メタデータ抽出
+- **2026-09-23 の転換により、次に実環境で確認すべきは V5**(V1〜V2 の完了状況は §6)。
+- キット① `verification/v5-browser-iframe-test.html`(ブラウザで開く)= ① `youtubeeducation.com/embed`
+  の描画・再生 ② 公式 embed(`youtube-nocookie.com` 等)の到達性 ③ 埋め込み先からの Player API
+  直接読込可否 ⑤ 広告・画質・ログイン要求の挙動(目視)。`?probe=1` 内蔵。
+- キット② `verification/v5b-gas-test.gs`(GAS)= ④ GAS からの検索結果ページ抽出とトレンド取得。
+  **1 実行 = 1 fetch**(`?probe=1` / `?test=search` / `?test=trend` で切替)。
+- 手順 = `verification/README.md`。結果 = `verification/Verification-Results.md`(1 ファイル = 最新のみ)。
 
-### 8.2 v3b(任意・参考)
+### 8.2 P00-D(GAS 後端)の仕様(2026-09-23 改訂)
+1. **メタデータ解決 = `/watch/` ページ抽出**(V1 で実証済みのアルゴリズム):
+   `https://www.youtube.com/watch?v=<id>&hl=ja&gl=JP` を desktop UA(+ `Accept-Language: ja-JP`)で
+   UrlFetchApp 取得 → 代入文 `ytInitialPlayerResponse = {` を正規表現で全候補列挙 →
+   括弧バランス切片 → JSON.parse → `playabilityStatus/videoDetails` を持つ実レスポンスを採用
+   (`verification/v1f-gas-test.gs` に参照実装)。**返すのはメタデータのみ**(タイトル・投稿者・
+   長さ・サムネイル・関連)。**ストリーム URL は返さない**。
+2. **検索・トレンド = V5 の結果次第**(未確定の間は実装しない)。可なら同じ「ページ抽出」方式で実装。
+3. **O9 を必ず実装**: 429/5xx のリトライ+バックオフ / **CacheService キャッシュ** / 同一対象の single-flight。
+4. doGet ディスパッチ: `/`(単一 HTML)+ `?api=health|video|search|channel|playlist|comments...`
+   (+ `?probe=1` 自己診断)。`/player` InnerTube は使わない(§7.7)。
+5. **iframe のパラメータはクライアント側の設定定数**で持つ(しあTube のスプレッドシート方式は採用しない。
+   ブロック等で必要になった場合に再検討 = §7.8)。
+- **保留**(実装しない): signature decipherer / ストリーム URL 解決 / DL 機構(D3〜D5/D9)。
+  再開時は VERIFICATION_P0.md の V1 解析 + `DOWNLOAD_MECHANISM_RESEARCH.md` を参照する。
+
+### 8.3 v3b(任意・保留項目の参考)
 - キット: `verification/v3b-gas-test.gs`(修正版 = enum 使用。行 50 が
   `.setMimeType(ContentService.MimeType.HTML);` であること。
-  raw: `https://raw.githubusercontent.com/shiratama644/ytdl/arena/01a094ec-ytdl/verification/v3b-gas-test.gs`)
+  raw: `https://raw.githubusercontent.com/shiratama644/ytdl/<セッション固定ブランチ>/verification/v3b-gas-test.gs`
+  = ブランチ名は `git branch --show-current` で確認)`
 - 手順: 新プロジェクト → 貼付 → **まず `?probe=1` を開いて** `{"test":"V3b",...}` が出ることを確認
   → その URL を開く。ページが描画されたら「結果をコピー」、**文字として表示されたら画面下部の
   コンソールコマンドを F12 コンソールに貼付**して結果を送る。
 - 用途: 将来の PWA/オフライン機能(GAS からの SW 配信可否)の判断材料のみ。**DL には不要**。
 
-### 8.3 V4(任意)
+### 8.4 V4(任意・保留項目の参考)
 - `verification/v2b-browser-test.html` を **iOS(Safari)** で開いて実行 → 「結果をコピー」。
 - 用途: iOS の DL fallback(直リンク)の UX 裏取り。
 
-### 8.4 v2b — **スキップ済み(D8)。ユーザーに再提案しない**(ファイルは残置物)。
+### 8.5 v2b — **スキップ済み(D8)。ユーザーに再提案しない**(ファイルは残置物)。
 
 ## 9. リポジトリ構造と正本ファイル
 
@@ -248,18 +278,21 @@ ytdl/
 │   │   ├── PHASE0_PLAN.md           # ★ 設計正本(P00 計画・§10 で全体設計・§11 リスク・§5 DoD)
 │   │   ├── README.md / _TEMPLATE.md
 │   ├── research/
-│   │   ├── VERIFICATION_P0.md       # ★ 検証証跡(V1〜V4 全記録・設計への影響テーブル・観察 O1〜O7)
-│   │   ├── DOWNLOAD_MECHANISM_RESEARCH.md  # ★ DL 機構調査(StreamSaver/直リンク/方式 A・B・C 比較+決定記録 §6)
-│   │   ├── SHIATUBE_DEEP_RESEARCH.md       # しあTube 完全調査(API 形状実測等=参考資料)
+│   │   ├── VERIFICATION_P0.md       # ★ 検証証跡(V1〜V5・設計への影響・観察 O1〜O9)
+│   │   ├── SIATUBE_CODE_VERIFICATION.md    # ★ しあTube 実コード確認(iframe 方式・2026-09-23)
+│   │   ├── DOWNLOAD_MECHANISM_RESEARCH.md  # DL 機構調査(**保留**。StreamSaver/方式 A・B・C の記録)
+│   │   ├── SHIATUBE_DEEP_RESEARCH.md       # しあTube 完全調査(参考資料・仕様正本ではない)
 │   │   └── README.md                # 調査 index
 │   └── HANDOVER.md                  # 本ファイル
 ├── verification/
 │   ├── README.md                    # ★ 検証キットの実行手順(ユーザー向け)
 │   ├── Verification-Results.md      # ユーザー管理の生データファイル(= 現在 **v1f の JSON**・1 ファイル = 最新の結果のみ)
 │   │                                #   第 1〜3 回の生データは git 履歴 + VERIFICATION_P0.md の証跡に残る
-│   ├── v1〜v1f の .gs               # V1 キット系(旧→新 / **最新 = v1f = 実行済み・完了**)
-│   ├── v2-browser-test.html / v2b-browser-test.html  # V2 キット(旧 / 最新・v2b はスキップ)
-│   ├── v3-gas-test.gs / v3b-gas-test.gs      # V3 キット(旧 / 最新)
+│   ├── v1〜v1f の .gs               # V1 キット系(実行済み・完了)
+│   ├── v2-browser-test.html / v2b-browser-test.html  # V2 キット(v2b はスキップ済み)
+│   ├── v3-gas-test.gs / v3b-gas-test.gs      # V3 キット(保留項目の参考)
+│   ├── v5-browser-iframe-test.html            # ★ V5 キット(iframe 到達性・次に実行)
+│   ├── v5b-gas-test.gs                        # ★ V5 キット(GAS: 検索/トレンド抽出・次に実行)
 └── (P00-B 以降で) apps/web, packages/shared, backend/gas, backend/home, scripts/
 ```
 
@@ -268,52 +301,28 @@ ytdl/
 2. `docs/task-list.md`(どこまでやったか)
 3. `docs/planning/PHASE0_PLAN.md`(何をどう作るか・§5 DoD・§7 停止条件)
 4. `docs/research/VERIFICATION_P0.md`(なぜそう設計したか=証跡)
-5. 必要に応じて `DOWNLOAD_MECHANISM_RESEARCH.md` / `SHIATUBE_DEEP_RESEARCH.md` / `verification/README.md`
+5. `docs/research/SIATUBE_CODE_VERIFICATION.md`(iframe 方式の実コード根拠・2026-09-23)
+6. 必要に応じて `SHIATUBE_DEEP_RESEARCH.md` / `DOWNLOAD_MECHANISM_RESEARCH.md`(保留) / `verification/README.md`
 
-## 10. git / ブランチ状況(2026-09-14 時点)
+## 10. git / ブランチ状況(2026-09-23 時点)
 
-- リポジトリ: `shiratama644/ytdl`(GitHub。認証はこの環境で設定済み)
-- **全作業はブランチ `arena/01a094ec-ytdl` にある(先端 = `7761203` 以降)。`main`
-  は `69db5af`(Initial commit)のまま**。→ 引き継いだセッションでは、作業開始前に
-  `git fetch origin '+refs/heads/*:refs/remotes/origin/*'` してこのブランチを起点にすること
-  (新しい Arena セッションは別の `arena/<id>` ブランチを main から作られる場合がある
-  = その場合は `origin/arena/01a094ec-ytdl` をマージしてから作業)。
-- **ユーザーは GitHub Web UI で直接コミットする**(`c53eddb` / `bf513ab` / `0c65cb4` /
-  `37b3b94` …)。
-  **worktree にユーザーが変更したファイルの古いコピーが残っていることがある** →
-  コミット前に必ず `git checkout origin/<ブランチ> -- <ファイル>` で同期し、
-  ユーザーが削除したファイルは worktree 側も削除すること(`git add -A` が復元してしまう罠)。
-  - 例 1: `bf513ab` で `Verification-Results.md` が削除され `v1c-res.md` がリポジトリ直下に
-    追加されていた(Web UI リネ名の事故)→ 整理済み。
-  - 例 2: `0c65cb4` で `verification/v1c-res.md` が削除され(結果を
-    `Verification-Results.md` に統合)、`37b3b94` で同ファイルに **V1d 結果(JSON)** が書き込まれた
-    = **ユーザーの結果管理方針: 1 ファイル = 最新の生結果**。古い生データは git 履歴 +
-    `VERIFICATION_P0.md` の証跡に依存してよい。
-- **`origin` に `arena/01a0778c-ytdl` という別ブランチがある** = ユーザーの別セッション由来。
-  **触らない**(本セッションの作業は `arena/01a094ec-ytdl` のみ)。
+- リポジトリ: `shiratama644/ytdl`(GitHub。認証はこの環境で設定済み)。
+- **作業ブランチ = セッション固定ブランチ**(`arena/<id>-ytdl`)。**必ず `git branch --show-current` で確認**する。
+  **過去セッションのブランチ名は本ドキュメントに残さない**(別セッションのブランチを触る事故を防ぐため)。
+- **`main` は PR #3 まで取り込み済み**(`12aeef8`)。現セッションの作業はその先端から始まっている
+  (= 「main が古いので取り込む」作業は**完了済み・不要**)。
 - 主要コミット(新しい順):
-  - (2026-09-16) ドキュメント全面整理 + AGENTS.md / .agent/ を ytdl 用に全面書き換え(セッション移行準備)
-  - `7761203` **v1f 結果分析 = V1 検証完了**(signatureCipher 確定 → P00-D 仕様確定)+ 設計正本更新
-  - `6143012` ユーザー: **V1f 実行結果**(= ✅ 全 30 形式 signatureCipher) = **V1 完了の証跡**
-  - (8d4bc6b) v1e 試行 2 = 長待ち化の分析 + **v1f 再設計**(probe + 1 fetch/実行)+ 証跡群更新
-  - (b520d89) v1e 試行 1 = 429 の分析 + O9 記録
-  - `3dcfce9` ユーザー: V1e 試行 1 結果(= HTTP 429)
-  - (617d378) v1d 結果分析(= **GAS 解決成立**)+ v1e キット追加 + 証跡群更新
-  - `37b3b94` ユーザー: **V1d 実行結果**(`Verification-Results.md` = ✅ watch 抽出成功)
-  - `0c65cb4` ユーザー: `v1c-res.md` 削除(結果ファイル統合)
-  - (e79d9f7) v1d キット追加 + v1c 結果分析(抽出バグ・watch ページ取得は OK)
-  - `bf513ab` ユーザー: v1c 実行結果(抽出バグで未了)
-  - (8ba00f8) v1c キット追加 + v1b 第 2 回結果の分析記録
-  - `c53eddb` ユーザー: V1-b 第 2 回実行結果(生 JSON)の記録(= **全 client 失敗**)
-  - `768f6b0` 本 HANDOVER 作成 + docs/README index 更新
-  - `329d902` V1-b 試行 1(旧ファイルによる例外)の記録
-  - `7fc320a` 最終判断の記録(リゾラ = youtubei.js 自前 / relay = DL のみ)
-  - `8838a68` DL アーキテクチャ確定(A 主 + B フォールバック)
-  - `e39c4bc` DL 機構調査書
-  - `a2d7bbb` setMimeType enum 修正(v1b/v3b)+ 第 2 回例外の記録
-  - `6d35048` 第 1 回結果の記録 + 第 2 回キット追加
-  - `071f7e5` ユーザーの第 1 回結果(生データ)
-  - `54eef82` 検証ラウンド 1 の準備 / `387fe5d` 設計原則の改述 / `5f8c19e` 基線
+  - (2026-09-23) **DOC-2 = 再生方式を iframe へ転換・DL 保留**(本改訂 + V5 キット)
+  - `fab6fdc` **DOC-1 = cod-web 期ログの SKILL 化 + 残骸削除**(skills 5 件化・logs 45 件削除・.archive 削除)
+  - `12aeef8` PR #3 マージ(前セッションのドキュメント整理・検証完了状態)
+  - `6143012` ユーザー: V1f 実行結果(全 30 形式 signatureCipher = V1 完了の証跡)
+  - `7761203` v1f 結果分析 = V1 検証完了(※当時の P00-D 仕様は DOC-2 で改訂済み)
+  - それ以前(v1c〜v1e の分析・ユーザー実行結果等)は git 履歴を参照。
+- **ユーザーは GitHub Web UI で直接コミットする**(検証結果の送付等)。
+  コミット前に必ず `git fetch origin '+refs/heads/*:refs/remotes/origin/*'` で同期し、
+  ユーザーが変更・削除したファイルを worktree に反映する(`git add -A` が旧コピーを復活させる罠)。
+- **`origin` には他セッションの `arena/<別 id>-ytdl` ブランチが存在し得る** = **触らない**(fetch 表示のみ)。
+
 
 ## 11. 環境固有の注意点(Arena サンドボックス)
 
@@ -328,9 +337,10 @@ ytdl/
    - `git fetch origin <branch>`(refspec なし)は FETCH_HEAD だけを更新する罠。
      常に `'+refs/heads/*:refs/remotes/origin/*'` を付ける。
 2. **サンドボックスの outbound 通信制限**: `youtube.com` / `googlevideo.com` / `siatube.com` への
-   直接接続はブロック(SSL_ERROR_SYSCALL)。ウェブページ取得は `fetch_page` ツールで
-   (raw.githubusercontent.com は可)。**ユーザーの GAS デプロイ URL の検証も fetch_page で可能**
-   (ただしレスポンスヘッダは取れない = allorigins 経由で 1 回だけ取れた実績あり・不安定)。
+   直接接続はブロック(SSL_ERROR_SYSCALL)。ウェブページ取得は `fetch_page` ツールを使用。
+   **2026-09-23 実測**: `github.com` は curl 可(200)/ `raw.githubusercontent.com` は curl 不可
+   (SSL_ERROR_SYSCALL)/ **GitHub の内容取得は `gh api`・`gh repo clone` が確実**(認証済み)。
+   しあTube の実コード確認はこの経路で実施した(§7.8)。
 3. **ファイル取得の落とし穴**: ユーザーから「実行結果」が届くのは**チャットへの貼付**の形。
    `uploads/` ディレクトリは同期されない場合がある → 貼付が来たら必ずファイル化してコミットする。
 4. **ツール癖**:
@@ -353,6 +363,9 @@ ytdl/
   - 「自宅サーバーは siatube と同じ感じで動画をプロキシするわけでは**ない**(高負荷)」、
     「ダウンロード**だけ**自宅サーバー Relay を使うようにしたい」
   - 「siatube の api は**使わずに** youtubei.js で**自前実装**にします」
+  - (2026-09-23)「iframe を使って動画プレイヤーを実装すれば良さそう。**実際の siatube のコードを
+    確認して**」「今の目標から**動画ダウンロードは削除(コメントアウト)**し、**完全に機能する
+    YouTube プロキシ閲覧サイト**を構築するのを目標にして」= **iframe 転換 + DL 保留**
 - ユーザーは**検証キットを実際に自分で実行して結果を貼付**してくれる(GAS デプロイ・スマホ操作まで
   協力してくれる)。手順は `verification/README.md` に書いてあるので「README を見て実行」で足りる。
 - ユーザーの端末環境(参考): Android 10 + SamsungBrowser 30(第 1 回 V2 実行に使用)。
@@ -363,70 +376,54 @@ ytdl/
 
 ## 13. 次の一手(引き継いだらこれ)
 
-1. **ユーザーに確認: 「P00 開始の GO」**(検証はすべて完了 = §6。ユーザー GO 待ちのみ):
-   - **V1(GAS 解決)= ✅ 完了**(v1f で signatureCipher 確定 = P00-D 仕様確定・§8.1)。
-     V2(CORS)= 確定 / V3-b・V4 = 任意(後回しで可)。
-   - GO が来たら: **P00-B → P00-C → P00-F → P00-E → P00-D** の順で進める
-     (P00-D 冒頭 = **復号済み URL の fetch 実動作スパイク** = §8.1 の手順 2)。
-   - GO がまだなら → 最初に確認すること(前職 AI は複数回確認済み・未回答)。
-2. **P00-B/C/E/F は V1 残作業に依存しない(検証は全完了)** = ユーザーの GO 次第で着手可。
-   前職 AI は複数回「着手してよいですか」と確認したが、まだ明示的な GO は無い
-   = 引き継いだら最初に確認すること:
-   - P00-B: `apps/web` スキャフォールド(Next.js App Router + `output:'export'` + Tailwind v4 +
-     GSAP 導入 + M3 トークン + ルータ骨格)
-   - P00-C: `packages/shared`(API client 双方向輸送: GAS の `?api=`/google.script.run と
-     Phase B の fetch。types・itag/codec 定数・エラー分類)+ vitest
-   - P00-F: M3 Expressive 基線(テーマ + ホーム/watch スケルトン + GSAP 1 種)
-   - P00-E: 単一 HTML ビルド(`scripts/build-single-file.ts`)+ GAS デプロイ手順書
-   - P00-D: GAS 後端(主経路 = **watch ページ抽出**(v1d で確定)+ **signature decipherer**
-     (必須 = v1f で全形式 signatureCipher を確認)+ O9)+ doGet ディスパッチ + `/api/*`
-   - 各タスクの DoD は `docs/planning/PHASE0_PLAN.md` §5、作業手順は §8(完了時に行うこと)。
+1. **V5 キットの実環境実行をお願いする**(2026-09-23 の新規必須検証 = §8.1):
+   - `verification/v5-browser-iframe-test.html`(ブラウザで開く。`?probe=1` で自己チェック)
+   - `verification/v5b-gas-test.gs`(新しい GAS プロジェクト → `?probe=1` → `?test=search` / `?test=trend`)
+   - 目的: **iframe 方式の成立可否**(`youtubeeducation.com` の描画・再生)と、**GAS からの
+     検索・トレンド抽出可否**の確定。NG の場合は方式の再検討が必要 = 結果を見て `ask_user` で相談する。
+2. **P00 の GO 待ち**(V5 の結果に依存しない P00-B/C/F は先行着手も可):
+   - P00-B: `apps/web` スキャフォールド(Next.js + Tailwind v4 + GSAP + M3 トークン + ルータ骨格)
+   - P00-C: `packages/shared`(API client 双方向輸送 + types + エラー分類)+ vitest
+   - P00-F: M3 Expressive 基線(ホーム / watch スケルトン)
+   - **P00-D: GAS 後端 = メタデータ解決**(§8.2。**decipherer は実装しない**)+ O9
+   - P00-E: 単一 HTML ビルド + GAS デプロイ手順
+   - 推奨順: **B → C → F → E → D**(V5 の結果が D の検索系に効くため D は後半)
 3. **作業のたびに commit+push**(§11)。タスク ID をコミットメッセージに含める。
 4. `docs/task-list.md` は**常に最新に**(進捗の正本)。
+
 
 ## 14. 引き継ぎプロンプト(新しい AI に初回で貼るもの)
 
 ```text
 ytdl リポジトリ(shiratama644/ytdl)の開発を引き継いでもらえます。
-YouTube プロキシサイト(しあTube 同等 + ダウンロード機能 + M3 Design Expressive UI)の
-P0(基盤構築)前の検証フェーズを完了し、設計判断が全部確定した状態からの引き継ぎです。
+YouTube プロキシ閲覧サイト(しあTube 相当の閲覧機能 + M3 Design Expressive UI)です。
+2026-09-23 に方針転換があり、「再生 = iframe 埋め込み」「動画ダウンロード = 保留(実装対象外)」に
+なりました。設計の正本は HANDOVER §4 です。
 
 最初にやること:
-1. リポジトリの `docs/HANDOVER.md` を全部読む(これがコンテキストの唯一の入口)。
-2. その指示に従って、docs/task-list.md → docs/planning/PHASE0_PLAN.md →
-   docs/research/VERIFICATION_P0.md の順に読む。
-3. 作業ブランチの確認: 全作業は GitHub のブランチ `arena/01a094ec-ytdl`(先端 = 2026-09-16 の
-   ドキュメント整理 commit 以降。`6143012` ユーザーの v1f 結果 + `7761203` 分析を含む)にある。
-   main は古い。自分のセッションブランチに `origin/arena/01a094ec-ytdl` を取り込むことを
-   最初にやる(HANDOVER §10・§11 の手順)。
+1. リポジトリの `docs/HANDOVER.md` を全部読む(コンテキストの唯一の入口)。
+2. その指示に従い docs/task-list.md → docs/planning/PHASE0_PLAN.md →
+   docs/research/VERIFICATION_P0.md → docs/research/SIATUBE_CODE_VERIFICATION.md の順に読む。
+3. ブランチ確認: 作業はセッション固定ブランチ(`git branch --show-current`)。
+   main は PR #3 まで取り込み済み。同期手順は §10・§11。
 
 現状の要約:
-- 設計は全部確定済み(再生=googlevideo 直読み / リゾラ=自前実装(siatube API 不使用)= Phase A:
-  `/watch/` ページ抽出 + signature decipherer + O9(V1 検証済み)/ DL=自宅サーバー期は
-  「DL 専用 relay + クライアント側 mux + StreamSaver」主経路、GAS 期は 720p 以下直リンク)。
-  HANDOVER §4 を再議論せず踏襲すること。
-- ユーザーの 4 設計原則(HANDOVER §3)と禁止表現を守ること。
-- 検証の現状: V2(CORS)= 確定 / **V1(GAS 解決)= ✅ 全項目完了**(第 1〜6 回・2026-09-13〜15、
-  最終 = v1f): `/watch/` ページの `ytInitialPlayerResponse` 抽出で **playability OK /
-  formats 30 種 / 1080p+140 取得成功**(第 4 回・v1d)→ ストリーム URL = **全 30 形式
-  signatureCipher**(v1f)→ **本番リゾラ = watch ページ抽出 + signature decipherer + O9
-  (リトライ/キャッシュ/single-flight)で確定**(HANDOVER §7.7/§8.1)。
-  `/player` エンドポイントは dead(使わない)。**アーキ分岐(リゾラを初期から自宅サーバーへ)=
-  不採用**。**ユーザーに実行していただく検証キットは残っていない**(v3b/V4 = 任意)。
-- ユーザーから「P00 開始の GO」が来たら P00-B(Next.js スキャフォールド)から着手
-  (P00-B → C → F → E → **D**(冒頭 = 復号済み URL の fetch 実動作スパイク))。
-  検証は完了しているので GO 次第で全部着手可。まだ GO が無いなら最初に確認すること。
+- 再生 = iframe(`https://www.youtubeeducation.com/embed/{id}` を既定・公式 embed に差し替え可能)。
+  しあTube の実コード(ajgpw/siatube@44ab1599)で同方式を確認済み(D1 改訂)。
+- バックエンド = 自前の GAS。役割はメタデータ解決(`/watch/` 抽出 = V1 実証済み)。
+  signature decipherer / ストリーム URL 解決 / DL 機構 = 保留(D3〜D5/D7/D9)。
+- 次の検証 = V5(iframe 到達性 + 検索・トレンド抽出)。ユーザーがキットを実行して結果を貼付する。
+- その後は P00 の GO 待ち(推奨順 B → C → F → E → D)。
 
 作業ルール:
-- ユーザーとのやり取りは全部日本語。
-- 検証してから構築(ユーザーの常設指示)。
-- このサンドボックスはターン跨ぎにリポジトリを再クローンする: 変更のたびに必ず
-  git commit + git push(HANDOVER §11 の復旧手順を知っておくこと)。
-- docs/task-list.md を常に最新に保つ。
+- ユーザーとのやり取りは全部日本語。検証してから構築(常設指示)。
+- このサンドボックスはターン跨ぎに再クローンする: 変更のたびに commit + push(§11)。
+- 絶対表現の禁止(§3 の設計原則)を守る。docs/task-list.md を常に最新に保つ。
 
-最初に、(a) 理解した状況の要約 1 段落、(b) 最初に確認したいこと(P00 開始の GO の有無)
+最初に、(a) 理解した状況の要約 1 段落、(b) 次に確認したいこと(V5 実行の依頼 / P00 開始の GO)
 を日本語で答えてください。
 ```
+
 
 ---
 
@@ -434,9 +431,10 @@ P0(基盤構築)前の検証フェーズを完了し、設計判断が全部確�
 
 | # | 項目 | 誰が | 状態 |
 |---|---|---|---|
-| 1 | ~~V1 検証(v1〜v1f)~~ | ユーザー + AI | **✅ 完了(2026-09-15)** = Phase A リゾラ確定(watch 抽出 + decipherer + O9) |
-| 2 | **P00 開始の GO** | ユーザー | **待機中**(前職 AI が複数回確認済み・未回答) |
-| 3 | P00-B ~ P00-F の実装 | AI | 未着手(**GO が来たら全部着手可**・P00-D 冒頭 = 復号済み URL の fetch スパイク) |
-| 4 | **アーキテクチャ分岐の判断** | ユーザー + AI | **不要**(GAS 解決は成立) |
-| 5 | v3b / V4(iOS)の実行 | ユーザー | 任意・未実施(v3b は DL には不要=参考のみ) |
-| 6 | main へのマージ | ユーザー | 未実施(全作業は arena/01a094ec-ytdl にある) |
+| 1 | ~~V1 検証(v1〜v1f)~~ | ユーザー + AI | **✅ 完了(2026-09-15)** = 抽出の知見はメタデータ経路で活用(復号は保留) |
+| 2 | **V5(iframe 到達性 + メタデータ抽出)** | ユーザー + AI | **未着手 = 次に依頼するキット**(§8.1) |
+| 3 | **P00 開始の GO** | ユーザー | **待機中** |
+| 4 | P00-B ~ P00-F の実装 | AI | 未着手(GO が来たら着手可・推奨順 B → C → F → E → D) |
+| 5 | 動画 DL 機能 | - | **保留(実装対象外)**。設計・調査は docs に保存(再開時に参照) |
+| 6 | v3b / V4(iOS)の実行 | ユーザー | 任意(保留項目の参考) |
+| 7 | PR(main 向け)の作成・マージ | ユーザー | セッション固定ブランチごとに判断 |

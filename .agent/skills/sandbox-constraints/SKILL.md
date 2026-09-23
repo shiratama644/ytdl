@@ -34,8 +34,8 @@ Android/iOS/PC Chrome）で実行して結果を貼付・コミット**してく
 | `setMimeType` は **enum のみ**（`ContentService.MimeType.JSON` 等） | String は例外（O7・実測 2 回） |
 | GCS の 429 ページ（1648B のレート制限 HTML）は**結果として記録**する（失敗ではない） | v1e 試行 1 |
 
-キット一式 = `verification/`（v1〜v1f = V1 系 / v2・v2b = V2 / v3・v3b = V3）。
-実行手順は `verification/README.md`。結果は `verification/Verification-Results.md`（1 ファイル = 最新のみ）。
+キット一式 = `verification/`（v1〜v1f = V1 系 / v2・v2b = V2 / v3・v3b = V3 / **v5・v5b = V5（2026-09-23 追加 = iframe 到達性・GAS からの検索/トレンド抽出。現行スコープの必須キット）**）。
+旧 V1〜V4 は完了または保留（DL 保留に伴い参照情報）。実行手順は `verification/README.md`。結果は `verification/Verification-Results.md`（1 ファイル = 最新のみ）。
 
 ## ツール癖（Sandbox 内）
 

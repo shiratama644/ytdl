@@ -5,12 +5,15 @@
 
 ## 0. プロジェクト 30 秒概要（詳細は docs/ へ）
 
-- **ytdl** = しあTube と同構成(静的フロントエンド + JSON 解決バックエンド)の YouTube 代替視聴・ダウンロードサイト。
-  差別化 = **動画ダウンロード機能**(拡張子/画質 × キュー) + **Material 3 Design Expressive UI + GSAP**。
+- **ytdl** = しあTube と同構成(静的フロントエンド + JSON 解決バックエンド)の **YouTube プロキシ閲覧サイト**。
+  **再生は iframe 埋め込み**(しあTube と同じ `youtubeeducation.com/embed`。D1 改訂 2026-09-23)。
+  差別化 = **Material 3 Design Expressive UI + GSAP**(**動画 DL は 2026-09-23 に保留** = 目標から除外)。
 - **2 フェーズ運用**: **Phase A = GAS 期**(静的単一 HTML + `script.google.com` GAS Web アプリ)→
-  **Phase B = 自宅サーバー期**(Proxmox/LXC + Bun/Hono + yt-dlp + Nginx)。
-- **全設計判断は確定済み・再議論禁止** = [`docs/HANDOVER.md`](docs/HANDOVER.md) §4(D1〜D9) が正本。
-- **検証(V1〜V2)は完了済み(2026-09-15)**。次の一手 = **P00 基盤構築(ユーザー GO 待ち)**。
+  **Phase B = 自宅サーバー期**(Proxmox/LXC + Bun/Hono + yt-dlp + Nginx。**DL 保留に伴い将来オプション**)。
+- **設計判断は [`docs/HANDOVER.md`](docs/HANDOVER.md) §4(D1〜D9 + 状態)が正本**。2026-09-23 のユーザー決定で
+  D1/D2 = 改訂・DL 系(D3〜D5/D9)= 保留・D8 = 継続(**再議論禁止の枠組みは維持**)。
+- **検証**: V1〜V2 完了(2026-09-13〜15)。**次の検証 = V5**(iframe 到達性・検索/トレンド抽出の実環境確認)。
+  次の一手 = **V5 実行 + P00 基盤構築(ユーザー GO 待ち)**。
   進捗の正本 = [`docs/task-list.md`](docs/task-list.md) / 設計の正本 = [`docs/planning/PHASE0_PLAN.md`](docs/planning/PHASE0_PLAN.md) /
   検証証跡 = [`docs/research/VERIFICATION_P0.md`](docs/research/VERIFICATION_P0.md)。
 
@@ -29,7 +32,7 @@
 
 | 区分 | 例 |
 | :--- | :--- |
-| **良い例（適切な粒度）** | P00-B(web スキャフォールド) / P00-D の decipherer / API client の双方向輸送 |
+| **良い例（適切な粒度）** | P00-B(web スキャフォールド) / P00-D のメタデータ解決 / API client の双方向輸送 |
 | **悪い例（細かすぎる）** | 1 トークン定義ごとにコミット / コマ1行変更ごとにテスト |
 | **悪い例（大きすぎる）** | スキャフォールド + API 全実装 + UI 完成 を 1 タスクで一括実装 |
 
@@ -205,11 +208,11 @@ git diff --cached --stat
 | フロントエンド | **Next.js（App Router、`output:'export'`）+ React** | 静的 export が GAS/単一 HTML 配布との前提 |
 | スタイリング | **Tailwind CSS v4**（`@theme` で M3 トークン） | M3 Design Expressive のトークン運用 |
 | モーション | **GSAP 3.13**（ScrollTrigger 任意） | `prefers-reduced-motion` 対応トグルは必須（§10.11） |
-| 永続化 | **Dexie.js 4**（IndexedDB） | DL キュー・履歴・設定・レジューム |
-| 再生 | ネイティブ `<video>/<audio>` 2 要素 DASH + **hls.js**(m3u8 ライブのみ) | MSE/dash.js/shaka は使わない（設計 C1） |
-| DL | **mp4-muxer / webm-muxer（Worker・再エンコードなし）+ StreamSaver.js（Phase B 主経路）** | StreamSaver = 実質 Chromium 系のみ。iOS/FF = 直リンクフォールバック |
-| バックエンド(GAS) | **プレーン JS（npm 不可）** = `/watch/` ページ抽出 + signature decipherer + O9 | youtubei.js ランタイムは不要（V1 で確定）。§6.3 |
-| バックエンド(自宅・P5) | **Bun + Hono + yt-dlp（子プロセス）+ Nginx** | Phase B 専用 |
+| 永続化 | **Dexie.js 4**（IndexedDB） | 履歴・設定・購読（**DL キューは保留**） |
+| 再生 | **iframe 埋め込み**（`https://www.youtubeeducation.com/embed/{id}` 既定・公式 embed に差し替え可能） | D1 改訂(2026-09-23)。直リンク再生・hls.js・MSE は**保留** |
+| DL | **保留（実装対象外・2026-09-23 ユーザー決定）** | 旧設計（muxer / StreamSaver / 直リンク）は docs に保存。再開時のみ復活 |
+| バックエンド(GAS) | **プレーン JS（npm 不可）** = **メタデータ解決**（`/watch/` 抽出 = V1 実証済み + 検索/トレンド = V5 で検証）+ O9 | youtubei.js ランタイムは不要（V1 で確定）。decipherer は**保留**。§6.3 |
+| バックエンド(自宅・P5) | **Bun + Hono + yt-dlp（子プロセス）+ Nginx** | **DL 保留に伴い将来オプション**（Phase A で成立するなら必須でない） |
 | 言語/品質 | TypeScript / **biome** / **vitest** | `bun test` 等は使わない |
 | 実行環境(Sandbox) | Node 22（標準）+ pnpm | pnpm は `npm install -g pnpm`（.sh 参照） |
 
@@ -229,19 +232,24 @@ git diff --cached --stat
 
 ### 6.3 YouTube / GAS 運用ルール（全て実測・2026-09-12〜15 の検証で確定）
 
-**リゾラ（Phase A・P00-D）の確定設計**（証跡: VERIFICATION_P0.md / HANDOVER §7.7・§8.1）:
+**メタデータ解決（Phase A・P00-D）の設計**（2026-09-23 改訂。証跡: VERIFICATION_P0.md / HANDOVER §7.7・§8.1）:
 1. `https://www.youtube.com/watch?v=<id>&hl=ja&gl=JP` を desktop UA + `Accept-Language: ja-JP` で UrlFetchApp 取得
 2. 代入文 `ytInitialPlayerResponse = {` を正規表現で**全候補列挙** → 括弧バランス切片 → JSON.parse →
-   `playabilityStatus/streamingData/videoDetails` を持つ実レスポンスを採用（`verification/v1f-gas-test.gs` に参照実装）
-3. **signature decipherer**: formats は**全形式 `signatureCipher`**（`s=<cipher>&sp=sig&url=<encoded>`）→
-   player JS からの transform 抽出 → `s` 逆変換 → `decode(url) + &sig=<復号値>`（youtube-dlp 型）
-4. **O9 必須**: 429/5xx のリトライ+バックオフ / **CacheService キャッシュ**（TTL = `expiresInSeconds` × 安全係数）/ 同一動画 single-flight
+   `playabilityStatus/videoDetails` を持つ実レスポンスを採用（`verification/v1f-gas-test.gs` に参照実装）
+   → **メタデータ（タイトル・投稿者・長さ・サムネイル・関連）**の供給源。**ストリーム URL は使わない**
+3. ~~signature decipherer~~ = **保留**（iframe 再生ではストリーム URL を取得しない。解析知見は VERIFICATION_P0.md に保存 = 直リンク再開時に再開）
+4. **O9 必須**: 429/5xx のリトライ+バックオフ / **CacheService キャッシュ** / 同一対象 single-flight
+5. **検索・トレンドの抽出経路は未検証**（V1 で実証したのは `/watch/` のみ）→ **V5 で確認**
+   （`verification/v5b-gas-test.gs`）。GAS IP からの可否が確定するまで実装しない
 
 **禁止・不要な作業**:
 - **`/player` InnerTube エンドポイントは GAS(Google DC)IP から 3 ラウンド連続 dead**（ERROR/UNPLAYABLE/400）。**使わない・再テストしない**。
 - **GAS 後端に youtubei.js ランタイムを入れない**（不要 = V1 確定）。
 - **siatube.com API は一切使わない**（ユーザー確定 D2）。
-- **再生経路のバイト中継は全フェーズでしない**（D6）。DL 専用 relay は Phase B のみ。
+- **再生経路のサーバー中継はしない**（iframe 方式で確定 = 再生はブラウザ ↔ YouTube 系で完結）。
+  DL 専用 relay は**保留**（D6 改訂）。
+- **iframe の埋め込み先は設定で差し替え可能にする**（`youtubeeducation.com` 既定 / 公式 embed 代替）。
+  広告・画質・ログイン要求の実挙動は**断定しない**（V5 で観察 = §7.3）。
 
 **ユーザーに実行させる GAS/ブラウザキットの UX ルール（v1e 試行 2 で「どれだけ待っても表示されない」事故 → 恒久ルール）**:
 - **数秒で必ずフィードバック**。キット内での長待リトライ（sleep 30s+ 等）は**禁止**。
@@ -256,6 +264,7 @@ git diff --cached --stat
 ### 6.4 設計原則 4（ユーザー原文・**絶対表現の禁止を含む**・PHASE0_PLAN §10.2 に登記）
 
 > **文書・コード・報告に書き記す際は絶対表現を禁止**され、条件付き・検証可能な表現を使うよう指示されている。
+> **2026-09-23 追記**: 原則 2・3 は動画 DL（保留）に紐づく。DL を実装しない間も**表現規約は継続**する。
 
 1. **サーバー側で動画データを中継・変換しない限り**、動画処理に伴う CPU/メモリ負荷を最小化できる
    （❌「サーバー負荷は完全にゼロ」）
@@ -266,19 +275,19 @@ git diff --cached --stat
 4. **ブラウザからの直接取得可否(CORS、Range、URL 有効期限、codec/container 対応等)を検証した上で利用する**
    （❌「生 URL を返せば再生可能」）
 
-### 6.5 確定した設計判断（再議論禁止・正本 = HANDOVER §4）
+### 6.5 設計判断（正本 = HANDOVER §4・**2026-09-23 に改訂/保留を反映**）
 
-| # | 判断 |
+| # | 判断（状態つき） |
 | :--- | :--- |
-| D1 | 再生 = ネイティブ `<video>`+`<audio>` 2 要素 DASH（muxed 360p 既定）+ m3u8 のみ hls.js。**全フェーズで googlevideo 直読み** |
-| D2 | リゾラ = **自前実装**（siatube.com API 不使用）。Phase A = `/watch/` 抽出 + decipherer + O9（V1 検証で確定） |
-| D3 | DL(Phase B) = **方式 A 主**（/dl DL 専用 relay → Worker mux → StreamSaver → 進捗UI）+ **B 補完**（yt-dlp バッチ） |
-| D4 | DL(GAS 期) = **720p 以下 muxed 直リンクのみ**（実測 itag 22/37 なし → itag 18 = 360p が対象） |
-| D5 | DL(iOS/Firefox) = 直リンクフォールバック（StreamSaver は Chromium 系のみ） |
-| D6 | **relay はダウンロードのときのみ・再生には一切使用しない**（常設制約）。自宅サーバーは全面プロキシにはしない |
-| D7 | 対策ラダー（client 選択 / version 鮮度 / PO token / watch 抽出）。Phase A は watch 抽出固定。R1 = decipherer churn への備え |
-| D8 | v2b（CORS 確定テスト）= スキップ（**再提案しない**） |
-| D9 | FSA は DL 主経路にしない（StreamSaver 主経路 = ユーザー指定） |
+| D1 | **【改訂 2026-09-23】再生 = iframe 埋め込み**（`https://www.youtubeeducation.com/embed/{id}` 既定・公式 embed に差し替え可）。直リンク再生（DASH / hls.js / MSE）= **保留** |
+| D2 | **【改訂 2026-09-23】バックエンド = 自前実装**（siatube.com API 不使用は継続）。役割 = **メタデータ解決**（`/watch/` 抽出 = V1 実証済み + 検索/トレンド = V5 で検証）。decipherer / ストリーム URL 解決 = **保留** |
+| D3 | **【保留】** DL(Phase B) = 方式 A 主 + B 補完（旧設計は docs 保存・実装しない） |
+| D4 | **【保留】** DL(GAS 期) = 720p 以下 muxed 直リンクのみ |
+| D5 | **【保留】** DL(iOS/Firefox) = 直リンクフォールバック |
+| D6 | **【改訂 2026-09-23】再生経路のサーバー中継をしない**（継続・iframe で確定）。DL 専用 relay = **保留** |
+| D7 | **【保留】** 直リンク/復号の対策ラダー（client 選択 / version 鮮度 / PO token / decipherer churn 対策）。直リンク再開時に再開 |
+| D8 | **【継続】** v2b（CORS 確定テスト）= スキップ（**再提案しない**） |
+| D9 | **【保留】** FSA は DL 主経路にしない |
 
 ### 6.6 ドキュメント運用
 
@@ -289,8 +298,9 @@ git diff --cached --stat
   | 進捗 | `docs/task-list.md` |
   | 設計（P00） | `docs/planning/PHASE0_PLAN.md` |
   | 検証証跡 | `docs/research/VERIFICATION_P0.md` |
-  | DL 機構調査 | `docs/research/DOWNLOAD_MECHANISM_RESEARCH.md` |
-  | しあTube 調査 | `docs/research/SHIATUBE_DEEP_RESEARCH.md` |
+  | DL 機構調査（**保留**） | `docs/research/DOWNLOAD_MECHANISM_RESEARCH.md` |
+  | しあTube 調査（参考資料） | `docs/research/SHIATUBE_DEEP_RESEARCH.md` |
+  | しあTube 実コード確認（iframe 方式・2026-09-23） | `docs/research/SIATUBE_CODE_VERIFICATION.md` |
   | 検証キット + 生結果 | `verification/`（README = 実行手順 / Verification-Results.md = 最新の生結果のみ） |
 - ファイル追加時は `docs/README.md`（必要なら `verification/README.md` / `.agent/skills/index.md`）の索引を更新する。
 - `docs/arch/` は**まだ存在しない**（P1 以降に新規作成）。現行では「設計の正本 = 計画書 + HANDOVER §4」。
@@ -336,7 +346,8 @@ git diff --cached --stat
 ### 7.3 事実と推測の分離
 - 実測値・確認済み事実は断言（「HTTP 200 / 1273ms / 30 形式でした」）。
 - 未検証・推測は明示（「〜と想定」「実機で計測予定」）。
-- **Sandbox で計測不能な数値**（ブラウザの DL 速度・iOS 挙動等）は確定値のように書かない。
+- **Sandbox で計測不能な数値・挙動**（ブラウザの DL 速度・iOS 挙動・iframe の広告/画質/ログイン要求等）は
+  確定値のように書かない（「〜と想定」「V5 で観察予定」と明示する）。
 
 ### 7.4 ユーザーへの質問方針
 **わからないこと・判断に迷うことは、勝手に決めず必ずユーザーに質問する**（`ask_user` ツールで選択肢 UI 提示）。

@@ -17,6 +17,7 @@
 | pnpm/Next.js/GAS/StreamSaver の使いどころ・実測ハマり | [`tech-stack/SKILL.md`](./tech-stack/SKILL.md) |
 | 「動かない / 検証できない / YouTube 系に接続したい」環境トラブル | [`sandbox-constraints/SKILL.md`](./sandbox-constraints/SKILL.md) |
 | 品質ツールチェーン（TS strict / biome 2.x / vitest / coverage / Playwright）の設定・ハマり | [`quality-toolchain/SKILL.md`](./quality-toolchain/SKILL.md) |
+| しあTube 実コードの iframe プレイヤー方式（D1 改訂の根拠・未検証項目） | [`../../docs/research/SIATUBE_CODE_VERIFICATION.md`](../../docs/research/SIATUBE_CODE_VERIFICATION.md) |
 | 設計の正本（全体アーキテクチャ・スタック・API 設計・リゾラ仕様） | [`../../docs/planning/PHASE0_PLAN.md`](../../docs/planning/PHASE0_PLAN.md) |
 | 検証証跡（V1〜V4・O1〜O9 観察） | [`../../docs/research/VERIFICATION_P0.md`](../../docs/research/VERIFICATION_P0.md) |
 
@@ -24,8 +25,8 @@
 
 | スキル | できるようになること（Agent の能力） | 最終更新 |
 | :--- | :--- | :--- |
-| [project-overview/SKILL.md](./project-overview/SKILL.md) | プロダクト目標・2 フェーズ運用・確定設計（D1〜D9）・フェーズ進捗を素早く把握する | 2026-09-21（リポジトリ構成ツリーを DOC-1 後整合） |
-| [tech-stack/SKILL.md](./tech-stack/SKILL.md) | pnpm/Next.js export/Tailwind v4/GSAP/Dexie/GAS(UrlFetchApp・watch 抽出・decipherer)/StreamSaver を正しい形で使い、実測ハマりを回避できる | 2026-09-21（.archive 参照を除去・DOC-1） |
+| [project-overview/SKILL.md](./project-overview/SKILL.md) | プロダクト目標・2 フェーズ運用・設計判断（D1〜D9 + 状態）・フェーズ進捗を素早く把握する | 2026-09-23（iframe 転換 + DL 保留を反映・DOC-2） |
+| [tech-stack/SKILL.md](./tech-stack/SKILL.md) | pnpm/Next.js export/Tailwind v4/GSAP/Dexie/GAS(UrlFetchApp・watch 抽出 = メタデータ)/iframe 再生を正しい形で使い、実測ハマりを回避できる | 2026-09-23（iframe 再生 + DL 保留を反映・DOC-2） |
 | [sandbox-constraints/SKILL.md](./sandbox-constraints/SKILL.md) | Sandbox の egress ブロック / re-clone / ユーザー実行キット運用 / Web UI コミットを迂回して検証・復旧できる | 2026-09-21（Git 運用の知見を追加・DOC-1） |
 | [quality-toolchain/SKILL.md](./quality-toolchain/SKILL.md) | 品質ツールチェーン（TS strict / biome 2.x / vitest / coverage / Playwright）を正しい形で設定し、実測ハマりを回避できる | 2026-09-21（新規・cod-web 期ログ 7 件をインポート） |
 
